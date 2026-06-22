@@ -1,0 +1,48 @@
+site_name: qminweight
+site_description: >-
+  Fast GPU and multicore-CPU code-distance finding for quantum and
+  classical codes.
+docs_dir: pages
+site_dir: ../site
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - content.code.copy
+    - toc.integrate
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Quickstart: quickstart.md
+  - Python API: api.md
+  - Command line: cli.md
+  - Algorithms: algorithms.md
+  - Benchmarks: benchmarks.md
+  - Contributing: contributing.md

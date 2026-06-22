@@ -1,0 +1,57 @@
+[build-system]
+requires = ["scikit-build-core>=0.8"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "qminweight"
+version = "0.1.0"
+description = "Fast GPU + CPU exact distance finding for quantum and classical codes"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Serban Cercelescu" }]
+keywords = [
+    "quantum error correction", "code distance", "minimum distance",
+    "Brouwer-Zimmermann", "connected cluster", "CSS codes", "LDPC", "GPU", "Metal", "CUDA",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = ["numpy>=1.20"]
+
+[project.optional-dependencies]
+bench = ["codedistance"]
+docs = ["mkdocs", "mkdocs-material"]
+dev = ["pytest>=7", "scipy"]
+
+[project.urls]
+Homepage = "https://github.com/quantinuum/qminweight"
+Repository = "https://github.com/quantinuum/qminweight"
+
+[project.scripts]
+qminweight = "qminweight.cli:main"
+
+[tool.scikit-build]
+minimum-version = "0.8"
+wheel.packages = ["python/qminweight"]
+cmake.version = ">=3.20"
+sdist.include = ["src", "include", "CMakeLists.txt", "LICENSE", "README.md"]
+
+[tool.scikit-build.cmake.define]
+QMINWEIGHT_TESTS = "OFF"
+QMINWEIGHT_CLI = "OFF"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

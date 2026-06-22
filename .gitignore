@@ -1,0 +1,28 @@
+# Build artifacts
+build/
+build_*/
+python/qminweight/_lib/
+*.so
+*.dylib
+*.dll
+*.o
+*.obj
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.eggs/
+
+# Packaging
+dist/
+*.whl
+*.tar.gz
+
+# Docs site output
+docs/site/
+site/
+
+# OS / editor
+.DS_Store
