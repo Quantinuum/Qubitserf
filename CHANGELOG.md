@@ -2,6 +2,16 @@
 
 All notable changes to **qminweight** are documented here.
 
+## [Unreleased]
+
+### Changed
+- **Connected cluster** (`method="cc"`) now honours `verbose=True` (`-v` on the CLI), which
+  previously only affected the `bz`/`mitm` paths. It prints, on stderr in the repo's
+  `[cc <dZ|dX>] ...` style: a header (n / checks / logicals / threads), a per-weight-level
+  line giving the converging lower bound (`no weight-N logical -> d>N`) or the hit
+  (`FOUND weight-N logical`) with per-level timing, and a ~5 s in-level heartbeat
+  (`seeds k/n`) so a long weight level is never silent.
+
 ## [0.1.0] — 2026-06-22
 
 First release. Exact minimum-distance finding for CSS quantum codes and classical

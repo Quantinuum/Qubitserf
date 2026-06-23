@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <thread>
 #include <vector>
 
@@ -83,9 +84,18 @@ struct CCSearch {
 };
 
 // Min weight of e in ker(H) with L*e != 0, searched up to maxw. Returns WEIGHT_NONE if none.
-int cc_search(const CCData& D, int maxw, int nthreads) {
+// With verbose, reports progress on stderr in the repo's "[cc <label>] ..." style: a header,
+// a ~5s in-level heartbeat (seeds dispatched / total) so a long weight level is never silent,
+// and a per-level line giving the converging lower bound ("d>N") or the hit ("FOUND").
+int cc_search(const CCData& D, int maxw, int nthreads, bool verbose, const char* label) {
+    using clk = std::chrono::steady_clock;
     if (D.kl == 0) return -1;               // no logicals
+    int T = std::max(1, std::min(nthreads, D.n));
+    if (verbose)
+        std::fprintf(stderr, "[cc %s] n=%d checks=%d logicals=%d threads=%d maxw=%d\n",
+                     label, D.n, D.mh, D.kl, T, maxw);
     for (int d = 1; d <= maxw; ++d) {
+        auto td0 = clk::now();
         std::atomic<int> next{0};
         std::atomic<bool> hit{false};
         auto worker = [&]() {
@@ -99,22 +109,52 @@ int cc_search(const CCData& D, int maxw, int nthreads) {
             }
         };
         std::vector<std::thread> pool;
-        int T = std::max(1, std::min(nthreads, D.n));
         for (int t = 0; t < T; ++t) pool.emplace_back(worker);
+
+        // Heartbeat: while the pool grinds on weight d, a monitor thread prints how many seed
+        // qubits have been dispatched, every ~5s, so the user can see liveness on a slow level.
+        std::atomic<bool> level_done{false};
+        std::thread monitor;
+        if (verbose) {
+            monitor = std::thread([&]() {
+                while (!level_done.load(std::memory_order_relaxed)) {
+                    for (int i = 0; i < 50 && !level_done.load(std::memory_order_relaxed); ++i)
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    if (level_done.load(std::memory_order_relaxed)) break;
+                    int seeds = std::min(next.load(std::memory_order_relaxed), D.n);
+                    double el = std::chrono::duration<double>(clk::now() - td0).count();
+                    std::fprintf(stderr, "[cc %s] d=%d  seeds %d/%d  %.0fs\n",
+                                 label, d, seeds, D.n, el);
+                }
+            });
+        }
+
         for (auto& th : pool) th.join();
-        if (hit.load()) return d;
+        level_done.store(true);
+        if (monitor.joinable()) monitor.join();
+
+        double el = std::chrono::duration<double>(clk::now() - td0).count();
+        if (hit.load()) {
+            if (verbose)
+                std::fprintf(stderr, "[cc %s] d=%d  FOUND weight-%d logical  (%.2fs)\n",
+                             label, d, d, el);
+            return d;
+        }
+        if (verbose)
+            std::fprintf(stderr, "[cc %s] no weight-%d logical -> d>%d  (%.2fs)\n",
+                         label, d, d, el);
     }
     return WEIGHT_NONE;
 }
 
-BZResult cc_one(const GF2Mat& H, const GF2Mat& L, const BZOptions& opt) {
+BZResult cc_one(const GF2Mat& H, const GF2Mat& L, const BZOptions& opt, const char* label) {
     using clk = std::chrono::steady_clock;
     auto t0 = clk::now();
     BZResult res; res.backend = "cc";
     CCData D = build_cc(H, L);
     int nthreads = opt.threads > 0 ? opt.threads : (int)std::thread::hardware_concurrency();
     int maxw = opt.max_weight > 0 ? std::min(opt.max_weight, D.n) : D.n;
-    int d = cc_search(D, maxw, nthreads);
+    int d = cc_search(D, maxw, nthreads, opt.verbose, label);
     res.distance = (d >= WEIGHT_NONE) ? -1 : d;
     res.lower_bound = res.distance;          // exact when found
     res.proven = (d < WEIGHT_NONE);
@@ -128,11 +168,11 @@ BZResult cc_one(const GF2Mat& H, const GF2Mat& L, const BZOptions& opt) {
 BZResult cc_css_distance(const GF2Mat& Hx, const GF2Mat& Hz, char which, const BZOptions& opt) {
     if (which == 'X') {
         DistProblem p = css_problem(Hx, Hz, 'X');   // p.check = Z-logicals
-        return cc_one(Hz, p.check, opt);
+        return cc_one(Hz, p.check, opt, "dX");
     }
     if (which == 'Z') {
         DistProblem p = css_problem(Hx, Hz, 'Z');   // p.check = X-logicals
-        return cc_one(Hx, p.check, opt);
+        return cc_one(Hx, p.check, opt, "dZ");
     }
     BZResult z = cc_css_distance(Hx, Hz, 'Z', opt);
     BZResult x = cc_css_distance(Hx, Hz, 'X', opt);
