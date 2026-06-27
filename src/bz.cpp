@@ -123,11 +123,23 @@ BZResult bz_distance(const DistProblem& prob, const BZOptions& opt) {
     int outer = 0;                                 // lower bound
     const int maxw = opt.max_weight > 0 ? std::min(K, opt.max_weight) : K;
 
+    static const bool profile = std::getenv("QMINWEIGHT_PROFILE") != nullptr;
+
     int level = 0;
     for (int d = 1; d <= maxw; ++d) {
         plan.d = d;
         plan.current_best = inner;
+        auto te0 = clk::now();
         int found = backend->enumerate(plan);
+        if (profile) {
+            double ms = std::chrono::duration<double, std::milli>(clk::now() - te0).count();
+            BinomTable& b = bt;
+            std::fprintf(stderr,
+                "[prof %s] d=%d K=%d ng=%d stride=%d total=%llu work=%llu -> %.3f ms\n",
+                res.backend.c_str(), d, K, num_gamma, stride,
+                (unsigned long long)b.binom(K, d),
+                (unsigned long long)b.binom(K, d) * (unsigned long long)num_gamma, ms);
+        }
         if (found < inner) inner = found;
         ++level;
 

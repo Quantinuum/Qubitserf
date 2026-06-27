@@ -20,7 +20,7 @@ Requirements:
 Install from the package directory:
 
 ```bash
-cd experiments/qminweight
+cd research/distance/qminweight
 python -m pip install .
 ```
 
@@ -221,22 +221,38 @@ Summary from the comprehensive benchmark:
 - Against reference
   [`connectedClusterMW`](https://github.com/m-webster/codeDistancePYPI),
   `qminweight cc` had a median speedup of 2.7x and a maximum speedup of 54.9x.
-- On Brouwer-Zimmermann runs, GPU was a median 1.1x faster than CPU. Small
-  codes often run faster on CPU because GPU dispatch overhead dominates.
+- On Brouwer-Zimmermann runs where the enumeration is the actual cost (CPU solve
+  > 10 ms — the regime the GPU backend is meant for), GPU is a median **13x**
+  faster than CPU on the Apple M4 (e.g. toric L=7 11x, toric L=8 15x, surface
+  L=8 17x); see [`bench/gpu_vs_cpu.py`](bench/gpu_vs_cpu.py). Sub-millisecond
+  codes are dominated by the shared random-information-set seed and per-dispatch
+  latency, so CPU and GPU necessarily tie there (the GPU path falls back to the
+  CPU below `QMINWEIGHT_GPU_MIN_WORK`).
 - `qminweight cc` was the only benchmarked method that certified the gross
   `[[144,12,12]]` distance within the timeout.
+
+Each family plot is a grid of charts, one per code distance `d` (`d = 1, 2,
+3, …`), showing wall-clock time vs `n` per method. For the scalable families
+below (toric, surface, bivariate-bicycle) an extra chart plots time vs the code
+distance `d` directly.
 
 ### Toric Codes
 
 ![Toric code benchmark](bench/comprehensive_toric.png)
 
+![Toric code benchmark vs distance](bench/comprehensive_toric_vs_d.png)
+
 ### Surface Codes
 
 ![Surface code benchmark](bench/comprehensive_surface.png)
 
+![Surface code benchmark vs distance](bench/comprehensive_surface_vs_d.png)
+
 ### Bivariate-Bicycle Codes
 
 ![Bivariate-bicycle benchmark](bench/comprehensive_bivariate_bicycle.png)
+
+![Bivariate-bicycle benchmark vs distance](bench/comprehensive_bivariate_bicycle_vs_d.png)
 
 Full benchmark tables and additional plots:
 

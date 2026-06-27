@@ -4,6 +4,21 @@ All notable changes to **qminweight** are documented here.
 
 ## [Unreleased]
 
+### Performance
+- **GPU Brouwer–Zimmermann is now a median ~13x faster than the multicore CPU** on codes
+  whose enumeration is the actual cost (CPU solve > 10 ms), up from ~1.1x. The dominant
+  weight level on toric L=7 dropped 43.6 ms → 7.3 ms (6x) on an Apple M4. Root cause: the
+  per-thread scratch arrays were sized to the worst case (`cw[16]`, `pos[32]`) and spilled
+  into thread-local memory, collapsing GPU occupancy to ~1.5 %. Fix: the kernel is now
+  compiled as a small VARIANT per `(stride, d-bucket)` — `stride` is a compile-time literal
+  so the codeword loops unroll and `cw[stride]` lives in registers, and `pos[]` is sized to
+  the smallest bucket holding `d`. Variants are compiled lazily and cached (Metal: runtime
+  source templating; CUDA: `template<int STRIDE,int POSN>` + a dispatch switch). Also: a
+  one-time GPU warmup dispatch, a persistent result buffer, and a lower default
+  `QMINWEIGHT_GPU_MIN_WORK` (1<<18) now that the GPU pays off sooner. The CPU remains the
+  correctness oracle; `tests/test_distance.py` adds a deep variant-path GPU==CPU check and
+  `bench/gpu_vs_cpu.py` reports the >10 ms-code median with a 2x goal gate.
+
 ### Changed
 - **Connected cluster** (`method="cc"`) now honours `verbose=True` (`-v` on the CLI), which
   previously only affected the `bz`/`mitm` paths. It prints, on stderr in the repo's

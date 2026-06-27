@@ -165,6 +165,22 @@ def test_gpu_random_sweep_agrees_with_cpu():
 
 
 # --------------------------------------------------------------------------- #
+# GPU variant-kernel deep path: a code whose dominant weight level is large
+# enough to actually dispatch on the GPU (not fall back to the CPU), so the
+# stride-specialised kernel variant is exercised at depth. Guards the register-
+# pressure rewrite (compile-time stride / sized pos[]) against silent miscounts.
+# --------------------------------------------------------------------------- #
+@requires_gpu
+@pytest.mark.parametrize("fam,L,expected", [("surface", 7, 7), ("toric", 7, 7)])
+def test_gpu_variant_deep_path_matches_cpu(fam, L, expected):
+    Hx, Hz = getattr(codes, fam)(L)
+    cpu = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu").distance
+    gpu = {df.css_distance(Hx, Hz, method="bz", which="min", backend="gpu").distance
+           for _ in range(3)}
+    assert gpu == {cpu} == {expected}, f"{fam}{L}: cpu={cpu}, gpu saw {gpu}"
+
+
+# --------------------------------------------------------------------------- #
 # available_backends sanity.
 # --------------------------------------------------------------------------- #
 def test_available_backends_contains_cpu():
