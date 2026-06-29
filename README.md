@@ -364,7 +364,7 @@ If you use qminweight in academic work, please cite the package and the underlyi
   year   = {2026},
   note   = {C++ core with CPU/CUDA/Metal backends; Brouwer--Zimmermann, connected-cluster,
             and meet-in-the-middle solvers},
-  url    = {https://github.com/serban-cercelescu/qminweight}
+  url    = {https://github.com/Quantinuum/qminweight}
 }
 
 ```
