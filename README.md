@@ -85,6 +85,24 @@ $ qminweight example_code.txt --method cc --threads 8
 3
 ```
 
+Verbose mode prints progress diagnostics to stderr; the final distance still
+goes to stdout. For example, with connected cluster:
+
+```console
+$ qminweight example_code.txt --method cc -v
+[cc dZ] n=7 checks=3 logicals=1 threads=7 maxw=7
+[cc dZ] no weight-1 logical -> d>1  (0.11s)
+[cc dZ] no weight-2 logical -> d>2  (0.10s)
+[cc dZ] d=3  FOUND weight-3 logical  (0.10s)
+[cc dX] n=7 checks=3 logicals=1 threads=7 maxw=7
+[cc dX] no weight-1 logical -> d>1  (0.10s)
+[cc dX] no weight-2 logical -> d>2  (0.11s)
+[cc dX] d=3  FOUND weight-3 logical  (0.10s)
+3
+```
+
+Timing and thread counts vary by machine and problem size.
+
 Machine-readable output, with timing and backend varying by machine:
 
 ```console
@@ -133,6 +151,7 @@ Useful options:
 - `--which min`, `--which z`, or `--which x` for CSS codes.
 - `--threads N` to set CPU worker threads.
 - `--max-weight N` to cap an expensive search and return a certified bracket.
+- `-v` or `--verbose` to print progress diagnostics to stderr.
 - `--list-backends` to show usable backends.
 
 Use `cc` for sparse CSS codes such as LDPC, topological, and bivariate-bicycle
@@ -333,3 +352,19 @@ Full benchmark tables and additional plots:
 - [`bench/comprehensive_results.md`](bench/comprehensive_results.md)
 - [`bench/results.md`](bench/results.md)
 - [`bench/cc_results.md`](bench/cc_results.md)
+
+## Citation
+
+If you use qminweight in academic work, please cite the package and the underlying methods.
+
+```bibtex
+@software{qminweight,
+  title  = {qminweight: exact minimum distance of CSS quantum and classical linear codes},
+  author = {Serban Cercelescu},
+  year   = {2026},
+  note   = {C++ core with CPU/CUDA/Metal backends; Brouwer--Zimmermann, connected-cluster,
+            and meet-in-the-middle solvers},
+  url    = {https://github.com/serban-cercelescu/qminweight}
+}
+
+```
