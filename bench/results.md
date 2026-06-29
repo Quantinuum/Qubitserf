@@ -8,34 +8,34 @@ Columns: `d(cpu)` is qminweight on the CPU (ground truth, deterministic); `d(gpu
 
 | code | n | k | d(cpu) | d(gpu) | d(ref) | t_cpu | t_gpu | t_ref | ref(default)/gpu | cpu/gpu | match |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| toric L=4 | 32 | 2 | 4 | 4 | 4 | 489us | 296us | 5.2ms | 17.5x | 1.65x | yes |
-| toric L=5 | 50 | 2 | 5 | 5 | 5 | 1.3ms | 942us | 5.9ms | 6.3x | 1.39x | yes |
-| toric L=6 | 72 | 2 | 6 | 6 | 6 | 2.4ms | 2.0ms | 460.9ms | 235.4x | 1.21x | yes |
-| toric L=7 | 98 | 2 | 7 | 7 | 7 | 378.1ms | 320.8ms | 139.3ms | 0.4x | 1.18x | yes |
-| toric L=8 | 128 |  | 8 | 8 | >30s (timeout) | 2.12s | 971.8ms | - | - | 2.18x | n/a |
-| surface L=4 | 25 | 1 | 4 | 4 | 4 | 484us | 297us | 2.5ms | 8.5x | 1.63x | yes |
-| surface L=5 | 41 | 1 | 5 | 5 | 5 | 885us | 652us | 4.2ms | 6.5x | 1.36x | yes |
-| surface L=6 | 61 | 1 | 6 | 6 | 6 | 3.2ms | 3.1ms | 166.0ms | 54.3x | 1.03x | yes |
-| surface L=7 | 85 | 1 | 7 | 7 | 7 | 142.8ms | 439.5ms | 6.70s | 15.2x | 0.32x | yes |
-| hgp(rep6,rep6) | 61 | 1 | 6 | 6 | 6 | 3.2ms | 3.1ms | 81.6ms | 26.0x | 1.01x | yes |
-| hgp(ham3,ham3) | 58 | 16 | 3 | 3 | 3 | 725us | 521us | 8.0ms | 15.3x | 1.39x | yes |
+| toric L=4 | 32 | 2 | 4 | 4 | 4 | 538us | 293us | 4.1ms | 14.1x | 1.84x | yes |
+| toric L=5 | 50 | 2 | 5 | 5 | 5 | 1.1ms | 883us | 5.0ms | 5.7x | 1.19x | yes |
+| toric L=6 | 72 | 2 | 6 | 6 | 6 | 2.1ms | 1.9ms | 402.2ms | 213.6x | 1.11x | yes |
+| toric L=7 | 98 | 2 | 7 | 7 | 7 | 245.8ms | 21.4ms | 19.26s | 900.5x | 11.49x | yes |
+| toric L=8 | 128 |  | 8 | 8 | >30s (timeout) | 1.34s | 76.8ms | - | - | 17.49x | n/a |
+| surface L=4 | 25 | 1 | 4 | 4 | 4 | 487us | 274us | 2.1ms | 7.7x | 1.78x | yes |
+| surface L=5 | 41 | 1 | 5 | 5 | 5 | 768us | 624us | 3.8ms | 6.1x | 1.23x | yes |
+| surface L=6 | 61 | 1 | 6 | 6 | 6 | 2.9ms | 3.9ms | 69.6ms | 17.9x | 0.75x | yes |
+| surface L=7 | 85 | 1 | 7 | 7 | 7 | 105.6ms | 12.3ms | 5.90s | 478.3x | 8.55x | yes |
+| hgp(rep6,rep6) | 61 | 1 | 6 | 6 | 6 | 3.1ms | 3.9ms | 129.1ms | 33.3x | 0.80x | yes |
+| hgp(ham3,ham3) | 58 | 16 | 3 | 3 | 3 | 702us | 501us | 6.4ms | 12.8x | 1.40x | yes |
 
 ### Classical codes
 
 | code | n | k | d(cpu) | d(gpu) | d(ref) | t_cpu | t_gpu | t_ref | ref(default)/gpu | cpu/gpu | match |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| hamming r=3 | 7 |  | 3 | 3 | 3 | 197us | 108us | 689us | 6.4x | 1.83x | yes |
-| hamming r=4 | 15 |  | 3 | 3 | 3 | 266us | 129us | 969us | 7.5x | 2.05x | yes |
-| repetition n=6 | 6 |  | 6 | 6 | skipped (degenerate for ref) | 228us | 98us | - | - | 2.32x | n/a |
-| repetition n=8 | 8 |  | 8 | 8 | skipped (degenerate for ref) | 127us | 120us | - | - | 1.06x | n/a |
-| rand_ldpc(12,18,3) | 18 |  | 2 | 2 | 2 | 320us | 297us | 1.2ms | 3.9x | 1.08x | yes |
+| hamming r=3 | 7 |  | 3 | 3 | 3 | 227us | 115us | 549us | 4.8x | 1.98x | yes |
+| hamming r=4 | 15 |  | 3 | 3 | 3 | 290us | 135us | 756us | 5.6x | 2.14x | yes |
+| repetition n=6 | 6 |  | 6 | 6 | skipped (degenerate for ref) | 201us | 108us | - | - | 1.86x | n/a |
+| repetition n=8 | 8 |  | 8 | 8 | skipped (degenerate for ref) | 113us | 90us | - | - | 1.26x | n/a |
+| rand_ldpc(12,18,3) | 18 |  | 2 | 2 | 2 | 266us | 267us | 1.0ms | 3.8x | 1.00x | yes |
 
 ## Summary
 
 - Backends available: `['cpu', 'gpu']`.
 - Reference: `codedistance.BZDistMW` (Brouwer-Zimmermann), run per-component with a 30s per-code timeout.
-- **default(BZDistMW)/gpu speedup**: min 0.4x, max 235.4x, median 8.5x (over 13 codes where the reference finished).
-- **cpu/gpu speedup**: min 0.32x, max 2.32x, median 1.39x (values < 1 mean the CPU was faster — expected for small codes where GPU dispatch overhead dominates).
+- **default(BZDistMW)/gpu speedup**: min 3.8x, max 900.5x, median 12.8x (over 13 codes where the reference finished).
+- **cpu/gpu speedup**: min 0.75x, max 17.49x, median 1.78x (values < 1 mean the CPU was faster — expected for small codes where GPU dispatch overhead dominates).
 - Reference **timed out** (>30s) on: toric L=8 — qminweight solved all of these.
 - **All distances matched**: qminweight-cpu equals the reference BZDistMW on every code where the reference finished, and GPU's best-of-retries value equals the CPU value everywhere.
 

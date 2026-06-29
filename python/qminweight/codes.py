@@ -1,6 +1,7 @@
 """Generators for benchmark/test codes (classical and CSS quantum)."""
 from __future__ import annotations
 import numpy as np
+from itertools import combinations as _combinations
 
 
 def repetition_parity(n: int) -> np.ndarray:
@@ -132,3 +133,40 @@ def random_ldpc_parity(m: int, n: int, col_weight: int = 3, seed: int = 0) -> np
         rows = rng.choice(m, size=min(col_weight, m), replace=False)
         H[rows, j] = 1
     return H
+
+
+def reed_muller_generator(r: int, m: int) -> np.ndarray:
+    """Generator matrix of the [2^m, sum_{i<=r} C(m,i), 2^(m-r)] Reed-Muller code RM(r,m).
+
+    Rows are evaluations of all monomials x_S = prod_{j in S} x_j, |S| <= r, over all
+    2^m binary points of GF(2)^m.  Row count = sum_{i=0}^{r} C(m,i).  The minimum-weight
+    row is the evaluation of any degree-r monomial, which has weight 2^(m-r).
+    """
+    if r < 0 or r > m:
+        raise ValueError(f"Need 0 <= r <= m; got r={r}, m={m}")
+    n = 1 << m
+    # points[i, b] = bit b of i
+    points = np.array([[(i >> b) & 1 for b in range(m)] for i in range(n)], dtype=np.uint8)
+    rows = []
+    for deg in range(r + 1):
+        for S in _combinations(range(m), deg):
+            row = np.ones(n, dtype=np.uint8)
+            for b in S:
+                row = row * points[:, b]
+            rows.append(row)
+    return np.array(rows, dtype=np.uint8)
+
+
+def quantum_reed_muller(r: int, m: int) -> tuple[np.ndarray, np.ndarray]:
+    """CSS code with Hx = Hz = G_RM(r, m), valid when 2r < m-1 (self-orthogonality).
+
+    Parameters: n = 2^m, k = 2^m - 2*sum_{i<=r} C(m,i), d = 2^(r+1).
+    Rows have weights n, n/2, ..., n/2^r — dense, NOT QLDPC.
+    """
+    if 2 * r >= m - 1:
+        raise ValueError(
+            f"RM(r={r}, m={m}) is not self-orthogonal (need 2r < m-1 = {m-1}); "
+            f"smallest valid m for this r is {2*r + 2}."
+        )
+    G = reed_muller_generator(r, m)
+    return G.copy(), G.copy()

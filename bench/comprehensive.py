@@ -49,10 +49,32 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_MD = os.path.join(HERE, "comprehensive_results.md")
 
 # Per-method, per-code wall-clock budgets (seconds).
-DF_BUDGET = float(os.environ.get("DF_BUDGET", "20"))      # in-process qminweight cap
-MITM_MAX_N = int(os.environ.get("MITM_MAX_N", "62"))      # mitm only on small n
-REF_TIMEOUT = float(os.environ.get("REF_TIMEOUT", "30"))  # reference subprocess cap
+DF_BUDGET = float(os.environ.get("DF_BUDGET", "300"))     # in-process qminweight cap
+MITM_MAX_N = int(os.environ.get("MITM_MAX_N", "130"))     # mitm only for n <= this
+# BZ is only *attempted* up to this n.  The in-process budget runs the native
+# solver on a daemon thread that cannot be cancelled, so a BZ call that exceeds
+# the budget keeps burning a CPU core in the background.  Codes above BZ_MAX_N
+# that appear in HARD_CSS_NAMES are protected by a max_weight cap (bounded work);
+# uncapped BZ on large sparse codes (d >> 1, weak lower bound) is the orphan risk.
+# All codes above BZ_MAX_N have cc/reference still attempted.
+#
+# 1024 is the native BZ ceiling on the GPU backends (codeword stride <= MAX_WORDS
+# = 16 u64 words = 1024 bits; above that the GPU path auto-falls-back to the
+# dynamic CPU solver).  The CPU backend itself is unbounded.  This covers every
+# code in the benchmark; the large sparse QLDPC codes within the window
+# (toric/surface L>=9, bb288) are in HARD_CSS_NAMES so they run a bounded cap.
+BZ_MAX_N = int(os.environ.get("BZ_MAX_N", "1024"))
+REF_TIMEOUT = float(os.environ.get("REF_TIMEOUT", "300"))  # reference subprocess cap
 BZ_CAP = int(os.environ.get("BZ_CAP", "6"))               # max_weight on hard codes
+
+# Warm-robust timing: a measurement that finishes under REPEAT_BELOW seconds is
+# re-run up to REPEAT times and the minimum is kept.  The first GPU call to a
+# given (stride, d) JIT-compiles its kernel, so a single shot can charge a cheap
+# code with one-off warmup/dispatch jitter (which otherwise makes a smaller code
+# look slower than a larger one).  Slow, enumeration-dominated runs stay single
+# shot so this never multiplies the expensive cases.
+REPEAT = int(os.environ.get("BENCH_REPEAT", "3"))
+REPEAT_BELOW = float(os.environ.get("BENCH_REPEAT_BELOW", "1.0"))
 
 BACKENDS = df.available_backends()
 HAS_GPU = "gpu" in BACKENDS
@@ -79,7 +101,7 @@ class Meas:
     capped: bool = False     # BZ run with a max_weight cap (bracket, maybe unproven)
 
 
-def _run_df(fn, budget: float) -> Meas:
+def _run_df_once(fn, budget: float) -> Meas:
     box: dict = {}
 
     def worker():
@@ -103,6 +125,20 @@ def _run_df(fn, budget: float) -> Meas:
     r = box["r"]
     return Meas(ok=True, distance=r.distance, lower_bound=r.lower_bound,
                 proven=bool(r.proven), seconds=box["secs"])
+
+
+def _run_df(fn, budget: float) -> Meas:
+    # First shot also warms up the GPU's per-(stride, d) JIT kernel cache.
+    m = _run_df_once(fn, budget)
+    # Re-run only cheap, successful measurements to discard warmup/dispatch
+    # jitter and report the steady-state minimum; expensive runs stay single
+    # shot (see REPEAT_BELOW).
+    if m.ok and isinstance(m.seconds, float) and m.seconds < REPEAT_BELOW:
+        for _ in range(REPEAT - 1):
+            m2 = _run_df_once(fn, budget)
+            if m2.ok and m2.seconds < m.seconds:
+                m = m2
+    return m
 
 
 def df_css(Hx, Hz, method, backend="auto", max_weight=0, budget=DF_BUDGET) -> Meas:
@@ -272,8 +308,10 @@ def sweep_css_family(fam_name, entries, ref_ok, tmpdir, mismatches, log):
             if m.timed_out:
                 stop["cc"] = True
 
-        # ---- qminweight bz cpu (capped on hard codes) ----
-        if not stop["bz_cpu"]:
+        # ---- qminweight bz cpu (capped on hard codes; only attempted n<=BZ_MAX_N) ----
+        if n > BZ_MAX_N:
+            row.meas["bz_cpu"] = Meas(error=f"skip n>{BZ_MAX_N}")
+        elif not stop["bz_cpu"]:
             mw = BZ_CAP if hard else 0
             m = df_css(Hx, Hz, "bz", backend="cpu", max_weight=mw)
             row.meas["bz_cpu"] = m
@@ -283,8 +321,10 @@ def sweep_css_family(fam_name, entries, ref_ok, tmpdir, mismatches, log):
             if m.timed_out and not m.capped:
                 stop["bz_cpu"] = True
 
-        # ---- qminweight bz gpu ----
-        if HAS_GPU and not stop["bz_gpu"]:
+        # ---- qminweight bz gpu (only attempted n<=BZ_MAX_N) ----
+        if n > BZ_MAX_N:
+            row.meas["bz_gpu"] = Meas(error=f"skip n>{BZ_MAX_N}")
+        elif HAS_GPU and not stop["bz_gpu"]:
             mw = BZ_CAP if hard else 0
             m = df_css(Hx, Hz, "bz", backend="gpu", max_weight=mw)
             row.meas["bz_gpu"] = m
@@ -413,9 +453,10 @@ def render_family(title, rows, methods) -> str:
 def render_summary(all_rows, mismatches) -> str:
     out = ["## Summary", ""]
     out.append(f"- Backends available: `{BACKENDS}`.")
-    out.append(f"- Per-code qminweight budget: {DF_BUDGET:.0f}s; mitm only for "
-               f"n <= {MITM_MAX_N}; reference subprocess timeout {REF_TIMEOUT:.0f}s; "
-               f"BZ max_weight cap on hard codes: {BZ_CAP}.")
+    out.append(f"- Per-code qminweight budget: {DF_BUDGET:.0f}s; bz only for "
+               f"n <= {BZ_MAX_N}; mitm only for n <= {MITM_MAX_N}; reference "
+               f"subprocess timeout {REF_TIMEOUT:.0f}s; BZ max_weight cap on hard "
+               f"codes: {BZ_CAP}.")
 
     # Speedups: reference (whichever method) vs qminweight cc, gathered over rows
     # where both finished.

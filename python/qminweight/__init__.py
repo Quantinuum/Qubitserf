@@ -10,6 +10,7 @@ from .api import (
     available_backends,
     version,
 )
+from ._interop import as_css
 from . import codes
 
 __all__ = [
@@ -18,6 +19,7 @@ __all__ = [
     "classical_distance",
     "available_backends",
     "version",
+    "as_css",
     "codes",
 ]
 __version__ = "0.1.0"

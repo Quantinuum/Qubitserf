@@ -27,6 +27,41 @@ All notable changes to **qminweight** are documented here.
   (`FOUND weight-N logical`) with per-level timing, and a ~5 s in-level heartbeat
   (`seeds k/n`) so a long weight level is never silent.
 
+### Benchmarks
+- **Comprehensive benchmark extended to n ≤ 288** (`bench/comprehensive.py`): toric and
+  surface families now sweep L = 4..12, plus a `bb [[288,12,12]]` bivariate-bicycle code and
+  an `hgp(ham4)` (n=241) hypergraph-product code. `cc` certifies all of these in single- to
+  low-hundreds of milliseconds while every other method (and the reference) gives out.
+- **Warm-robust timing**: a measurement that finishes under `BENCH_REPEAT_BELOW` (1 s) is
+  re-run `BENCH_REPEAT` (3) times and the minimum kept. This discards the one-off per-`(stride,d)`
+  GPU kernel JIT/dispatch warmup that previously made a smaller code look slower than a larger
+  one; expensive enumeration-dominated runs stay single shot.
+- **BZ is attempted for n ≤ `BZ_MAX_N` (1024)** — the native GPU ceiling (see *Verified*
+  below). Large *sparse* QLDPC codes within this window (toric/surface L ≥ 9, `bb288`) are
+  listed in `HARD_CSS_NAMES` so they run a bounded `max_weight` cap rather than a free,
+  potentially non-terminating BZ enumeration. (The in-process budget runs the native solver
+  on a daemon thread it cannot cancel, so an uncapped BZ that exceeds the budget keeps burning
+  a CPU core in the background; capping bounds the work so the thread always finishes.) `cc`
+  and the reference still run on every code.
+- **Reed–Muller families added** (`reed_muller_r1`, `reed_muller_r2`): dense, non-QLDPC
+  quantum Reed–Muller CSS codes `Hx = Hz = G_RM(r,m)` (`codes.quantum_reed_muller`). These
+  make the BZ-vs-CC crossover visible: on `qrm(2,6) [[64,20,8]]`, CC takes ~98–136 s (its
+  connected-cluster search degenerates to `O(C(n,d))` because every check is dense) while BZ
+  finishes in ~18 ms; `qrm(2,7) [[128,70,8]]` times CC out entirely while BZ stays < 1 s.
+- Family plots reverted to **one chart per family** (time vs n, all distances together); the
+  per-distance grid and `*_vs_d` charts were removed.
+
+### Verified
+- **Brouwer–Zimmermann certified correct on both backends up to 1024 qubits.** The codeword
+  representation is bit-packed into `ceil(n/64)` words with every host routine sized
+  dynamically, so the CPU solver handles arbitrary `n`; the GPU kernels are templated/variant-
+  compiled over codeword stride 1..16 words, running natively up to **n = 1024** (stride 16)
+  and falling back to the CPU above that for the identical result. `tests/backend_compare`
+  now asserts CPU == GPU == 4 on `qrm(1,9) [[512,492,4]]` (stride 8) and
+  `qrm(1,10) [[1024,1002,4]]` (stride 16); n = 1058 (stride 17) was confirmed to fall back to
+  the CPU and agree. No change to the n < 256 hot path (stride is, and always was, a runtime
+  parameter).
+
 ## [0.1.0] — 2026-06-22
 
 First release. Exact minimum-distance finding for CSS quantum codes and classical

@@ -3,12 +3,6 @@
 `qminweight` computes exact minimum distances for CSS quantum codes and classical
 linear codes. It provides a C++ core, a Python API, and a command-line tool.
 
-Supported compute backends:
-
-- CPU, always available.
-- GPU, when available. The package detects the machine-specific accelerator
-  automatically.
-
 ## Install
 
 Requirements:
@@ -184,6 +178,58 @@ r = df.classical_distance(H, method="bz")
 print(r.distance)
 ```
 
+### Method selection
+
+Use `method="cc"` (connected cluster) for **QLDPC codes** — sparse codes such as
+bivariate-bicycle, hypergraph-product, toric, and surface codes. It exploits the
+low-weight structure of the stabilizers and typically certifies the distance in
+milliseconds regardless of code size, where Brouwer-Zimmermann cannot finish.
+
+Use `method="bz"` (Brouwer-Zimmermann) for **general CSS codes** — dense, random,
+or codes without exploitable sparsity. It is also the right choice when a GPU is
+available, since the GPU backend only accelerates BZ.
+
+```python
+# QLDPC / sparse code — CC wins
+r = df.css_distance(Hx, Hz, method="cc")
+
+# Dense or random code, or GPU run — BZ wins
+r = df.css_distance(Hx, Hz, method="bz", backend="gpu")
+```
+
+### Code size limits
+
+There is no fixed qubit-count limit. Codewords are bit-packed into
+`ceil(n/64)` 64-bit words and every host routine is sized dynamically, so the
+CPU backend (both `bz` and `cc`) handles arbitrary `n`.
+
+The **GPU** runs its native BZ kernel for codes up to **1024 physical qubits**
+(codeword stride ≤ 16 words); above that it automatically falls back to the CPU
+solver for the same exact result, just without GPU acceleration. (The GPU kernel
+also falls back to the CPU for Brouwer-Zimmermann *weight levels* deeper than 32
+selected rows, an axis independent of `n`.) Small problems always run on the CPU
+regardless of backend, below an internal work threshold where GPU dispatch
+latency would dominate (tunable via `QMINWEIGHT_GPU_MIN_WORK`).
+
+```python
+# 512- and 1024-qubit dense codes run the native GPU BZ kernel:
+r = df.css_distance(Hx, Hz, method="bz", backend="gpu")   # n up to 1024
+# n > 1024 transparently uses the CPU solver (same answer).
+```
+
+### Thread count
+
+`threads=0` (the default) uses all logical CPU cores
+(`std::thread::hardware_concurrency()`). For very small enumeration problems the
+library falls back to a single thread automatically regardless of this setting.
+Pass an explicit count to cap parallelism, for example when running multiple
+solves concurrently:
+
+```python
+# Use 4 CPU threads instead of all available cores.
+r = df.css_distance(Hx, Hz, method="cc", threads=4)
+```
+
 `Result` fields:
 
 - `distance`: best distance found; exact when `proven` is true.
@@ -203,56 +249,84 @@ the [`codedistance`](https://pypi.org/project/codedistance/) package from
 [`connectedClusterMW`](https://github.com/m-webster/codeDistancePYPI), with a
 30 second per-code timeout.
 
-| code | n | d | qminweight result | reference [`BZDistMW`](https://github.com/m-webster/codeDistancePYPI) | reference [`connectedClusterMW`](https://github.com/m-webster/codeDistancePYPI) |
-|---|---:|---:|---|---|---|
-| toric L=8 | 128 | 8 | `cc`: 1.6 ms, `bz gpu`: 1.17 s | timeout | 56.4 ms |
-| surface L=7 | 85 | 7 | `cc`: 1.4 ms, `bz gpu`: 273.4 ms | 7.43 s | 10.1 ms |
-| bb `[[72,12,6]]` | 72 | 6 | `cc`: 1.2 ms, `bz gpu`: 3.1 ms | 1.07 s | 65.6 ms |
-| gross `[[144,12,12]]` | 144 | 12 | `cc`: 324.5 ms | timeout | timeout |
-| hgp(ham3) | 58 | 3 | `bz gpu`: 749 us, `cc`: 991 us | 7.4 ms | 1.6 ms |
+Max stab. weight is the largest row weight of `Hx` = `Hz`; these codes are all QLDPC
+(low, `n`-independent stabilizer weight), which is the regime `cc` exploits.
+
+| code | n | d | max stab. weight | qminweight result | reference [`BZDistMW`](https://github.com/m-webster/codeDistancePYPI) | reference [`connectedClusterMW`](https://github.com/m-webster/codeDistancePYPI) |
+|---|---:|---:|---:|---|---|---|
+| toric L=7 | 98 | 7 | 4 | `cc`: 1.1 ms, `bz gpu`: 21.5 ms | 19.58 s | 14.7 ms |
+| toric L=8 | 128 | 8 | 4 | `cc`: 1.3 ms, `bz gpu`: 76.2 ms | timeout | 47.7 ms |
+| surface L=12 | 265 | 12 | 4 | `cc`: 5.2 ms, `bz gpu`: `[8,12]` 7.6 s (cpu 153.7 s) | — | 3.42 s |
+| toric L=12 | 288 | 12 | 4 | `cc`: 6.3 ms, `bz gpu`: `[8,12]` 14.1 s (cpu 283.8 s) | — | 5.19 s |
+| gross `[[144,12,12]]` | 144 | 12 | 6 | `cc`: 185 ms, `bz gpu`: `[8,12]` 287 ms | timeout | timeout |
 
 Summary from the comprehensive benchmark:
 
 - All qminweight methods agreed with the known distance or the reference result
   wherever the reference completed correctly.
 - Against reference [`BZDistMW`](https://github.com/m-webster/codeDistancePYPI),
-  `qminweight cc` had a median speedup of 5.5x and a maximum speedup of 14116x
+  `qminweight cc` had a median speedup of 12.8x and a maximum speedup of 18232x
   over the completed comparison runs.
 - Against reference
   [`connectedClusterMW`](https://github.com/m-webster/codeDistancePYPI),
-  `qminweight cc` had a median speedup of 2.7x and a maximum speedup of 54.9x.
+  `qminweight cc` had a median speedup of 11.3x and a maximum speedup of 821x.
+- `qminweight cc` scales where everything else stops: it certifies the exact
+  distance of every code out to **n = 288** (toric up to L=12) in single- to
+  low-hundreds of milliseconds. Brouwer-Zimmermann is only attempted up to n = 144
+  (above that it cannot finish in budget) and the reference `connectedClusterMW`
+  is 100–800x slower where it finishes at all (e.g. toric L=12: `cc` 6.3 ms vs
+  5.19 s, 821x).
 - On Brouwer-Zimmermann runs where the enumeration is the actual cost (CPU solve
-  > 10 ms — the regime the GPU backend is meant for), GPU is a median **13x**
-  faster than CPU on the Apple M4 (e.g. toric L=7 11x, toric L=8 15x, surface
-  L=8 17x); see [`bench/gpu_vs_cpu.py`](bench/gpu_vs_cpu.py). Sub-millisecond
-  codes are dominated by the shared random-information-set seed and per-dispatch
-  latency, so CPU and GPU necessarily tie there (the GPU path falls back to the
-  CPU below `QMINWEIGHT_GPU_MIN_WORK`).
+  > ~10 ms — the regime the GPU backend is meant for), the GPU is many times
+  faster than the CPU on the Apple M4: e.g. toric L=7 11.3x, toric L=8 18.2x,
+  gross 15.2x (the `bz_cpu / bz_gpu` column of
+  [`comprehensive_results.md`](bench/comprehensive_results.md)); the focused
+  [`bench/gpu_vs_cpu.py`](bench/gpu_vs_cpu.py) reports a median **~13x** over the
+  codes in that regime. Sub-millisecond codes are dominated by the shared
+  random-information-set seed and per-dispatch latency, so CPU and GPU tie there
+  (the GPU path falls back to the CPU below `QMINWEIGHT_GPU_MIN_WORK`).
 - `qminweight cc` was the only benchmarked method that certified the gross
   `[[144,12,12]]` distance within the timeout.
 
-Each family plot is a grid of charts, one per code distance `d` (`d = 1, 2,
-3, …`), showing wall-clock time vs `n` per method. For the scalable families
-below (toric, surface, bivariate-bicycle) an extra chart plots time vs the code
-distance `d` directly.
+Each family plot shows wall-clock time vs `n` (log scale) for every method.
 
 ### Toric Codes
 
 ![Toric code benchmark](bench/comprehensive_toric.png)
 
-![Toric code benchmark vs distance](bench/comprehensive_toric_vs_d.png)
-
 ### Surface Codes
 
 ![Surface code benchmark](bench/comprehensive_surface.png)
 
-![Surface code benchmark vs distance](bench/comprehensive_surface_vs_d.png)
+### Reed-Muller CSS Codes (dense, non-QLDPC)
 
-### Bivariate-Bicycle Codes
+The `reed_muller_r1` and `reed_muller_r2` families use quantum Reed-Muller CSS codes
+`Hx = Hz = G_RM(r, m)` (valid when `2r < m-1`): parameters `[[2^m, 2^m − 2·Σ C(m,i), 2^(r+1)]]`.
+These codes are emphatically **not QLDPC**: the stabilizer (`Hx`=`Hz` row) weights are the
+monomial-evaluation weights `2^m, 2^(m-1), …, 2^(m-r)`, so the *maximum* stabilizer weight is
+`2^m = n` (the all-ones constant monomial) and even the *minimum* is `n/2^r`, both **growing
+with `n`** (the opposite of a QLDPC family, whose stabilizer weight is constant). Because every
+check is that dense, the connected-cluster algorithm degenerates to `O(C(n,d))` work just like
+MITM, while BZ finds the small-weight codewords quickly. The `bz` column below is the GPU backend.
 
-![Bivariate-bicycle benchmark](bench/comprehensive_bivariate_bicycle.png)
+| family | code | n | d | max stab. weight | `cc` | `bz gpu` |
+|---|---|---:|---:|---:|---|---|
+| `reed_muller_r1` | `[[16,6,4]]`   | 16  | 4 | 16  | < 1 ms  | < 1 ms |
+| `reed_muller_r1` | `[[256,238,4]]`| 256 | 4 | 256 | ~6 ms   | ~9 ms |
+| `reed_muller_r1` | `[[512,492,4]]`| 512 | 4 | 512 | ~82 ms  | ~0.11 s |
+| `reed_muller_r2` | `[[64,20,8]]`  | 64  | 8 | 64  | ~136 s  | ~12 ms |
+| `reed_muller_r2` | `[[128,70,8]]` | 128 | 8 | 128 | timeout | ~0.8 s |
+| `reed_muller_r2` | `[[256,182,8]]`| 256 | 8 | 256 | timeout | 216 s |
 
-![Bivariate-bicycle benchmark vs distance](bench/comprehensive_bivariate_bicycle_vs_d.png)
+For `d=4` (r=1 family) the search stays shallow, so every method remains fast (sub-second)
+out to `n=512`. For `d=8` (r=2 family) the gap is stark: CC is already ~10⁴× slower than BZ at
+`n=64` (~136 s vs ~12 ms) and times out entirely at `n=128` and `n=256`, while BZ still
+certifies — instantly at `n=128`, and even at `n=256` (where its own bound converges slowly,
+216 s) it is the *only* method that finishes at all.
+
+![Reed-Muller r=1 benchmark](bench/comprehensive_reed_muller_r1.png)
+
+![Reed-Muller r=2 benchmark](bench/comprehensive_reed_muller_r2.png)
 
 Full benchmark tables and additional plots:
 

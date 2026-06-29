@@ -2,6 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from . import _native
+from ._interop import as_css
 
 
 @dataclass
@@ -41,15 +42,22 @@ def _normalize_backend(backend) -> str:
     return b
 
 
-def css_distance(Hx, Hz, *, method="bz", which="min", backend="auto",
+def css_distance(Hx, Hz=None, *, method="bz", which="min", backend="auto",
                  threads=0, max_weight=0, verbose=False) -> Result:
     """Exact distance of a CSS code given X- and Z-check matrices.
+
+    The code may be given as two matrices ``css_distance(Hx, Hz)`` or as a single
+    CSS-code-like object ``css_distance(code)`` -- anything accepted by
+    :func:`as_css` (a ``(Hx, Hz)`` tuple, or an object exposing ``.to_arrays()`` /
+    ``.css_matrices()`` / ``.Hx``+``.Hz``, e.g. ``lib.CSSCode``, ``codeaut.CSSCode``,
+    ``qecdb.Code``).
 
     method:  "bz" (Brouwer-Zimmermann), "cc" (connected cluster), or "mitm".
     which:   "min" (= min(dX,dZ)), "z", or "x".
     backend: "auto", "cpu", or "gpu". "gpu" chooses the available accelerator
              for this machine.
     """
+    Hx, Hz = as_css(Hx, Hz)
     w = _WHICH.get(str(which).lower())
     if w is None:
         raise ValueError("which must be one of min/z/x")

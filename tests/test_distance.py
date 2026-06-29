@@ -181,6 +181,31 @@ def test_gpu_variant_deep_path_matches_cpu(fam, L, expected):
 
 
 # --------------------------------------------------------------------------- #
+# Large codes (> 256 qubits): BZ must certify on both backends. The GPU runs its
+# native kernel up to n = 1024 (codeword stride <= 16 u64 words) and falls back
+# to the CPU above that. We use dense quantum Reed-Muller codes QRM(1,m) =
+# [[2^m, 2^m-2(m+1), 4]], whose exact distance 4 BZ proves quickly.
+#   m=9  -> n=512  (stride 8)
+#   m=10 -> n=1024 (stride 16, the GPU's max native width)
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("m,n", [(9, 512), (10, 1024)])
+def test_bz_large_n_cpu(m, n):
+    Hx, Hz = codes.quantum_reed_muller(1, m)
+    assert Hx.shape[1] == n
+    r = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu")
+    assert r.distance == 4 and r.proven, f"qrm(1,{m}) n={n}: {r.distance} proven={r.proven}"
+
+
+@requires_gpu
+@pytest.mark.parametrize("m,n", [(9, 512), (10, 1024)])
+def test_bz_large_n_gpu_matches_cpu(m, n):
+    Hx, Hz = codes.quantum_reed_muller(1, m)
+    cpu = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu").distance
+    gpu = df.css_distance(Hx, Hz, method="bz", which="min", backend="gpu").distance
+    assert gpu == cpu == 4, f"qrm(1,{m}) n={n}: cpu={cpu}, gpu={gpu}"
+
+
+# --------------------------------------------------------------------------- #
 # available_backends sanity.
 # --------------------------------------------------------------------------- #
 def test_available_backends_contains_cpu():
