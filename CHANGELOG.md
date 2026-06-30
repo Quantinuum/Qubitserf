@@ -31,7 +31,7 @@ All notable changes to **qminweight** are documented here.
 - **Connected-cluster CSS distance now interleaves the Z- and X-distance searches** weight
   level by weight level, instead of running one to completion before the other. Both lower
   bounds advance together, so a side that stalls on a hard level no longer starves the other
-  of any bound; verbose lines are tagged `[Z]`/`[X]` to keep the two streams distinct. Once a
+  of any bound; verbose lines are labelled `Z-`/`X-` to keep the two streams distinct. Once a
   side is found, the other's remaining search is capped at that weight (a heavier codeword
   can't lower the min), and the result is still the exact `min(d_Z, d_X)`.
 

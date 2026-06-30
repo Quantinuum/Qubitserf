@@ -20,14 +20,14 @@ inline void fprint_elapsed(std::FILE* f, double secs) {
 // time spent ruling out that level. `tag` distinguishes interleaved searches (e.g. "Z"
 // vs "X" for a CSS code's two distances); pass "" for an undecorated line.
 inline void verbose_bound(int lb, double level_secs, const char* tag = "") {
-    if (*tag) std::fprintf(stderr, "[%s] Distance bound: >%d\n", tag, lb);
+    if (*tag) std::fprintf(stderr, "%s-distance bound: >%d\n", tag, lb);
     else      std::fprintf(stderr, "Distance bound: >%d\n", lb);
     fprint_elapsed(stderr, level_secs);
 }
 
 // The exact distance, plus the total elapsed time. `tag` as in verbose_bound.
 inline void verbose_final(int d, double total_secs, const char* tag = "") {
-    if (*tag) std::fprintf(stderr, "[%s] Distance: =%d\n", tag, d);
+    if (*tag) std::fprintf(stderr, "%s-distance: =%d\n", tag, d);
     else      std::fprintf(stderr, "Distance: =%d\n", d);
     fprint_elapsed(stderr, total_secs);
 }

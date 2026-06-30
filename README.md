@@ -91,24 +91,25 @@ ruled out) with its elapsed time, then the exact `Distance: =N` with the total
 elapsed time. The final distance still goes to stdout.
 
 For the connected-cluster CSS distance (`--method cc`), the Z- and X-distance
-searches are **interleaved** weight level by weight level and tagged `[Z]`/`[X]`,
-so both lower bounds advance in step — if one side stalls on a hard level, the
-other still reports its bound. For example, on a toric `[[288,2,12]]` code:
+searches are **interleaved** weight level by weight level and labelled
+`Z-`/`X-`, so both lower bounds advance in step — if one side stalls on a hard
+level, the other still reports its bound. For example, on a toric `[[288,2,12]]`
+code:
 
 ```console
 $ qminweight --hx Hx.txt --hz Hz.txt --method cc -v
-[Z] Distance bound: >1
+Z-distance bound: >1
 Elapsed:[0ms]
-[X] Distance bound: >1
+X-distance bound: >1
 Elapsed:[0ms]
 ...
-[Z] Distance bound: >11
+Z-distance bound: >11
 Elapsed:[2ms]
-[X] Distance bound: >11
+X-distance bound: >11
 Elapsed:[2ms]
-[Z] Distance: =12
+Z-distance: =12
 Elapsed:[9ms]
-[X] Distance: =12
+X-distance: =12
 Elapsed:[9ms]
 12
 ```
