@@ -3,7 +3,7 @@
 `qubitserf` computes exact minimum distances for CSS quantum codes and classical
 linear codes. It provides a C++ core, a Python API, and a command-line tool. It can be used to compute:
 - **The distance of a stabilizer code**
-- **The distance of a CSS subsystem code**
+- **The distance of a subsystem code**
 - **The weight of a Pauli operator modulo stabilizers / gauge operators**
 
 This library employs the Brouwer-Zimmerman algorithm in conjunction with Edmonds matroid parititoning, a meet in the middle algorithm and the connected cluster algorithm to achieve its goal.
@@ -305,22 +305,6 @@ returned `OpResult` carries `z_weight`, `x_weight`, `weight` (`= max(z, x)`), `p
 `seconds`, and `backend`. Operator weight reduces to the core distance problem, so it accepts
 `method="bz"` and `method="mitm"` (`"cc"` falls back to `bz`).
 
-### Operator weight correctness
-
-This package carries over the operator-weight feature of the **original qubitserf**, but with
-a correctness fix. The original matches MITM syndromes against `[Hz; X̄]`, which is a valid
-parity-check of the Z-stabilizer group only when `Hz·Hzᵀ = 0`. For codes whose stabilizers are
-*not* self-orthogonal — surface, toric, bivariate-bicycle — it returns wrong answers: feeding a
-single Z-stabilizer of the planar `surface(3)` `[[13,1,3]]` code returns `3`, when the correct
-answer is `0`. This package instead computes the minimum-weight coset leader directly (the
-correct syndrome matrix is `nullspace(Gz)`), so a stabilizer always has weight 0:
-
-```python
-import numpy as np
-Gx, Gz = codes.surface(3)
-stab = (Gz[0], np.zeros_like(Gz[0]))          # a single Z-stabilizer as the operator
-print(df.operator_weight(Gx, Gz, stab).weight)   # 0, not 3
-```
 
 ## Subsystem distance
 
