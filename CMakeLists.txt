@@ -15,9 +15,11 @@ option(QMINWEIGHT_CUDA  "Build the CUDA GPU backend if a CUDA toolkit is found" 
 set(QMINWEIGHT_CORE_SOURCES
   src/gf2.cpp
   src/css.cpp
+  src/stab.cpp
   src/bz.cpp
   src/mitm.cpp
   src/cc.cpp
+  src/op_weight.cpp
   src/backend_cpu.cpp
   src/capi.cpp)
 
@@ -80,6 +82,8 @@ if(QMINWEIGHT_TESTS)
   target_link_libraries(qminweight_smoke PRIVATE qminweight)
   add_executable(qminweight_compare src/tests/backend_compare.cpp)
   target_link_libraries(qminweight_compare PRIVATE qminweight)
+  add_executable(qminweight_op_smoke src/tests/op_smoke.cpp)
+  target_link_libraries(qminweight_op_smoke PRIVATE qminweight)
 endif()
 
 # ---- C++ command-line tool (Qubitserf-style) -------------------------------------

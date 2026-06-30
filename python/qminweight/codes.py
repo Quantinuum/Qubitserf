@@ -47,6 +47,36 @@ def shor() -> tuple[np.ndarray, np.ndarray]:
     return Hx, Hz
 
 
+def bacon_shor(d: int) -> tuple[np.ndarray, np.ndarray]:
+    """Bacon-Shor subsystem code gauge generators on a ``d x d`` grid.
+
+    Qubit ``(r, c)`` has index ``r*d + c`` (so ``n = d²``).
+    X-gauge = ``XX`` on horizontally-adjacent qubits (same row, cols c, c+1);
+    Z-gauge = ``ZZ`` on vertically-adjacent qubits (same col, rows r, r+1).
+    Returns the gauge generators ``(Gx, Gz)``; the dressed distance is ``d``.
+    """
+    n = d * d
+
+    def idx(r, c):
+        return r * d + c
+
+    gx = []
+    for r in range(d):
+        for c in range(d - 1):
+            v = np.zeros(n, dtype=np.uint8)
+            v[idx(r, c)] = 1
+            v[idx(r, c + 1)] = 1
+            gx.append(v)
+    gz = []
+    for c in range(d):
+        for r in range(d - 1):
+            v = np.zeros(n, dtype=np.uint8)
+            v[idx(r, c)] = 1
+            v[idx(r + 1, c)] = 1
+            gz.append(v)
+    return np.array(gx, dtype=np.uint8), np.array(gz, dtype=np.uint8)
+
+
 def hypergraph_product(H1: np.ndarray, H2: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """CSS code from the hypergraph product of two parity-check matrices.
 

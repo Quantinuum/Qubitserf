@@ -19,6 +19,16 @@ class QMinWeightResult(ctypes.Structure):
     ]
 
 
+class QMinWeightOpResult(ctypes.Structure):
+    _fields_ = [
+        ("z_weight", ctypes.c_int),
+        ("x_weight", ctypes.c_int),
+        ("proven", ctypes.c_int),
+        ("seconds", ctypes.c_double),
+        ("backend", ctypes.c_char * 16),
+    ]
+
+
 def _find_library() -> str:
     override = os.environ.get("QMINWEIGHT_LIB")
     if override:
@@ -52,6 +62,7 @@ def lib():
 
     u8p = ctypes.POINTER(ctypes.c_uint8)
     rp = ctypes.POINTER(QMinWeightResult)
+    orp = ctypes.POINTER(QMinWeightOpResult)
 
     _lib.qminweight_css_distance.restype = ctypes.c_int
     _lib.qminweight_css_distance.argtypes = [
@@ -64,6 +75,45 @@ def lib():
     _lib.qminweight_classical_distance.restype = ctypes.c_int
     _lib.qminweight_classical_distance.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
+        ctypes.c_char_p, ctypes.c_char_p,
+        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        rp,
+    ]
+    _lib.qminweight_operator_weight.restype = ctypes.c_int
+    _lib.qminweight_operator_weight.argtypes = [
+        u8p, ctypes.c_int, ctypes.c_int,
+        u8p, ctypes.c_int, ctypes.c_int,
+        u8p, u8p, ctypes.c_int,
+        ctypes.c_char_p, ctypes.c_char_p,
+        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        orp,
+    ]
+    _lib.qminweight_subsystem_distance.restype = ctypes.c_int
+    _lib.qminweight_subsystem_distance.argtypes = [
+        u8p, ctypes.c_int, ctypes.c_int,
+        u8p, ctypes.c_int, ctypes.c_int,
+        ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
+        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        rp,
+    ]
+    _lib.qminweight_stabilizer_distance.restype = ctypes.c_int
+    _lib.qminweight_stabilizer_distance.argtypes = [
+        u8p, ctypes.c_int, ctypes.c_int,
+        ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
+        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        rp,
+    ]
+    _lib.qminweight_subsystem_stabilizer_distance.restype = ctypes.c_int
+    _lib.qminweight_subsystem_stabilizer_distance.argtypes = [
+        u8p, ctypes.c_int, ctypes.c_int,
+        ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
+        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        rp,
+    ]
+    _lib.qminweight_stabilizer_operator_weight.restype = ctypes.c_int
+    _lib.qminweight_stabilizer_operator_weight.argtypes = [
+        u8p, ctypes.c_int, ctypes.c_int,
+        u8p, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char_p,
         ctypes.c_int, ctypes.c_int, ctypes.c_int,
         rp,
@@ -114,6 +164,106 @@ def classical_distance_raw(H, method, backend, threads, max_weight, verbose):
     )
     if rc != 0:
         raise RuntimeError("qminweight_classical_distance failed (rc=%d)" % rc)
+    return out
+
+
+def _as_u8_vec(vec) -> np.ndarray:
+    a = np.ascontiguousarray(np.asarray(vec, dtype=np.uint8) & 1).reshape(-1)
+    return a
+
+
+def operator_weight_raw(Gx, Gz, z_op, x_op, method, backend, threads, max_weight, verbose):
+    L = lib()
+    ax, az = _as_u8(Gx), _as_u8(Gz)
+    z = _as_u8_vec(z_op)
+    x = _as_u8_vec(x_op)
+    n = ax.shape[1]
+    if az.shape[1] != n:
+        raise ValueError("Gx and Gz must have the same number of columns (n)")
+    if z.shape[0] != n or x.shape[0] != n:
+        raise ValueError("z_op and x_op must be length n = %d" % n)
+    out = QMinWeightOpResult()
+    rc = L.qminweight_operator_weight(
+        _ptr(ax), ax.shape[0], ax.shape[1],
+        _ptr(az), az.shape[0], az.shape[1],
+        _ptr(z), _ptr(x), n,
+        method.encode(), backend.encode(),
+        int(threads), int(max_weight), 1 if verbose else 0,
+        ctypes.byref(out),
+    )
+    if rc != 0:
+        raise RuntimeError("qminweight_operator_weight failed (rc=%d)" % rc)
+    return out
+
+
+def subsystem_distance_raw(Gx, Gz, method, which, backend, threads, max_weight, verbose):
+    L = lib()
+    ax, az = _as_u8(Gx), _as_u8(Gz)
+    out = QMinWeightResult()
+    rc = L.qminweight_subsystem_distance(
+        _ptr(ax), ax.shape[0], ax.shape[1],
+        _ptr(az), az.shape[0], az.shape[1],
+        method.encode(), which.encode()[:1] or b"M", backend.encode(),
+        int(threads), int(max_weight), 1 if verbose else 0,
+        ctypes.byref(out),
+    )
+    if rc != 0:
+        raise RuntimeError("qminweight_subsystem_distance failed (rc=%d)" % rc)
+    return out
+
+
+def stabilizer_distance_raw(S, method, which, backend, threads, max_weight, verbose):
+    L = lib()
+    a = _as_u8(S)
+    if a.shape[1] % 2 != 0:
+        raise ValueError("symplectic stabilizer matrix must have 2n (even) columns")
+    out = QMinWeightResult()
+    rc = L.qminweight_stabilizer_distance(
+        _ptr(a), a.shape[0], a.shape[1],
+        method.encode(), which.encode()[:1] or b"M", backend.encode(),
+        int(threads), int(max_weight), 1 if verbose else 0,
+        ctypes.byref(out),
+    )
+    if rc != 0:
+        raise RuntimeError("qminweight_stabilizer_distance failed (rc=%d)" % rc)
+    return out
+
+
+def subsystem_stabilizer_distance_raw(G, method, which, backend, threads, max_weight, verbose):
+    L = lib()
+    a = _as_u8(G)
+    if a.shape[1] % 2 != 0:
+        raise ValueError("symplectic gauge matrix must have 2n (even) columns")
+    out = QMinWeightResult()
+    rc = L.qminweight_subsystem_stabilizer_distance(
+        _ptr(a), a.shape[0], a.shape[1],
+        method.encode(), which.encode()[:1] or b"M", backend.encode(),
+        int(threads), int(max_weight), 1 if verbose else 0,
+        ctypes.byref(out),
+    )
+    if rc != 0:
+        raise RuntimeError("qminweight_subsystem_stabilizer_distance failed (rc=%d)" % rc)
+    return out
+
+
+def stabilizer_operator_weight_raw(G, op, method, backend, threads, max_weight, verbose):
+    L = lib()
+    a = _as_u8(G)
+    o = _as_u8_vec(op)
+    if a.shape[1] % 2 != 0:
+        raise ValueError("symplectic gauge matrix must have 2n (even) columns")
+    if o.shape[0] != a.shape[1]:
+        raise ValueError("operator must be a length-2n symplectic [z|x] vector")
+    out = QMinWeightResult()
+    rc = L.qminweight_stabilizer_operator_weight(
+        _ptr(a), a.shape[0], a.shape[1],
+        _ptr(o), o.shape[0],
+        method.encode(), backend.encode(),
+        int(threads), int(max_weight), 1 if verbose else 0,
+        ctypes.byref(out),
+    )
+    if rc != 0:
+        raise RuntimeError("qminweight_stabilizer_operator_weight failed (rc=%d)" % rc)
     return out
 
 

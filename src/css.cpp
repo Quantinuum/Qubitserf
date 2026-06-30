@@ -44,20 +44,6 @@ struct ReduceBasis {
     }
 };
 
-// Basis of ker(other) modulo rowspan(self): rows of ker(other) independent of self.
-GF2Mat quotient_basis(const GF2Mat& self, const GF2Mat& other) {
-    GF2Mat ko = nullspace(other);
-    ReduceBasis basis(self.cols);
-    for (int i = 0; i < self.rows; ++i) {       // seed with rowspan(self)
-        std::vector<u64> tmp(self.row(i), self.row(i) + self.stride);
-        if (basis.reduce(tmp.data())) basis.add(tmp.data());
-    }
-    GF2Mat out(0, self.cols);
-    for (int i = 0; i < ko.rows; ++i)
-        basis.insert_if_independent(ko.row(i), ko.row(i), &out);
-    return out;
-}
-
 bool all_rows_even(const GF2Mat& m) {
     for (int i = 0; i < m.rows; ++i) if (m.row_weight(i) & 1) return false;
     return true;
@@ -67,6 +53,26 @@ int min_row_weight(const GF2Mat& m) {
     int best = 1 << 30;
     for (int i = 0; i < m.rows; ++i) best = std::min(best, m.row_weight(i));
     return best;
+}
+
+// GF(2) commutation matrix E = A * B^T (a_rows x b_rows), E[i][j] = <A_i, B_j>.
+// A and B must share the same number of columns (same physical qubits).
+GF2Mat gauge_commute(const GF2Mat& A, const GF2Mat& B) {
+    GF2Mat E(A.rows, B.rows);
+    for (int i = 0; i < A.rows; ++i)
+        for (int j = 0; j < B.rows; ++j)
+            if (vec_dot(A.row(i), B.row(j), A.stride)) E.set(i, j, 1);
+    return E;
+}
+
+// Product C * B over GF(2): out row i = XOR of B's rows j where C[i][j] = 1.
+// C is p x q with q <= B.rows; out is p x B.cols.
+GF2Mat rows_combine(const GF2Mat& C, const GF2Mat& B) {
+    GF2Mat out(C.rows, B.cols);
+    for (int i = 0; i < C.rows; ++i)
+        for (int j = 0; j < B.rows; ++j)
+            if (C.get(i, j)) vec_xor(out.row(i), B.row(j), B.stride);
+    return out;
 }
 
 DistProblem build(const GF2Mat& Hself, const GF2Mat& Hother) {
@@ -82,6 +88,22 @@ DistProblem build(const GF2Mat& Hself, const GF2Mat& Hother) {
 
 } // namespace
 
+// Basis of ker(other) modulo rowspan(self): rows of ker(other) independent of self.
+// (Defined outside the anonymous namespace so the symplectic builder can reuse it; it
+// still references the file-local ReduceBasis above, which has internal linkage.)
+GF2Mat quotient_basis(const GF2Mat& self, const GF2Mat& other) {
+    GF2Mat ko = nullspace(other);
+    ReduceBasis basis(self.cols);
+    for (int i = 0; i < self.rows; ++i) {       // seed with rowspan(self)
+        std::vector<u64> tmp(self.row(i), self.row(i) + self.stride);
+        if (basis.reduce(tmp.data())) basis.add(tmp.data());
+    }
+    GF2Mat out(0, self.cols);
+    for (int i = 0; i < ko.rows; ++i)
+        basis.insert_if_independent(ko.row(i), ko.row(i), &out);
+    return out;
+}
+
 DistProblem css_problem(const GF2Mat& Hx, const GF2Mat& Hz, char which) {
     return which == 'X' ? build(Hz, Hx) : build(Hx, Hz);
 }
@@ -94,6 +116,60 @@ DistProblem classical_problem(const GF2Mat& H) {
     p.count_all = true;
     p.even = all_rows_even(p.code_gen);
     p.seed_upper = p.code_gen.rows ? min_row_weight(p.code_gen) : 0;
+    return p;
+}
+
+std::pair<GF2Mat, GF2Mat> css_center(const GF2Mat& Gx, const GF2Mat& Gz) {
+    GF2Mat E = gauge_commute(Gx, Gz);          // ax x az : <Gx_i, Gz_j>
+    // Sx: c in leftnull(E) = nullspace(E^T) -> v = c*Gx commutes with all Gz.
+    GF2Mat Sx = rows_combine(nullspace(transpose(E)), Gx);
+    rref(Sx);
+    drop_zero_rows(Sx);
+    // Sz: c in nullspace(E) -> v = c*Gz commutes with all Gx.
+    GF2Mat Sz = rows_combine(nullspace(E), Gz);
+    rref(Sz);
+    drop_zero_rows(Sz);
+    return {Sx, Sz};
+}
+
+DistProblem subsystem_problem(const GF2Mat& Gx, const GF2Mat& Gz, char which) {
+    std::pair<GF2Mat, GF2Mat> center = css_center(Gx, Gz);
+    // 'Z': normalizer = ker(Sx), quotient by gauge Gz; 'X': ker(Sz), quotient by Gx.
+    return which == 'X' ? build(center.second, Gx) : build(center.first, Gz);
+}
+
+bool in_rowspace(const GF2Mat& G, const uint8_t* vec) {
+    GF2Mat R = G;
+    std::vector<int> pivots;
+    rref(R, &pivots);
+    GF2Mat v(1, G.cols);
+    for (int j = 0; j < G.cols; ++j) if (vec[j] & 1) v.set(0, j, 1);
+    return in_span(R, pivots, v.row(0));
+}
+
+DistProblem coset_problem(const GF2Mat& G, const uint8_t* vec) {
+    DistProblem p;
+    const int n = G.cols;
+    p.n = n;
+    // code_gen = basis of rowspace([G ; vec]).
+    GF2Mat M(G.rows + 1, n);
+    for (int i = 0; i < G.rows; ++i) vec_xor(M.row(i), G.row(i), G.stride);
+    for (int j = 0; j < n; ++j) if (vec[j] & 1) M.set(G.rows, j, 1);
+    rref(M);
+    drop_zero_rows(M);
+    p.code_gen = M;
+    // check = a single functional phi in nullspace(G) with phi*vec^T = 1. phi vanishes on
+    // rowspace(G); it exists iff vec is not in rowspace(G). (If vec is in rowspace(G) the
+    // check stays empty -- callers short-circuit that case to weight 0 via in_rowspace.)
+    GF2Mat N = nullspace(G);
+    GF2Mat vpacked(1, n);
+    for (int j = 0; j < n; ++j) if (vec[j] & 1) vpacked.set(0, j, 1);
+    GF2Mat check(0, n);
+    for (int i = 0; i < N.rows; ++i)
+        if (vec_dot(N.row(i), vpacked.row(0), N.stride)) { check.append_row(N.row(i)); break; }
+    p.check = check;
+    p.even = all_rows_even(p.code_gen);
+    p.seed_upper = vec_weight(vpacked.row(0), vpacked.stride);
     return p;
 }
 

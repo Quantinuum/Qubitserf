@@ -75,6 +75,98 @@ def parse_pauli(text: str) -> Tuple[np.ndarray, np.ndarray]:
     return Hx, Hz
 
 
+def parse_stabilizers(text: str) -> np.ndarray:
+    """Parse general Pauli stabiliser strings into a symplectic ``[z | x]`` matrix.
+
+    Unlike :func:`parse_pauli` this accepts ``Y`` and rows that mix X and Z (i.e. genuine
+    non-CSS codes). Reads lines until a blank line or EOF (mirroring Qubitserf). Returns an
+    ``(m, 2n)`` uint8 matrix: row r is the Pauli with Z-support in columns ``[0, n)`` and
+    X-support in columns ``[n, 2n)`` (a ``Y`` sets both). All-identity rows are dropped.
+    """
+    lines = []
+    for raw in text.splitlines():
+        line = raw.rstrip("\r")
+        if line.strip() == "":
+            break
+        lines.append(line)
+    if not lines:
+        raise ValueError("no stabilisers found (expected Pauli strings)")
+    n = len(lines[0])
+    for s in lines:
+        if len(s) != n:
+            raise ValueError("stabilisers have differing lengths "
+                             "(all rows must span the same qubits)")
+    rows = []
+    for li, s in enumerate(lines, start=1):
+        z = np.zeros(n, dtype=np.uint8)
+        x = np.zeros(n, dtype=np.uint8)
+        any_set = False
+        for j, c in enumerate(s):
+            if c in "I._ ":
+                continue
+            if c in "Xx":
+                x[j] = 1; any_set = True
+            elif c in "Zz":
+                z[j] = 1; any_set = True
+            elif c in "Yy":
+                x[j] = 1; z[j] = 1; any_set = True
+            else:
+                raise ValueError("stabiliser %d has an unrecognised character %r"
+                                 % (li, c))
+        if any_set:
+            rows.append(np.concatenate([z, x]))
+    if not rows:
+        return np.zeros((0, 2 * n), dtype=np.uint8)
+    return np.array(rows, dtype=np.uint8)
+
+
+def is_css_pauli(text: str) -> bool:
+    """True iff every Pauli stabiliser line is pure-X or pure-Z (a CSS code)."""
+    for raw in text.splitlines():
+        line = raw.rstrip("\r")
+        if line.strip() == "":
+            break
+        has_x = has_z = False
+        for c in line:
+            if c in "Xx":
+                has_x = True
+            elif c in "Zz":
+                has_z = True
+            elif c in "Yy":
+                return False
+        if has_x and has_z:
+            return False
+    return True
+
+
+def parse_operator(s: str, n: int) -> Tuple[np.ndarray, np.ndarray]:
+    """Parse a single Pauli string into ``(z_vec, x_vec)`` 0/1 supports.
+
+    Unlike :func:`parse_pauli`, a ``Y`` is allowed: it contributes to BOTH the
+    Z- and X-support (``Y = i·X·Z``). ``I``/``.``/``_``/space are identity.
+    Raises ValueError if the string length differs from ``n`` or a character is
+    unrecognised.
+    """
+    s = s.strip().rstrip("\r")
+    if len(s) != n:
+        raise ValueError("operator has length %d, expected n = %d" % (len(s), n))
+    z = np.zeros(n, dtype=np.uint8)
+    x = np.zeros(n, dtype=np.uint8)
+    for j, c in enumerate(s):
+        if c in "I._ ":
+            continue
+        if c in "Xx":
+            x[j] = 1
+        elif c in "Zz":
+            z[j] = 1
+        elif c in "Yy":
+            x[j] = 1
+            z[j] = 1
+        else:
+            raise ValueError("operator has an unrecognised character %r" % c)
+    return z, x
+
+
 # --------------------------------------------------------------------------- #
 # 0/1 matrices (dense text or MatrixMarket)
 # --------------------------------------------------------------------------- #

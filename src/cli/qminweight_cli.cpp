@@ -13,6 +13,13 @@
 //   --cpu/--gpu      backend selection (default: auto)
 //   --zx            print "<dZ> <dX>" instead of the single minimum distance
 //   --z / --x       compute only the Z- or X-distance (single integer)
+//   --subsystem     treat the input X/Z operators as GAUGE generators of a subsystem code
+//                   and report the dressed subsystem distance (stabilizer center computed
+//                   internally). Combines with --z/--x/--zx/--method/...
+//   -o, --operator  the LAST stdin Pauli line is an OPERATOR (may contain Y); the preceding
+//                   lines are the stabiliser/gauge generators. Prints the operator weight
+//                   modulo that group (default max(z,x); --zx prints "<z> <x>"). With
+//                   --subsystem the generators are the gauge group.
 //   --threads N     CPU worker threads (0 => hardware concurrency)
 //   --max-weight N  safety cap on the enumeration weight (0 => none)
 //   --hx FILE --hz FILE   read Hx and Hz from 0/1 text matrices instead of stdin
@@ -37,6 +44,7 @@
 #include "qminweight/css.hpp"
 #include "qminweight/gf2.hpp"
 #include "qminweight/mitm.hpp"
+#include "qminweight/op_weight.hpp"
 
 using namespace qminweight;
 
@@ -58,6 +66,9 @@ const char* kUsage =
     "Method:   --bz (default)  --cc  --mitm\n"
     "Backend:  --cpu  --gpu                 (default: auto; --gpu auto-detects accelerator)\n"
     "Output:   default = minimum distance; --zx = \"<dZ> <dX>\"; --z / --x = one value\n"
+    "Subsystem: --subsystem  treat X/Z input as GAUGE generators; report dressed distance\n"
+    "Operator:  -o/--operator  last stdin Pauli line is an operator (may have Y); print its\n"
+    "           weight modulo the group (default max(z,x); --zx = \"<z> <x>\")\n"
     "Other:    --threads N  --max-weight N  --hx FILE  --hz FILE  -v/--verbose  -h/--help\n";
 
 struct Options {
@@ -65,6 +76,8 @@ struct Options {
     std::string backend = "auto";    // auto | cpu | gpu
     char which = 'M';                // M | Z | X
     bool zx = false;                 // print both dZ and dX
+    bool subsystem = false;          // treat X/Z input as gauge generators (dressed dist)
+    bool operator_mode = false;      // last stdin line is an operator (operator weight)
     int threads = 0;
     int max_weight = 0;
     bool verbose = false;
@@ -173,12 +186,118 @@ void read_pauli_stdin(GF2Mat& Hx, GF2Mat& Hz, int& n) {
     Hz = build(zrows);
 }
 
-BZResult solve_component(const GF2Mat& Hx, const GF2Mat& Hz, char which, const Options& o) {
+// Parse one Pauli operator line of length n into Z-support and X-support (Y sets both).
+void parse_operator_line(const std::string& s, int n,
+                         std::vector<uint8_t>& z_op, std::vector<uint8_t>& x_op) {
+    z_op.assign(n, 0);
+    x_op.assign(n, 0);
+    for (int j = 0; j < n; ++j) {
+        switch (s[j]) {
+            case 'I': case '.': case '_': case ' ': break;
+            case 'X': case 'x': x_op[j] = 1; break;
+            case 'Z': case 'z': z_op[j] = 1; break;
+            case 'Y': case 'y': x_op[j] = 1; z_op[j] = 1; break;
+            default:
+                die(std::string("operator has an unrecognised character '") + s[j] + "'");
+        }
+    }
+}
+
+// Operator-weight input: the LAST stdin Pauli line is the operator (may contain Y); the
+// preceding lines are the stabiliser/gauge generators (CSS: pure X- or Z-type).
+void read_operator_stdin(GF2Mat& Gx, GF2Mat& Gz,
+                         std::vector<uint8_t>& z_op, std::vector<uint8_t>& x_op, int& n) {
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(std::cin, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty()) break;
+        lines.push_back(line);
+    }
+    if (lines.size() < 2)
+        die("operator mode needs at least one generator line and one operator line");
+    std::string op = lines.back();
+    lines.pop_back();
+
+    n = (int)lines[0].size();
+    for (const auto& s : lines)
+        if ((int)s.size() != n) die("generators have differing lengths");
+    if ((int)op.size() != n) die("operator length differs from the generators");
+
+    std::vector<std::vector<uint8_t>> xrows, zrows;
+    for (size_t li = 0; li < lines.size(); ++li) {
+        const std::string& s = lines[li];
+        std::vector<uint8_t> xrow(n, 0), zrow(n, 0);
+        bool has_x = false, has_z = false;
+        for (int j = 0; j < n; ++j) {
+            switch (s[j]) {
+                case 'I': case '.': case '_': case ' ': break;
+                case 'X': case 'x': xrow[j] = 1; has_x = true; break;
+                case 'Z': case 'z': zrow[j] = 1; has_z = true; break;
+                case 'Y': case 'y':
+                    die("generator " + std::to_string(li + 1) +
+                        " contains a Y -- generators must be pure X- or Z-type (CSS)");
+                default:
+                    die(std::string("generator ") + std::to_string(li + 1) +
+                        " has an unrecognised character '" + s[j] + "'");
+            }
+        }
+        if (has_x && has_z)
+            die("generator " + std::to_string(li + 1) + " mixes X and Z (CSS only)");
+        if (has_x) xrows.push_back(std::move(xrow));
+        else if (has_z) zrows.push_back(std::move(zrow));
+    }
+    auto build = [n](const std::vector<std::vector<uint8_t>>& rows) -> GF2Mat {
+        if (rows.empty()) return GF2Mat(0, n);
+        std::vector<uint8_t> flat;
+        flat.reserve(rows.size() * (size_t)n);
+        for (auto& r : rows)
+            for (uint8_t b : r) flat.push_back(b);
+        return from_dense(flat.data(), (int)rows.size(), n);
+    };
+    Gx = build(xrows);
+    Gz = build(zrows);
+    parse_operator_line(op, n, z_op, x_op);
+}
+
+BZOptions make_opt(const Options& o) {
     BZOptions opt;
     opt.backend = o.backend;
     opt.threads = o.threads;
     opt.max_weight = o.max_weight;
     opt.verbose = o.verbose;
+    return opt;
+}
+
+// Distance of one component. Hx/Hz are stabiliser checks for a stabiliser code, or GAUGE
+// generators when o.subsystem (then the dressed subsystem distance is computed).
+BZResult solve_component(const GF2Mat& Hx, const GF2Mat& Hz, char which, const Options& o) {
+    BZOptions opt = make_opt(o);
+
+    if (o.subsystem) {
+        std::pair<GF2Mat, GF2Mat> center = css_center(Hx, Hz);
+        if (o.method == "cc") {
+            DistProblem pZ = subsystem_problem(Hx, Hz, 'Z');
+            DistProblem pX = subsystem_problem(Hx, Hz, 'X');
+            return cc_subsystem_distance(center.first, center.second,
+                                         pZ.check, pX.check, which, opt);
+        }
+        auto run = [&](char w) -> BZResult {
+            DistProblem prob = subsystem_problem(Hx, Hz, w);
+            return (o.method == "mitm") ? mitm_distance(prob, opt) : bz_distance(prob, opt);
+        };
+        if (which == 'Z') return run('Z');
+        if (which == 'X') return run('X');
+        BZResult z = run('Z'), x = run('X');   // 'M' = true min over Z and X
+        auto v = [](int d) { return d < 0 ? (1 << 30) : d; };
+        BZResult r = (v(x.distance) < v(z.distance)) ? x : z;
+        r.distance = std::min(v(z.distance), v(x.distance));
+        if (r.distance >= (1 << 30)) r.distance = -1;
+        r.lower_bound = std::min(z.lower_bound, x.lower_bound);
+        r.seconds = z.seconds + x.seconds;
+        r.proven = z.proven && x.proven;
+        return r;
+    }
 
     if (o.method == "cc")
         return cc_css_distance(Hx, Hz, which, opt);
@@ -228,6 +347,10 @@ int main(int argc, char** argv) {
             o.which = 'Z';
         } else if (a == "--x") {
             o.which = 'X';
+        } else if (a == "--subsystem") {
+            o.subsystem = true;
+        } else if (a == "-o" || a == "--operator") {
+            o.operator_mode = true;
         } else if (a == "--threads") {
             o.threads = parse_positive_int(a, need_val(a));
         } else if (a == "--max-weight") {
@@ -247,6 +370,28 @@ int main(int argc, char** argv) {
         die("--zx cannot be combined with --z or --x");
     if ((o.hx_path.empty()) != (o.hz_path.empty()))
         die("--hx and --hz must be given together");
+
+    // ---- operator weight: generators + a trailing operator line on stdin ----
+    if (o.operator_mode) {
+        if (!o.hx_path.empty())
+            die("-o/--operator reads generators and the operator from stdin (no --hx/--hz)");
+        GF2Mat Gx, Gz;
+        std::vector<uint8_t> z_op, x_op;
+        int on = 0;
+        read_operator_stdin(Gx, Gz, z_op, x_op, on);
+        if (o.verbose)
+            std::cerr << "qminweight: operator weight method=" << o.method
+                      << " qubits=" << on << " Gx_rows=" << Gx.rows
+                      << " Gz_rows=" << Gz.rows << (o.subsystem ? " (gauge)" : "") << "\n";
+        BZOptions opt = make_opt(o);
+        OpWeight w = css_operator_weight(Gx, Gz, z_op.data(), x_op.data(), on, o.method, opt);
+        if (!w.proven)
+            std::cerr << "qminweight: operator weight not proven (z=" << w.z_weight
+                      << ", x=" << w.x_weight << ")\n";
+        if (o.zx) std::cout << w.z_weight << ' ' << w.x_weight << std::endl;
+        else      std::cout << std::max(w.z_weight, w.x_weight) << std::endl;
+        return 0;
+    }
 
     GF2Mat Hx, Hz;
     int n = 0;

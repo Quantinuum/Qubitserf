@@ -19,4 +19,12 @@ namespace qminweight {
 // sparse Hx/Hz (do not pass a row-reduced version -- sparsity is the whole point).
 BZResult cc_css_distance(const GF2Mat& Hx, const GF2Mat& Hz, char which, const BZOptions& opt);
 
+// Subsystem (dressed) distance via connected cluster. The stabilizer center Sx/Sz is the
+// sparse parity-check (kept sparse so CC keeps its advantage on topological subsystem
+// codes); detZ/detX are the dressed-logical detectors (= subsystem_problem(...).check for
+// 'Z'/'X'). which = 'Z', 'X', or 'M' (= min).
+BZResult cc_subsystem_distance(const GF2Mat& Sx, const GF2Mat& Sz,
+                               const GF2Mat& detZ, const GF2Mat& detX,
+                               char which, const BZOptions& opt);
+
 } // namespace qminweight

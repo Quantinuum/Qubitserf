@@ -231,4 +231,25 @@ BZResult cc_css_distance(const GF2Mat& Hx, const GF2Mat& Hz, char which, const B
     return cc_css_min(Hx, Hz, opt);
 }
 
+BZResult cc_subsystem_distance(const GF2Mat& Sx, const GF2Mat& Sz,
+                               const GF2Mat& detZ, const GF2Mat& detX,
+                               char which, const BZOptions& opt) {
+    // Z-distance: e in ker(Sx), e nontrivial vs the dressed-logical detector detZ.
+    if (which == 'Z') return cc_one(Sx, detZ, opt, "Z");
+    if (which == 'X') return cc_one(Sz, detX, opt, "X");
+    // 'M': sequential Z then X with a min combine (each CC search is exact when it returns).
+    BZResult z = cc_one(Sx, detZ, opt, "Z");
+    BZResult x = cc_one(Sz, detX, opt, "X");
+    auto v = [](int d) { return d < 0 ? (1 << 30) : d; };
+    BZResult r = (v(x.distance) < v(z.distance)) ? x : z;
+    r.distance = std::min(v(z.distance), v(x.distance));
+    if (r.distance >= (1 << 30)) r.distance = -1;
+    r.lower_bound = r.distance;
+    r.levels = std::max(z.levels, x.levels);
+    r.proven = z.proven && x.proven;
+    r.seconds = z.seconds + x.seconds;
+    r.backend = "cc";
+    return r;
+}
+
 } // namespace qminweight

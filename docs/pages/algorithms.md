@@ -138,6 +138,126 @@ MITM stays a CPU validator.
 
 ---
 
+## Operator weight
+
+The **operator weight** of a Pauli operator is its minimum weight *modulo the stabilizer (or
+gauge) group* — the minimum-weight representative of its coset. For a CSS group with X-type
+generators `Gx` and Z-type generators `Gz`, the Z- and X-parts are independent:
+
+```
+Z-part:  min weight over the coset  z_vec + rowspace(Gz)
+X-part:  min weight over the coset  x_vec + rowspace(Gx)
+```
+
+### Reduction to `DistProblem`
+
+The minimum weight in the coset `z_vec + rowspace(Gz)` is the lightest nonzero codeword of
+the extended code `rowspace([Gz; z_vec])` that lies **outside** `rowspace(Gz)`. The cosets of
+`rowspace(Gz)` inside that extended code are exactly `{rowspace(Gz), z_vec + rowspace(Gz)}`,
+so a **single** linear detector separates them. That is precisely the core distance problem:
+
+- `code_gen` = a basis of `rowspace([Gz; z_vec])` (append `z_vec` as an extra generator);
+- `check` = a single row `φ ∈ nullspace(Gz)` with `φ · z_vecᵀ = 1` (it vanishes on
+  `rowspace(Gz)` and is 1 on `z_vec`; it exists iff `z_vec ∉ rowspace(Gz)`).
+
+So operator weight is solved by the **same BZ and MITM engines** as code distance — no
+bespoke solver. If `z_vec ∈ rowspace(Gz)` the coset is the group itself and the weight is `0`.
+`method="cc"` falls back to `bz`: the parity-check of the extended code is `nullspace([Gz;
+z_vec])`, which is dense even when `Gz` is sparse, so the connected-cluster sparsity premise
+does not hold.
+
+### Correctness (the qubitserf fix)
+
+qminweight imports this feature and its CLI shape from Quantinuum's **qubitserf**, but fixes a
+bug. qubitserf matches MITM syndromes against `M = [Hz; X̄]` (Z-stabilizers stacked with
+X-logicals), which is a valid parity-check of the Z-stabilizer group `rowspace(Hz)` **only
+when `Hz · Hzᵀ = 0`** — the Z-generators are mutually and self-orthogonal. For codes where
+they are not (surface, toric, bivariate-bicycle) it returns wrong answers: feeding a single
+Z-stabilizer of the planar `surface(3)` `[[13,1,3]]` code as the operator returns `3`, when
+the correct answer is `0` (a stabilizer is equivalent to identity).
+
+The correct syndrome matrix is `nullspace(Gz)` (it equals `[Hx; X̄]` for an ordinary
+stabilizer code, but is computed directly and is uniform for stabilizer *and* subsystem
+codes). The coset-leader reduction above uses it implicitly, so qminweight is correct on every
+code and agrees with qubitserf exactly on self-orthogonal codes (Steane, `Hx = Hz`).
+
+## Subsystem dressed distance
+
+A CSS **subsystem** (gauge) code is given by gauge generators `Gx` (X-type) and `Gz`
+(Z-type). Its **stabilizer group is the center of the gauge group**:
+
+```
+Sx = { v ∈ rowspace(Gx) : Gz · vᵀ = 0 }     # X-gauge elements commuting with all Z-gauge
+Sz = { v ∈ rowspace(Gz) : Gx · vᵀ = 0 }     # Z-gauge elements commuting with all X-gauge
+```
+
+The **dressed distance** is the minimum weight over operators that commute with the
+stabilizers but are not in the gauge group — `C(S) \ G`. For CSS:
+
+```
+d_Z = min weight of a Z-type e with  Sx · eᵀ = 0  AND  e ∉ rowspace(Gz)
+d_X = min weight of an X-type e with  Sz · eᵀ = 0  AND  e ∉ rowspace(Gx)
+distance = min(d_Z, d_X)
+```
+
+The subtlety — and the reason this is "the careful one" — is that the **kernel/normalizer**
+constraint uses the **stabilizer center `Sx`**, while the **triviality/quotient** test uses
+the **gauge group `Gz`** (not `Sz`). Using `Gx` for the kernel would give the larger, *bare*
+distance instead: `ker(Sx)` is strictly larger than `ker(Gx)`, and a dressed operator may
+anticommute with individual gauge operators while still commuting with every stabilizer.
+
+This maps directly onto the core distance problem with `build(Sx, Gz)` (and `build(Sz, Gx)`
+for the X-part) — the search space is `ker(Sx)`, the detector is a basis of `ker(Gz)` modulo
+`rowspace(Sx)` — so **all three engines apply**: BZ, MITM, and CC. CC operates on the sparse
+stabilizer center, so it retains its sparsity advantage on topological subsystem codes such as
+Bacon-Shor. A stabilizer code is the special case `gauge = stabilizers` (`Gx = Hx`, `Gz = Hz`,
+`Sx = Hx`, `Sz = Hz`), where the dressed subsystem distance coincides with `css_distance`.
+
+## General (non-CSS) codes — the symplectic metric
+
+For a **general stabilizer code** the X- and Z-parts no longer decouple. A code is a
+symplectic binary matrix `S` (`m × 2n`, `[z | x]` order); two Paulis `a=(a_z|a_x)`,
+`b=(b_z|b_x)` commute iff the **symplectic product** `⟨a,b⟩ = a_z·b_x + a_x·b_z = 0`, and the
+Pauli weight of `(z|x)` is the **symplectic weight** `#{ j : z_j=1 OR x_j=1 }` — *not*
+`wt(z) + wt(x)`. The distance is the minimum symplectic weight over `e ∈ C(S) \ rowspace(S)`,
+where `C(S) = nullspace(swap(S))` is the centralizer (`swap` exchanges the `[z]`/`[x]`
+halves). Writing the symplectic product as an ordinary dot product, `⟨a,b⟩ = swap(a)·b`, lets
+the meet-in-the-middle logical detector reuse the GF(2) machinery verbatim by storing its
+rows pre-swapped.
+
+Which engines generalize:
+
+- **BZ — yes** (the default non-CSS path), via the **weight-doubling isometry**
+  `φ : (a|b) ↦ (a|b|a⊕b)`. Per qubit, `(a_i,b_i)` contributes `0` to `wt_H(φ(v))` when it is
+  identity and `2` otherwise (`Z`=`(1,0)`→`1+0+1`, `X`=`(0,1)`→`0+1+1`, `Y`=`(1,1)`→`1+1+0`),
+  so `wt_H(φ(v)) = 2·wt_s(v)`. `φ` is `F₂`-linear and injective, so `C(S)` maps isometrically
+  onto a binary linear code of length `3n` with the stabilizer subgroup mapping into it, and
+  the "not a stabilizer" detector transfers verbatim (it acts on the first `2n` coordinates;
+  the third block is dependent). Therefore the symplectic distance is **half** the binary
+  Hamming distance of this length-`3n` code — computed by the *existing* binary BZ (and its GPU
+  enumeration). Every `φ`-image has even weight, so BZ's even-distance rounding applies for
+  free. This is the `SAVED_ISOMETRY` reduction of Sabater–Vera et al.
+  ([arXiv:2408.10743](https://arxiv.org/abs/2408.10743)); `qminweight` builds it in
+  `isometry_extend` / `symplectic_bz_distance` (`stab.cpp`).
+- **MITM — yes**. The coordinate-split / syndrome-match structure is unchanged; only the
+  enumeration changes — a "coordinate" is a **qubit** and each chosen qubit takes one of the
+  three nonzero Paulis `Z`, `X`, `Y` (`C(n,w)·3^w` partial operators of weight `w`). This is
+  exactly Quantinuum qubitserf's "middle algorithm".
+- **CC — no** (falls back to MITM). Connected-cluster grows single-type clusters over a sparse
+  CSS Tanner graph, which a general non-CSS code does not provide. (The connectedness argument
+  itself does generalize — a min-weight logical has connected Tanner support for any stabilizer
+  code — but each clustered qubit would branch over `Z/X/Y` and the syndrome bookkeeping
+  becomes the symplectic product, with a `3^{cluster}` branching cost; this is left for future
+  work, and `cc` falls back to MITM with a one-line stderr note.)
+
+So `method="bz"` (default) and `"mitm"` both solve genuinely non-CSS codes; only `"cc"` falls
+back. A code whose rows are all pure-`X`/pure-`Z` is detected up front and routed to the CSS
+solvers above, so the CSS fast paths (and their BZ/CC/GPU acceleration) are fully preserved.
+The same symplectic reduction gives the **dressed** distance of a non-CSS subsystem code
+(search `C(center(G)) \ rowspace(G)`, with the stabilizer center
+`center(G) = nullspace(Gram(G))·G`) and the **operator weight** of a general Pauli (minimum
+symplectic weight over `op + rowspace(G)`) — both likewise solvable by BZ (isometry) or MITM.
+
 ## Two regimes: the gross code
 
 The IBM gross code `[[144, 12, 12]]` is the canonical illustration of why two algorithms

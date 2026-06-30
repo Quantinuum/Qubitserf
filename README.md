@@ -1,7 +1,16 @@
 # qminweight
 
 `qminweight` computes exact minimum distances for CSS quantum codes and classical
-linear codes. It provides a C++ core, a Python API, and a command-line tool.
+linear codes. It provides a C++ core, a Python API, and a command-line tool. Beyond code
+distance it also computes:
+
+- **Operator weight** — the minimum weight of a Pauli operator modulo the stabilizer (or
+  gauge) group (the minimum-weight coset leader).
+- **Subsystem CSS dressed distance** — the distance of a CSS subsystem (gauge) code,
+  computed correctly as the dressed distance.
+
+Both are solved by the same Brouwer–Zimmermann / connected-cluster / meet-in-the-middle
+engines, by reducing them to the core distance problem.
 
 ## Install
 
@@ -149,6 +158,38 @@ $ qminweight --classical H.txt --method mitm
 3
 ```
 
+Operator weight — the minimum weight of a Pauli operator modulo the stabilizer group. Pass
+the operator (it may contain `Y`) as `--operator STR`; the stabilizer (or, with
+`--subsystem`, gauge) generators come from stdin or a file. The default output is
+`max(z_weight, x_weight)`; `--zx` prints `z_weight x_weight`. A Steane logical `Z`
+(`ZZZZZZZ`) has Z-weight 3 and X-weight 0:
+
+```console
+$ printf 'IIIXXXX\nIXXIIXX\nXIXIXIX\nIIIZZZZ\nIZZIIZZ\nZIZIZIZ\n' | qminweight --operator ZZZZZZZ --zx
+3 0
+```
+
+The development C++ binary uses qubitserf's convention instead — the **last** stdin Pauli
+line is the operator and the preceding lines are the generators:
+
+```console
+$ printf 'IIIXXXX\nIXXIIXX\nXIXIXIX\nIIIZZZZ\nIZZIIZZ\nZIZIZIZ\nZZZZZZZ\n' | ./build/qminweight -o --zx
+3 0
+```
+
+A stabilizer fed as the operator has weight 0 (it is equivalent to the identity) — including
+on codes whose stabilizers are not self-orthogonal, where qubitserf would report a nonzero
+weight. See [Operator weight correctness](#operator-weight-correctness) below.
+
+Subsystem distance — with `--subsystem`, the X/Z input is treated as **gauge generators**
+and the **dressed** subsystem distance is computed. For the distance-3 Bacon-Shor code piped
+as gauge generators:
+
+```console
+$ qminweight --subsystem bacon_shor_d3_gauge.txt
+3
+```
+
 Show the installed compute backends. The exact list depends on the machine:
 
 ```console
@@ -162,6 +203,8 @@ Useful options:
 - `--method bz`, `--method cc`, or `--method mitm`.
 - `--backend auto`, `--backend cpu`, or `--backend gpu`.
 - `--which min`, `--which z`, or `--which x` for CSS codes.
+- `-o` / `--operator` for operator weight (last stdin line is the operator).
+- `--subsystem` to treat the X/Z input as gauge generators (dressed subsystem distance).
 - `--threads N` to set CPU worker threads.
 - `--max-weight N` to cap an expensive search and return a certified bracket.
 - `-v` or `--verbose` to print progress diagnostics to stderr.
@@ -269,6 +312,144 @@ r = df.css_distance(Hx, Hz, method="cc", threads=4)
 - `proven`: whether `distance == lower_bound`.
 - `seconds`: wall-clock runtime.
 - `backend`: backend used for the run.
+
+## Operator weight
+
+`operator_weight` returns the minimum weight of a Pauli operator modulo the stabilizer (or
+gauge) group — the minimum-weight coset leader. The Z-part is minimized over
+`z + rowspace(Gz)` and the X-part over `x + rowspace(Gx)`, independently.
+
+```python
+import qminweight as df
+from qminweight import codes
+
+Gx, Gz = codes.steane()
+op = df.operator_weight(Gx, Gz, "ZZZZZZZ")   # a logical Z of Steane
+print(op.z_weight, op.x_weight, op.weight)   # 3 0 3
+
+# A stabilizer is equivalent to the identity, so it has weight 0:
+print(df.operator_weight(Gx, Gz, "IIIZZZZ").weight)   # 0
+```
+
+The `operator` argument may be a Pauli string (`I/X/Y/Z`, a `Y` sets both the Z and X bits),
+a `(z_vec, x_vec)` pair of 0/1 arrays, or a length-`2n` symplectic `[z|x]` array. The
+returned `OpResult` carries `z_weight`, `x_weight`, `weight` (`= max(z, x)`), `proven`,
+`seconds`, and `backend`. Operator weight reduces to the core distance problem, so it accepts
+`method="bz"` and `method="mitm"` (`"cc"` falls back to `bz`).
+
+### Operator weight correctness
+
+This is the operator-weight feature of Quantinuum's **qubitserf**, but with a correctness
+fix. qubitserf matches MITM syndromes against `[Hz; X̄]`, which is a valid parity-check of the
+Z-stabilizer group only when `Hz·Hzᵀ = 0`. For codes whose stabilizers are *not*
+self-orthogonal — surface, toric, bivariate-bicycle — it returns wrong answers: feeding a
+single Z-stabilizer of the planar `surface(3)` `[[13,1,3]]` code returns `3`, when the correct
+answer is `0`. qminweight instead computes the minimum-weight coset leader directly (the
+correct syndrome matrix is `nullspace(Gz)`), so a stabilizer always has weight 0:
+
+```python
+import numpy as np
+Gx, Gz = codes.surface(3)
+stab = (Gz[0], np.zeros_like(Gz[0]))          # a single Z-stabilizer as the operator
+print(df.operator_weight(Gx, Gz, stab).weight)   # 0, not 3
+```
+
+## Subsystem distance
+
+`subsystem_css_distance` takes the **gauge generators** of a CSS subsystem code and returns
+its **dressed** distance: the minimum weight of an operator that commutes with the stabilizer
+group (the center of the gauge group) but is not itself in the gauge group. This is distinct
+from the *bare* distance, which additionally forbids dressing by gauge operators. The
+stabilizer center is computed internally, and the problem reuses the BZ, CC, and MITM
+engines (CC keeps its sparsity advantage on topological subsystem codes).
+
+```python
+import qminweight as df
+from qminweight import codes
+
+Gx, Gz = codes.bacon_shor(3)                 # gauge generators, n = 9
+r = df.subsystem_css_distance(Gx, Gz, method="cc")
+print(r.distance)                            # 3
+```
+
+A stabilizer code is the special case `gauge = stabilizers`, where the dressed subsystem
+distance coincides with `css_distance`:
+
+```python
+Hx, Hz = codes.steane()
+print(df.subsystem_css_distance(Hx, Hz).distance)   # 3 == css_distance(Hx, Hz)
+```
+
+## General (non-CSS) codes
+
+The functions above are CSS-only (separate `Hx`/`Hz`). For a **general stabilizer code** —
+any commuting set of Paulis, including ones with `Y` or stabilisers that mix `X` and `Z` —
+give a **symplectic stabilizer matrix** `S` of shape `(m, 2n)` in `[z | x]` column order:
+row `r` is the Pauli with Z-support `S[r, :n]` and X-support `S[r, n:]` (a `Y` sets both).
+The distance is the minimum **symplectic** weight — the number of qubits touched, *not* the
+sum of the Z- and X-weights — of an operator in the normalizer that is not a stabilizer.
+
+```python
+import numpy as np
+import qminweight as df
+
+# The [[5,1,3]] perfect code  XZZXI / IXZZX / XIXZZ / ZXIXZ  as a [z | x] matrix.
+def paulis(strings):
+    n = len(strings[0]); rows = []
+    for s in strings:
+        z = np.zeros(n, np.uint8); x = np.zeros(n, np.uint8)
+        for j, c in enumerate(s):
+            if c in "XY": x[j] = 1
+            if c in "ZY": z[j] = 1
+        rows.append(np.concatenate([z, x]))
+    return np.array(rows, np.uint8)
+
+S = paulis(["XZZXI", "IXZZX", "XIXZZ", "ZXIXZ"])
+print(df.stabilizer_distance(S).distance)            # 3
+```
+
+Both **Brouwer–Zimmermann** and **meet-in-the-middle** work for non-CSS codes:
+
+- `method="bz"` (default) uses the weight-doubling isometry `(a|b) → (a|b|a⊕b)`, under which
+  the Hamming weight of the length-`3n` image is exactly twice the symplectic weight. The
+  symplectic-distance problem thus becomes an ordinary binary Hamming-distance problem and is
+  solved by the existing BZ engine (with its GPU enumeration); the symplectic distance is half
+  the binary distance. This is the `SAVED_ISOMETRY` reduction of Sabater–Vera et al.
+  ([arXiv:2408.10743](https://arxiv.org/abs/2408.10743)).
+- `method="mitm"` enumerates by qubit-support with the three nonzero Paulis `Z/X/Y` per chosen
+  qubit.
+- `method="cc"` has no non-CSS form (CC needs a sparse single-type CSS Tanner graph), so it
+  **falls back to MITM** with a one-line stderr note.
+
+A code whose rows are all pure-X/pure-Z is detected and routed to the fast CSS solvers
+unchanged, so `stabilizer_distance` on a CSS matrix matches `css_distance`.
+
+**Non-CSS subsystem (dressed) distance** takes the gauge generators `G` as a `(m, 2n)`
+`[z | x]` matrix (the generators may be non-commuting); the stabilizer center is computed
+internally:
+
+```python
+print(df.subsystem_stabilizer_distance(G).distance)  # dressed distance
+```
+
+**Operator weight** of a general Pauli modulo a group `<G>` (the non-CSS analogue of
+`operator_weight`) is the minimum symplectic weight over the coset `operator + rowspace(G)`,
+which is `0` exactly when the operator is itself in the group:
+
+```python
+print(df.pauli_operator_weight(S, S[0]).weight)      # 0 (a stabilizer)
+print(df.pauli_operator_weight(S, "XXXXX").weight)   # 3 (logical X, reduced)
+```
+
+On the command line, a Pauli-stabiliser code containing a `Y` or a row mixing `X` and `Z` is
+auto-detected as non-CSS and routed to the symplectic solver; `--symplectic FILE` reads a
+`(m, 2n)` `[z | x]` 0/1 matrix directly:
+
+```bash
+printf 'XZZXI\nIXZZX\nXIXZZ\nZXIXZ\n\n' | qminweight -        # 3
+qminweight --symplectic S.txt                                 # non-CSS distance
+qminweight --symplectic G.txt --subsystem                     # dressed distance
+```
 
 ## Benchmarks
 

@@ -4,6 +4,86 @@ All notable changes to **qminweight** are documented here.
 
 ## [Unreleased]
 
+### Added
+- **General (non-CSS) stabilizer & subsystem codes** — qminweight was CSS-only (separate
+  `Hx`/`Hz`); it now also takes a **symplectic stabilizer matrix** `S` of shape `(m, 2n)` in
+  `[z | x]` column order (row `r` is the Pauli with Z-support `S[r,:n]`, X-support `S[r,n:]`;
+  a `Y` sets both) and computes the distance as the minimum **symplectic** weight (number of
+  qubits touched) of an operator in the normalizer `C(S)` that is not a stabilizer. The
+  reduction: `C(S) = nullspace(swap(S))` where `swap` exchanges the `[z]`/`[x]` halves, and
+  the meet-in-the-middle logical detector is stored pre-swapped so the ordinary GF(2) product
+  realizes the symplectic product (`⟨a,b⟩ = swap(a)·b`). New:
+  - `stabilizer_distance(S, ...)` — non-CSS code distance.
+  - `subsystem_stabilizer_distance(G, ...)` — **dressed** distance of a non-CSS subsystem
+    code from its (possibly non-commuting) gauge generators `G`; the stabilizer center is the
+    symplectic center `nullspace(Gram(G))·G` and the detector uses `C(G)` (`C(G)^⟂ =
+    rowspace(G)`).
+  - `pauli_operator_weight(G, operator, ...)` — min symplectic weight over the coset
+    `operator + rowspace(G)` (the non-CSS analogue of `operator_weight`; `0` iff the operator
+    is in the group). Returns a `PauliOpResult`.
+  - C ABI: `qminweight_stabilizer_distance`, `qminweight_subsystem_stabilizer_distance`,
+    `qminweight_stabilizer_operator_weight`.
+  - CLI: a Pauli-stabiliser code containing a `Y` or a row mixing X and Z is auto-detected as
+    non-CSS and routed to the symplectic solver; `--symplectic FILE` reads a `(m, 2n)` `[z|x]`
+    0/1 matrix directly; `--subsystem` + a non-CSS gauge input gives the dressed distance.
+
+  **Which methods generalize.** **BZ** and **MITM** both work for non-CSS codes; **CC**
+  does not.
+  - **BZ (default)** uses the weight-doubling isometry `φ:(a|b) → (a|b|a⊕b)`, under which
+    `wt_H(φ(v)) = 2·wt_s(v)` (each non-identity qubit adds exactly 2 to the Hamming weight).
+    `φ` is `F₂`-linear and injective, so the symplectic-distance problem becomes an ordinary
+    binary Hamming-distance problem on a length-`3n` code, solved by the existing BZ (and its
+    GPU enumeration); the symplectic distance is half the binary distance. Every `φ`-image has
+    even weight, so BZ's even-distance speedup applies for free. This matches the published
+    state of the art (Sabater–Vera et al., *Fast Algorithms… Minimum Distance of Quantum
+    Codes*, arXiv:2408.10743 — `SAVED_ISOMETRY`).
+  - **MITM** enumerates by qubit-support with the three nonzero Paulis `Z/X/Y` per chosen
+    qubit (matching qubitserf's "middle algorithm").
+  - **CC** needs a sparse single-type CSS Tanner graph, which a general non-CSS code does not
+    provide, so it **falls back to MITM with a one-line stderr note**.
+
+  The CSS fast paths are unchanged: a code whose every row is pure-X/pure-Z is split into
+  `Hx/Hz` and solved by the existing BZ/CC/MITM CSS solvers. Verified against a pure-numpy
+  brute-force oracle (`_reference.stabilizer_distance_bruteforce` /
+  `dressed_stabilizer_distance_bruteforce` / `symplectic_coset_min_weight_bruteforce`), with
+  BZ and MITM cross-checked against each other, and against qubitserf's `interface` (the
+  `[[5,1,3]]` perfect code = 3, the `[[8,1,3]]` non-CSS test code = 3).
+- **Operator weight** — the minimum weight of a Pauli operator *modulo the stabilizer (or
+  gauge) group*, i.e. the minimum-weight coset leader. The Z-part is minimized over
+  `z + rowspace(Gz)` and the X-part over `x + rowspace(Gx)`, independently. This is the
+  feature and CLI shape from Quantinuum's **qubitserf**, but with a **correctness fix**:
+  qubitserf matches MITM syndromes against `M = [Hz; X̄]`, which is a valid parity-check of
+  the Z-stabilizer group *only when `Hz·Hzᵀ = 0`*. For codes whose stabilizers are not
+  self-orthogonal (surface, toric, bivariate-bicycle) it returns wrong answers — e.g.
+  feeding a single Z-stabilizer of the planar `surface(3)` `[[13,1,3]]` code returns `3`
+  when the correct answer is `0` (a stabilizer is equivalent to identity → weight 0).
+  qminweight instead reduces the coset-leader problem to the existing `DistProblem` (append
+  the operator as an extra generator; a single linear detector separates the two cosets) and
+  solves it with the existing **BZ** and **MITM** backends, exactly correct and verified
+  against brute force. `method="cc"` falls back to `bz` (the coset's parity check is dense
+  even when the generators are sparse). New API `operator_weight(...)` returning `OpResult`,
+  and the CLI `-o`/`--operator` flag.
+- **Subsystem CSS dressed distance** — the distance of a CSS *subsystem* (gauge) code, given
+  its gauge generators. This is the **dressed** distance: the minimum weight of an operator
+  that commutes with the stabilizer group (the center of the gauge group) but is *not* in
+  the gauge group — distinct from the *bare* distance (which forbids dressing by gauge
+  operators). The stabilizer center `Sx/Sz` is computed internally, and the problem maps onto
+  the existing `build(Sx, Gz)` `DistProblem`, so **all three backends — BZ, CC, and MITM —
+  apply**. CC works on the sparse stabilizer center, so it keeps its sparsity advantage on
+  topological subsystem codes such as Bacon-Shor. A stabilizer code is the special case
+  `gauge = stabilizers`, where the subsystem distance equals `css_distance`. New API
+  `subsystem_css_distance(...)` and the CLI `--subsystem` flag (treat the input X/Z matrices
+  as gauge generators).
+- **`codes.bacon_shor(d)`** — gauge generators `(Gx, Gz)` for the distance-`d` Bacon-Shor
+  subsystem code (`n = d²`, dressed distance `d`).
+- **API**: `operator_weight`, `subsystem_css_distance`, and the `OpResult` dataclass
+  (`z_weight`, `x_weight`, `weight = max(z, x)`, `proven`, `seconds`, `backend`), all
+  exported from the top-level package.
+- **CLI**: `--operator` (the last stdin Pauli line — may contain `Y` — is the operator,
+  preceding lines are the generators; default output is `max(z, x)`, `--zx` prints `z x`) and
+  `--subsystem` (treat the X/Z input as gauge generators and compute the dressed distance).
+  Both compose with `--z`/`--x`/`--zx`, `--method`, `--threads`, and the other flags.
+
 ### Performance
 - **GPU Brouwer–Zimmermann is now a median ~13x faster than the multicore CPU** on codes
   whose enumeration is the actual cost (CPU solve > 10 ms), up from ~1.1x. The dominant

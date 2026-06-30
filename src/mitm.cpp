@@ -128,6 +128,115 @@ void enumerate_side(const std::vector<int>& idx, int w,
     } while (next_comb(m, w, pos.data()));
 }
 
+// ---- symplectic enumeration (non-CSS) --------------------------------------------
+//
+// Here a "coordinate" is a QUBIT, not a bit, and the cost is symplectic weight. A
+// weight-w support assigns each of w chosen qubits one of three nonzero Paulis
+//   Z = (z=1,x=0), X = (z=0,x=1), Y = (z=1,x=1),
+// so there are C(|idx|, w) * 3^w partial operators. The syndrome / logical fingerprint of
+// a qubit+Pauli is read from the pre-packed [z|x] columns: column j is the z-bit of qubit
+// j, column (qubits+j) is the x-bit; Y is the XOR of the two. synV/logV are built over all
+// 2*qubits columns. count_all is never set in the symplectic case (a logical detector is
+// always present).
+inline void accumulate_qubit(u64* syn, u64* log, int qubit, int pauli, int qubits,
+                             const ColumnView& synV, const ColumnView& logV, int sw, int lw) {
+    const int zc = qubit, xc = qubits + qubit;
+    if (pauli != 1) { xor_into(syn, synV.col(zc), sw); if (lw) xor_into(log, logV.col(zc), lw); } // Z or Y: z-bit
+    if (pauli != 0) { xor_into(syn, synV.col(xc), sw); if (lw) xor_into(log, logV.col(xc), lw); } // X or Y: x-bit
+}
+
+void enumerate_side_sym(const std::vector<int>& idx, int w, int qubits,
+                        const ColumnView& synV, const ColumnView& logV,
+                        std::vector<Part>& out) {
+    out.clear();
+    const int m = (int)idx.size();
+    if (w < 0 || w > m) return;
+    const int sw = synV.kw, lw = logV.kw;
+
+    if (w == 0) {
+        Part p;
+        p.syn.w.assign(sw, 0ull);
+        if (lw) p.log.assign(lw, 0ull);
+        out.push_back(std::move(p));
+        return;
+    }
+
+    std::vector<int> pos(w);
+    for (int i = 0; i < w; ++i) pos[i] = i;
+    std::vector<u64> syn(sw), log(lw);
+    std::vector<int> pa(w);                 // base-3 Pauli choice per selected qubit
+    do {
+        std::fill(pa.begin(), pa.end(), 0);
+        for (;;) {
+            std::fill(syn.begin(), syn.end(), 0ull);
+            if (lw) std::fill(log.begin(), log.end(), 0ull);
+            for (int i = 0; i < w; ++i)
+                accumulate_qubit(syn.data(), log.data(), idx[pos[i]], pa[i], qubits,
+                                 synV, logV, sw, lw);
+            Part p;
+            p.syn.w = syn;
+            if (lw) p.log = log;
+            out.push_back(std::move(p));
+            // advance the base-3 Pauli odometer
+            int t = 0;
+            while (t < w && ++pa[t] == 3) { pa[t] = 0; ++t; }
+            if (t == w) break;
+        }
+    } while (next_comb(m, w, pos.data()));
+}
+
+// Symplectic analogue of has_codeword_of_weight: total symplectic weight d = wL + wR over
+// qubit supports, with a non-trivial logical (logL XOR logR != 0).
+bool has_codeword_of_weight_sym(int d, const std::vector<int>& left,
+                                const std::vector<int>& right, int qubits,
+                                const ColumnView& synV, const ColumnView& logV, int threads) {
+    const int lw = logV.kw;
+    for (int wL = 0; wL <= d; ++wL) {
+        int wR = d - wL;
+        if (wL > (int)left.size() || wR > (int)right.size()) continue;
+
+        std::vector<Part> leftParts;
+        enumerate_side_sym(left, wL, qubits, synV, logV, leftParts);
+        if (leftParts.empty()) continue;
+
+        std::unordered_map<PackedKey, std::vector<std::vector<u64>>, PackedKeyHash> table;
+        table.reserve(leftParts.size() * 2 + 1);
+        for (auto& p : leftParts) table[p.syn].push_back(std::move(p.log));
+
+        std::vector<Part> rightParts;
+        enumerate_side_sym(right, wR, qubits, synV, logV, rightParts);
+        if (rightParts.empty()) continue;
+
+        const int nR = (int)rightParts.size();
+        const int nthreads = std::max(1, std::min(threads, nR));
+        std::atomic<bool> found{false};
+        auto worker = [&](int t) {
+            for (int i = t; i < nR && !found.load(std::memory_order_relaxed); i += nthreads) {
+                const Part& rp = rightParts[i];
+                auto it = table.find(rp.syn);
+                if (it == table.end()) continue;
+                std::vector<u64> tmp(lw);
+                for (const auto& logL : it->second) {
+                    for (int x = 0; x < lw; ++x) tmp[x] = logL[x] ^ rp.log[x];
+                    if (nonzero(tmp.data(), lw)) {
+                        found.store(true, std::memory_order_relaxed);
+                        return;
+                    }
+                }
+            }
+        };
+        if (nthreads <= 1) worker(0);
+        else {
+            std::vector<std::thread> pool;
+            pool.reserve(nthreads);
+            for (int t = 0; t < nthreads; ++t) pool.emplace_back(worker, t);
+            for (auto& th : pool) th.join();
+        }
+        if (found.load()) return true;
+    }
+    return false;
+}
+
 // Does total weight d admit a non-trivial logical codeword? Splits d = wL + wR over ALL
 // left weights wL in [0, d] (Left and Right are FIXED, distinct coordinate sets, so the
 // left weight may exceed the right weight — we cannot cap at floor(d/2)); hashes the left
@@ -226,19 +335,23 @@ BZResult mitm_distance(const DistProblem& prob, const BZOptions& opt) {
     // Parity check of the code: c in code <=> H_code * c^T == 0.
     GF2Mat Hcode = nullspace(prob.code_gen);
 
-    ColumnView synV; synV.build(Hcode, n);
+    // Coordinate count and weight cap: qubits (symplectic) or bits (Hamming).
+    const bool sym = prob.symplectic;
+    const int ncoord = sym ? prob.qubits : n;
+
+    ColumnView synV; synV.build(Hcode, n);   // n = column count (2*qubits when symplectic)
     ColumnView logV;
     if (!prob.count_all) logV.build(prob.check, n);
 
-    // Coordinate split.
-    const int nL = n / 2;
+    // Coordinate split (over qubits when symplectic, over bits otherwise).
+    const int nL = ncoord / 2;
     std::vector<int> left, right;
-    left.reserve(nL); right.reserve(n - nL);
+    left.reserve(nL); right.reserve(ncoord - nL);
     for (int j = 0; j < nL; ++j) left.push_back(j);
-    for (int j = nL; j < n; ++j) right.push_back(j);
+    for (int j = nL; j < ncoord; ++j) right.push_back(j);
 
-    // Upper bound / cap on the search weight.
-    int cap = prob.code_gen.cols;            // == n; weight cannot exceed n
+    // Upper bound / cap on the search weight (weight cannot exceed the coordinate count).
+    int cap = ncoord;
     if (opt.max_weight > 0) cap = std::min(cap, opt.max_weight);
     int target = (prob.seed_upper > 0) ? std::min(prob.seed_upper, cap) : cap;
 
@@ -250,7 +363,10 @@ BZResult mitm_distance(const DistProblem& prob, const BZOptions& opt) {
     for (int d = 1; d <= target; ++d) {
         ++level;
         auto te0 = clk::now();
-        if (has_codeword_of_weight(d, left, right, synV, logV, prob.count_all, threads)) {
+        bool hit = sym
+            ? has_codeword_of_weight_sym(d, left, right, prob.qubits, synV, logV, threads)
+            : has_codeword_of_weight(d, left, right, synV, logV, prob.count_all, threads);
+        if (hit) {
             found = d;
             if (opt.verbose)
                 verbose_final(d, std::chrono::duration<double>(clk::now() - t0).count());

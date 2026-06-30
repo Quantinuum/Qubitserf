@@ -5,7 +5,14 @@ GPU via combinatorial-number-system work splitting.
 """
 from .api import (
     Result,
+    OpResult,
+    PauliOpResult,
     css_distance,
+    subsystem_css_distance,
+    operator_weight,
+    stabilizer_distance,
+    subsystem_stabilizer_distance,
+    pauli_operator_weight,
     classical_distance,
     available_backends,
     version,
@@ -15,7 +22,14 @@ from . import codes
 
 __all__ = [
     "Result",
+    "OpResult",
+    "PauliOpResult",
     "css_distance",
+    "subsystem_css_distance",
+    "operator_weight",
+    "stabilizer_distance",
+    "subsystem_stabilizer_distance",
+    "pauli_operator_weight",
     "classical_distance",
     "available_backends",
     "version",
