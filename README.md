@@ -1,28 +1,12 @@
 # qubitserf
 
 `qubitserf` computes exact minimum distances for CSS quantum codes and classical
-linear codes. It provides a C++ core, a Python API, and a command-line tool. Beyond code
-distance it also computes:
+linear codes. It provides a C++ core, a Python API, and a command-line tool. It can be used to compute:
+- **The distance of a stabilizer code**
+- **The distance of a CSS subsystem code**
+- **The weight of a Pauli operator modulo stabilizers / gauge operators**
 
-## Relation to the original qubitserf
-
-This `qubitserf` is the **successor** to Quantinuum's original C++ `qubitserf`
-distance-finding tool, which it supersedes. It is a from-scratch C++/GPU core (developed
-under the working name *qminweight*) with CPU, CUDA, and Metal backends, and it keeps
-**CLI compatibility** with the original so existing pipelines keep working. On top of the
-original's CSS distance finding it adds general (non-CSS) stabilizer distance, operator
-weight (with a correctness fix described below), and subsystem (gauge) distance. Where the
-text below contrasts behaviour with "the original qubitserf", it means that legacy
-Quantinuum tool, not this package.
-
-- **Operator weight** — the minimum weight of a Pauli operator modulo the stabilizer (or
-  gauge) group (the minimum-weight coset leader).
-- **Subsystem CSS dressed distance** — the distance of a CSS subsystem (gauge) code,
-  computed correctly as the dressed distance.
-
-Both are solved by the same Brouwer–Zimmermann / connected-cluster / meet-in-the-middle
-engines, by reducing them to the core distance problem.
-
+This library employs the Brouwer-Zimmerman algorithm in conjunction with Edmonds matroid parititoning, a meet in the middle algorithm and the connected cluster algorithm to achieve its goal.
 ## Install
 
 Requirements:
@@ -36,14 +20,6 @@ Install from the package directory:
 ```bash
 cd qubitserf            # the unpacked package source directory
 python -m pip install .
-```
-
-Once published, `pip install qubitserf` will fetch it from PyPI.
-
-For development, install the Python package with test dependencies:
-
-```bash
-python -m pip install -e ".[dev]"
 ```
 
 To build the native library, C++ CLI, and C++ tests in-tree:
@@ -110,13 +86,8 @@ $ qubitserf example_code.txt --method cc --threads 8
 Verbose mode prints progress diagnostics to stderr: a running lower bound
 (`Distance bound: >N`, the weight level just
 ruled out) with its elapsed time, then the exact `Distance: =N` with the total
-elapsed time. The final distance still goes to stdout.
+elapsed time. The final line of the output is the final computed distance (or pair of Z-/X- distances depending on if the flag `--zx` is present).
 
-For the connected-cluster CSS distance (`--method cc`), the Z- and X-distance
-searches are **interleaved** weight level by weight level and labelled
-`Z-`/`X-`, so both lower bounds advance in step — if one side stalls on a hard
-level, the other still reports its bound. For example, on a toric `[[288,2,12]]`
-code:
 
 ```console
 $ qubitserf --hx Hx.txt --hz Hz.txt --method cc -v
@@ -136,15 +107,6 @@ Elapsed:[9ms]
 12
 ```
 
-Timing varies by machine and problem size.
-
-Machine-readable output, with timing and backend varying by machine:
-
-```console
-$ qubitserf example_code.txt --json
-{"distance": 3, "lower_bound": 3, "proven": true, "seconds": 0.001, "backend": "cpu", "which": "d"}
-```
-
 For CSS parity-check matrices:
 
 ```console
@@ -154,8 +116,8 @@ $ qubitserf --hx Hx.txt --hz Hz.txt
 $ qubitserf --hx Hx.mtx --hz Hz.mtx --method cc
 3
 
-$ qubitserf --hx Hx.mtx --hz Hz.mtx --method bz --backend gpu --json
-{"distance": 3, "lower_bound": 3, "proven": true, "seconds": 0.001, "backend": "gpu", "which": "d"}
+$ qubitserf --hx Hx.mtx --hz Hz.mtx --method bz --backend gpu
+3
 ```
 
 For a classical linear code:
@@ -172,21 +134,13 @@ $ qubitserf --classical H.txt --method mitm
 ```
 
 Operator weight — the minimum weight of a Pauli operator modulo the stabilizer group. Pass
-the operator (it may contain `Y`) as `--operator STR`; the stabilizer (or, with
-`--subsystem`, gauge) generators come from stdin or a file. The default output is
-`max(z_weight, x_weight)`; `--zx` prints `z_weight x_weight`. A Steane logical `Z`
-(`ZZZZZZZ`) has Z-weight 3 and X-weight 0:
+the operator (it may contain `Y`) as a command-line argument with `-o`/`--operator` (the two
+spellings are identical); the stabilizer (or, with `--subsystem`, gauge) generators come from
+stdin or a file. The default output is `max(z_weight, x_weight)`; `--zx` prints
+`z_weight x_weight`. A Steane logical `Z` (`ZZZZZZZ`) has Z-weight 3 and X-weight 0:
 
 ```console
-$ printf 'IIIXXXX\nIXXIIXX\nXIXIXIX\nIIIZZZZ\nIZZIIZZ\nZIZIZIZ\n' | qubitserf --operator ZZZZZZZ --zx
-3 0
-```
-
-The development C++ binary uses the `-o` stdin convention instead — the **last** stdin Pauli
-line is the operator and the preceding lines are the generators:
-
-```console
-$ printf 'IIIXXXX\nIXXIIXX\nXIXIXIX\nIIIZZZZ\nIZZIIZZ\nZIZIZIZ\nZZZZZZZ\n' | ./build/qubitserf -o --zx
+$ printf 'IIIXXXX\nIXXIIXX\nXIXIXIX\nIIIZZZZ\nIZZIIZZ\nZIZIZIZ\n' | qubitserf -o ZZZZZZZ --zx
 3 0
 ```
 
@@ -216,7 +170,8 @@ Useful options:
 - `--method bz`, `--method cc`, or `--method mitm`.
 - `--backend auto`, `--backend cpu`, or `--backend gpu`.
 - `--which min`, `--which z`, or `--which x` for CSS codes.
-- `-o` / `--operator` for operator weight (last stdin line is the operator).
+- `-o` / `--operator PAULI` for operator weight (the Pauli is a command-line argument;
+  generators come from stdin).
 - `--subsystem` to treat the X/Z input as gauge generators (dressed subsystem distance).
 - `--threads N` to set CPU worker threads.
 - `--max-weight N` to cap an expensive search and return a certified bracket.
@@ -421,18 +376,7 @@ S = paulis(["XZZXI", "IXZZX", "XIXZZ", "ZXIXZ"])
 print(df.stabilizer_distance(S).distance)            # 3
 ```
 
-Both **Brouwer–Zimmermann** and **meet-in-the-middle** work for non-CSS codes:
-
-- `method="bz"` (default) uses the weight-doubling isometry `(a|b) → (a|b|a⊕b)`, under which
-  the Hamming weight of the length-`3n` image is exactly twice the symplectic weight. The
-  symplectic-distance problem thus becomes an ordinary binary Hamming-distance problem and is
-  solved by the existing BZ engine (with its GPU enumeration); the symplectic distance is half
-  the binary distance. This is the `SAVED_ISOMETRY` reduction of Sabater–Vera et al.
-  ([arXiv:2408.10743](https://arxiv.org/abs/2408.10743)).
-- `method="mitm"` enumerates by qubit-support with the three nonzero Paulis `Z/X/Y` per chosen
-  qubit.
-- `method="cc"` has no non-CSS form (CC needs a sparse single-type CSS Tanner graph), so it
-  **falls back to MITM** with a one-line stderr note.
+Both **Brouwer–Zimmermann** and **meet-in-the-middle** work for non-CSS codes, `method="cc"` has no non-CSS form (CC needs a sparse single-type CSS Tanner graph), and doing so will result in an error.
 
 A code whose rows are all pure-X/pure-Z is detected and routed to the fast CSS solvers
 unchanged, so `stabilizer_distance` on a CSS matrix matches `css_distance`.

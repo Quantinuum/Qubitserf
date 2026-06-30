@@ -4,6 +4,23 @@ All notable changes to **qubitserf** are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **CSS min distance now interleaves the Z- and X-subproblems for *all three* methods**
+  (`bz`, `mitm`, and `cc`) — previously only `cc` did. The Z- and X-searches advance one
+  weight level at a time so both lower bounds rise together; a side stalling on a hard level
+  no longer starves the other of any bound. Once one side determines the min, the other is
+  **capped** (e.g. once dZ=2 is proven, X stops as soon as it has ruled out X<2 — no wasted
+  proof of X>2). Verbose progress is tagged `Z-`/`X-`. The exact `min(dZ, dX)` is unchanged.
+- **`--zx` computes both distances with an interleaved-but-UNCAPPED search**: each side runs
+  to its own full proof (so finding dZ never stops the full dX being found), while both lower
+  bounds still advance together. Reported as `dZ dX`.
+- **`-o` and `--operator` are now identical**: both take the operator Pauli as a command-line
+  argument (`-o PAULI` / `--operator PAULI`), with the stabiliser/gauge generators read from
+  stdin. (Previously the C++ `-o` read the operator from the last stdin line.)
+- **`method="cc"` on a non-CSS code is rejected** (raises `ValueError` / returns an error)
+  instead of silently falling back to MITM — see *Added* below.
+- Removed the undocumented/inconsistent `--json` flag from the CLI documentation.
+
 ### Added
 - **General (non-CSS) stabilizer & subsystem codes** — qubitserf was CSS-only (separate
   `Hx`/`Hz`); it now also takes a **symplectic stabilizer matrix** `S` of shape `(m, 2n)` in
@@ -40,7 +57,8 @@ All notable changes to **qubitserf** are documented here.
   - **MITM** enumerates by qubit-support with the three nonzero Paulis `Z/X/Y` per chosen
     qubit (matching the original qubitserf's "middle algorithm").
   - **CC** needs a sparse single-type CSS Tanner graph, which a general non-CSS code does not
-    provide, so it **falls back to MITM with a one-line stderr note**.
+    provide, so `method="cc"` on a non-CSS code is **rejected** (the library returns an error;
+    the Python API raises `ValueError`) rather than silently substituting another method.
 
   The CSS fast paths are unchanged: a code whose every row is pure-X/pure-Z is split into
   `Hx/Hz` and solved by the existing BZ/CC/MITM CSS solvers. Verified against a pure-numpy

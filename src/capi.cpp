@@ -50,24 +50,14 @@ int qubitserf_css_distance(
         return 0;
     }
 
-    auto solve = [&](char w) -> BZResult {
-        DistProblem prob = css_problem(mHx, mHz, w);
-        if (m == "mitm") return mitm_distance(prob, opt);
-        return bz_distance(prob, opt);
-    };
-
     BZResult r;
-    if (which == 'Z') r = solve('Z');
-    else if (which == 'X') r = solve('X');
-    else { // min over Z and X
-        BZResult z = solve('Z'), x = solve('X');
-        auto v = [](int d) { return d < 0 ? (1 << 30) : d; };
-        r = (v(x.distance) < v(z.distance)) ? x : z;
-        r.distance = std::min(v(z.distance), v(x.distance));
-        if (r.distance >= (1 << 30)) r.distance = -1;
-        r.lower_bound = std::min(z.lower_bound, x.lower_bound);
-        r.seconds = z.seconds + x.seconds;
-        r.proven = z.proven && x.proven;
+    if (which == 'Z' || which == 'X') {
+        DistProblem prob = css_problem(mHx, mHz, which);
+        r = (m == "mitm") ? mitm_distance(prob, opt) : bz_distance(prob, opt);
+    } else {  // min: INTERLEAVE the Z- and X-subproblems weight level by weight level
+        DistProblem pz = css_problem(mHx, mHz, 'Z'), px = css_problem(mHx, mHz, 'X');
+        r = (m == "mitm") ? mitm_min_interleaved(pz, px, opt)
+                          : bz_min_interleaved(pz, px, opt);
     }
     fill(out, r);
     return 0;
@@ -186,34 +176,31 @@ int symplectic_distance_driver(const GF2Mat& gauge, bool subsystem,
         std::pair<GF2Mat, GF2Mat> hxhz = split_css(gauge);
         const GF2Mat& Hx = hxhz.first;
         const GF2Mat& Hz = hxhz.second;
-        auto solve = [&](char w) -> BZResult {
-            DistProblem prob = subsystem ? subsystem_problem(Hx, Hz, w)
-                                         : css_problem(Hx, Hz, w);
-            if (m == "cc") {
-                if (subsystem) {
-                    std::pair<GF2Mat, GF2Mat> ctr = css_center(Hx, Hz);
-                    DistProblem pZ = subsystem_problem(Hx, Hz, 'Z');
-                    DistProblem pX = subsystem_problem(Hx, Hz, 'X');
-                    return cc_subsystem_distance(ctr.first, ctr.second, pZ.check, pX.check,
-                                                 w, opt);
-                }
-                return cc_css_distance(Hx, Hz, w, opt);
+        // cc handles Z/X/M itself (with its own weight-level interleave for the min).
+        if (m == "cc") {
+            BZResult r;
+            if (subsystem) {
+                std::pair<GF2Mat, GF2Mat> ctr = css_center(Hx, Hz);
+                DistProblem pZ = subsystem_problem(Hx, Hz, 'Z');
+                DistProblem pX = subsystem_problem(Hx, Hz, 'X');
+                r = cc_subsystem_distance(ctr.first, ctr.second, pZ.check, pX.check, which, opt);
+            } else {
+                r = cc_css_distance(Hx, Hz, which, opt);
             }
-            if (m == "mitm") return mitm_distance(prob, opt);
-            return bz_distance(prob, opt);
+            fill(out, r);
+            return 0;
+        }
+        auto prob_for = [&](char w) {
+            return subsystem ? subsystem_problem(Hx, Hz, w) : css_problem(Hx, Hz, w);
         };
         BZResult r;
-        if (which == 'Z') r = solve('Z');
-        else if (which == 'X') r = solve('X');
-        else {
-            BZResult z = solve('Z'), x = solve('X');
-            auto v = [](int d) { return d < 0 ? (1 << 30) : d; };
-            r = (v(x.distance) < v(z.distance)) ? x : z;
-            r.distance = std::min(v(z.distance), v(x.distance));
-            if (r.distance >= (1 << 30)) r.distance = -1;
-            r.lower_bound = std::min(z.lower_bound, x.lower_bound);
-            r.seconds = z.seconds + x.seconds;
-            r.proven = z.proven && x.proven;
+        if (which == 'Z' || which == 'X') {
+            DistProblem p = prob_for(which);
+            r = (m == "mitm") ? mitm_distance(p, opt) : bz_distance(p, opt);
+        } else {  // min: INTERLEAVE the Z- and X-subproblems weight level by weight level
+            DistProblem pz = prob_for('Z'), px = prob_for('X');
+            r = (m == "mitm") ? mitm_min_interleaved(pz, px, opt)
+                              : bz_min_interleaved(pz, px, opt);
         }
         fill(out, r);
         return 0;
@@ -221,20 +208,14 @@ int symplectic_distance_driver(const GF2Mat& gauge, bool subsystem,
 
     // Genuinely non-CSS. BZ generalizes via the weight-doubling isometry
     // (a|b)->(a|b|a^b) (symplectic distance = 1/2 the Hamming distance of the length-3n
-    // binary code), so bz is sound here. cc has no non-CSS form -> falls back to mitm.
+    // binary code), so bz is sound here; mitm enumerates symplectically. cc has NO sound
+    // non-CSS generalization (it needs a sparse single-type CSS Tanner graph), so rather
+    // than silently fall back we reject it -- return code 3 (caller raises a clear error).
+    if (m == "cc") return 3;
     GF2Mat Snorm = subsystem ? symplectic_center(gauge) : gauge;
     DistProblem prob = symplectic_problem(Snorm, gauge);
-    BZResult r;
-    if (m == "mitm") {
-        r = mitm_distance(prob, opt);
-    } else if (m == "cc") {
-        std::fprintf(stderr,
-            "qubitserf: connected-cluster has no non-CSS generalization; using the "
-            "symplectic meet-in-the-middle search instead.\n");
-        r = mitm_distance(prob, opt);
-    } else {  // bz (default): isometry to a length-3n binary code, then classical BZ.
-        r = symplectic_bz_distance(prob, opt);
-    }
+    BZResult r = (m == "mitm") ? mitm_distance(prob, opt)   // symplectic meet-in-the-middle
+                               : symplectic_bz_distance(prob, opt);  // bz via the isometry
     fill(out, r);
     return 0;
 }

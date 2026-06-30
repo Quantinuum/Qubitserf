@@ -173,8 +173,8 @@ A CSS code (every row pure-X or pure-Z) is detected and routed to the fast CSS `
 solvers, honouring `which`. For a genuinely non-CSS code, `method="bz"` (default) reduces the
 symplectic-distance problem to a binary Hamming-distance problem via the weight-doubling
 isometry `(a|b) → (a|b|a⊕b)` and runs Brouwer–Zimmermann; `method="mitm"` uses the symplectic
-search; `"cc"` **falls back to MITM** with a one-line stderr note. `which` is ignored for a
-non-CSS code (the distance is a single number).
+search; `"cc"` is **rejected** (raises `ValueError`) — it has no sound non-CSS form. `which`
+is ignored for a non-CSS code (the distance is a single number).
 
 **Returns** a [`Result`](#result).
 
@@ -200,8 +200,8 @@ subsystem_stabilizer_distance(G, *, method="bz", which="min", backend="auto",
 **Dressed** distance of a general (possibly non-CSS) subsystem code. `G` is the symplectic
 **gauge** matrix `(m, 2n)` in `[z | x]` order (its generators may be non-commuting); the
 stabilizer center is computed internally. CSS fast path and the method behaviour (`bz`/`mitm`
-work for non-CSS, `cc`→mitm) are as in [`stabilizer_distance`](#stabilizer_distance).
-**Returns** a [`Result`](#result).
+work for non-CSS, `cc` is rejected on a non-CSS code) are as in
+[`stabilizer_distance`](#stabilizer_distance). **Returns** a [`Result`](#result).
 
 ---
 

@@ -16,8 +16,9 @@
 //   --subsystem     treat the input X/Z operators as GAUGE generators of a subsystem code
 //                   and report the dressed subsystem distance (stabilizer center computed
 //                   internally). Combines with --z/--x/--zx/--method/...
-//   -o, --operator  the LAST stdin Pauli line is an OPERATOR (may contain Y); the preceding
-//                   lines are the stabiliser/gauge generators. Prints the operator weight
+//   -o, --operator PAULI  operator weight of the Pauli string PAULI (may contain Y), given
+//                   as a command-line argument; the stabiliser/gauge generators are read
+//                   from stdin (one per line). Prints the operator weight
 //                   modulo that group (default max(z,x); --zx prints "<z> <x>"). With
 //                   --subsystem the generators are the gauge group.
 //   --threads N     CPU worker threads (0 => hardware concurrency)
@@ -67,8 +68,9 @@ const char* kUsage =
     "Backend:  --cpu  --gpu                 (default: auto; --gpu auto-detects accelerator)\n"
     "Output:   default = minimum distance; --zx = \"<dZ> <dX>\"; --z / --x = one value\n"
     "Subsystem: --subsystem  treat X/Z input as GAUGE generators; report dressed distance\n"
-    "Operator:  -o/--operator  last stdin Pauli line is an operator (may have Y); print its\n"
-    "           weight modulo the group (default max(z,x); --zx = \"<z> <x>\")\n"
+    "Operator:  -o/--operator PAULI  operator weight of the Pauli string PAULI (may have Y),\n"
+    "           given on the command line; generators come from stdin (default max(z,x);\n"
+    "           --zx = \"<z> <x>\")\n"
     "Other:    --threads N  --max-weight N  --hx FILE  --hz FILE  -v/--verbose  -h/--help\n";
 
 struct Options {
@@ -77,7 +79,8 @@ struct Options {
     char which = 'M';                // M | Z | X
     bool zx = false;                 // print both dZ and dX
     bool subsystem = false;          // treat X/Z input as gauge generators (dressed dist)
-    bool operator_mode = false;      // last stdin line is an operator (operator weight)
+    bool operator_mode = false;      // operator-weight mode (-o/--operator PAULI)
+    std::string operator_str;        // the operator Pauli string (a command-line argument)
     int threads = 0;
     int max_weight = 0;
     bool verbose = false;
@@ -203,9 +206,10 @@ void parse_operator_line(const std::string& s, int n,
     }
 }
 
-// Operator-weight input: the LAST stdin Pauli line is the operator (may contain Y); the
-// preceding lines are the stabiliser/gauge generators (CSS: pure X- or Z-type).
-void read_operator_stdin(GF2Mat& Gx, GF2Mat& Gz,
+// Operator-weight input: the stabiliser/gauge generators (CSS: pure X- or Z-type) are read
+// from stdin (one per line, blank line / EOF terminates); the operator Pauli (may contain Y)
+// is `op_str`, a command-line argument (-o/--operator PAULI).
+void read_operator_input(const std::string& op_str, GF2Mat& Gx, GF2Mat& Gz,
                          std::vector<uint8_t>& z_op, std::vector<uint8_t>& x_op, int& n) {
     std::vector<std::string> lines;
     std::string line;
@@ -214,15 +218,16 @@ void read_operator_stdin(GF2Mat& Gx, GF2Mat& Gz,
         if (line.empty()) break;
         lines.push_back(line);
     }
-    if (lines.size() < 2)
-        die("operator mode needs at least one generator line and one operator line");
-    std::string op = lines.back();
-    lines.pop_back();
+    if (lines.empty())
+        die("operator mode needs at least one generator line on stdin");
+    const std::string& op = op_str;
 
     n = (int)lines[0].size();
     for (const auto& s : lines)
         if ((int)s.size() != n) die("generators have differing lengths");
-    if ((int)op.size() != n) die("operator length differs from the generators");
+    if ((int)op.size() != n)
+        die("operator length (" + std::to_string(op.size()) +
+            ") differs from the generators (" + std::to_string(n) + ")");
 
     std::vector<std::vector<uint8_t>> xrows, zrows;
     for (size_t li = 0; li < lines.size(); ++li) {
@@ -273,39 +278,44 @@ BZOptions make_opt(const Options& o) {
 // generators when o.subsystem (then the dressed subsystem distance is computed).
 BZResult solve_component(const GF2Mat& Hx, const GF2Mat& Hz, char which, const Options& o) {
     BZOptions opt = make_opt(o);
+    auto prob_for = [&](char w) {
+        return o.subsystem ? subsystem_problem(Hx, Hz, w) : css_problem(Hx, Hz, w);
+    };
 
-    if (o.subsystem) {
-        std::pair<GF2Mat, GF2Mat> center = css_center(Hx, Hz);
-        if (o.method == "cc") {
+    // cc handles Z/X/M itself (with its own weight-level interleave for the min).
+    if (o.method == "cc") {
+        if (o.subsystem) {
+            std::pair<GF2Mat, GF2Mat> center = css_center(Hx, Hz);
             DistProblem pZ = subsystem_problem(Hx, Hz, 'Z');
             DistProblem pX = subsystem_problem(Hx, Hz, 'X');
             return cc_subsystem_distance(center.first, center.second,
                                          pZ.check, pX.check, which, opt);
         }
-        auto run = [&](char w) -> BZResult {
-            DistProblem prob = subsystem_problem(Hx, Hz, w);
-            return (o.method == "mitm") ? mitm_distance(prob, opt) : bz_distance(prob, opt);
-        };
-        if (which == 'Z') return run('Z');
-        if (which == 'X') return run('X');
-        BZResult z = run('Z'), x = run('X');   // 'M' = true min over Z and X
-        auto v = [](int d) { return d < 0 ? (1 << 30) : d; };
-        BZResult r = (v(x.distance) < v(z.distance)) ? x : z;
-        r.distance = std::min(v(z.distance), v(x.distance));
-        if (r.distance >= (1 << 30)) r.distance = -1;
-        r.lower_bound = std::min(z.lower_bound, x.lower_bound);
-        r.seconds = z.seconds + x.seconds;
-        r.proven = z.proven && x.proven;
-        return r;
+        return cc_css_distance(Hx, Hz, which, opt);
     }
 
-    if (o.method == "cc")
-        return cc_css_distance(Hx, Hz, which, opt);
+    if (which == 'Z' || which == 'X') {
+        DistProblem p = prob_for(which);
+        return (o.method == "mitm") ? mitm_distance(p, opt) : bz_distance(p, opt);
+    }
+    // min: INTERLEAVE the Z- and X-subproblems weight level by weight level so both lower
+    // bounds advance together; a side stalling on a hard level no longer starves the other.
+    DistProblem pz = prob_for('Z'), px = prob_for('X');
+    return (o.method == "mitm") ? mitm_min_interleaved(pz, px, opt)
+                                : bz_min_interleaved(pz, px, opt);
+}
 
-    DistProblem prob = css_problem(Hx, Hz, which);
-    if (o.method == "mitm")
-        return mitm_distance(prob, opt);
-    return bz_distance(prob, opt);
+// --zx: BOTH distances. Interleaved so both bounds advance together, but UNCAPPED -- each
+// side runs to its own full proof, so finding dZ never stops the full dX being found.
+std::pair<BZResult, BZResult> solve_zx(const GF2Mat& Hx, const GF2Mat& Hz, const Options& o) {
+    BZOptions opt = make_opt(o);
+    // cc has no uncapped-pair variant and is fast; compute Z and X separately.
+    if (o.method == "cc")
+        return {solve_component(Hx, Hz, 'Z', o), solve_component(Hx, Hz, 'X', o)};
+    DistProblem pz = o.subsystem ? subsystem_problem(Hx, Hz, 'Z') : css_problem(Hx, Hz, 'Z');
+    DistProblem px = o.subsystem ? subsystem_problem(Hx, Hz, 'X') : css_problem(Hx, Hz, 'X');
+    return (o.method == "mitm") ? mitm_zx_interleaved(pz, px, opt)
+                                : bz_zx_interleaved(pz, px, opt);
 }
 
 // Report a non-proven result on stderr so stdout stays just the number.
@@ -351,6 +361,7 @@ int main(int argc, char** argv) {
             o.subsystem = true;
         } else if (a == "-o" || a == "--operator") {
             o.operator_mode = true;
+            o.operator_str = need_val(a);   // the operator Pauli is a command-line argument
         } else if (a == "--threads") {
             o.threads = parse_positive_int(a, need_val(a));
         } else if (a == "--max-weight") {
@@ -371,14 +382,14 @@ int main(int argc, char** argv) {
     if ((o.hx_path.empty()) != (o.hz_path.empty()))
         die("--hx and --hz must be given together");
 
-    // ---- operator weight: generators + a trailing operator line on stdin ----
+    // ---- operator weight: generators on stdin + the operator Pauli as a CLI argument ----
     if (o.operator_mode) {
         if (!o.hx_path.empty())
             die("-o/--operator reads generators and the operator from stdin (no --hx/--hz)");
         GF2Mat Gx, Gz;
         std::vector<uint8_t> z_op, x_op;
         int on = 0;
-        read_operator_stdin(Gx, Gz, z_op, x_op, on);
+        read_operator_input(o.operator_str, Gx, Gz, z_op, x_op, on);
         if (o.verbose)
             std::cerr << "qubitserf: operator weight method=" << o.method
                       << " qubits=" << on << " Gx_rows=" << Gx.rows
@@ -413,11 +424,10 @@ int main(int argc, char** argv) {
     }
 
     if (o.zx) {
-        BZResult z = solve_component(Hx, Hz, 'Z', o);
-        BZResult x = solve_component(Hx, Hz, 'X', o);
-        note_if_unproven(z, "dZ:");
-        note_if_unproven(x, "dX:");
-        std::cout << z.distance << ' ' << x.distance << std::endl;
+        std::pair<BZResult, BZResult> zx = solve_zx(Hx, Hz, o);
+        note_if_unproven(zx.first, "dZ:");
+        note_if_unproven(zx.second, "dX:");
+        std::cout << zx.first.distance << ' ' << zx.second.distance << std::endl;
     } else {
         BZResult r = solve_component(Hx, Hz, o.which, o);
         const char* label = (o.which == 'Z') ? "dZ:" : (o.which == 'X') ? "dX:" : "d:";

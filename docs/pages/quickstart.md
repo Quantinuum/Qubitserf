@@ -84,7 +84,7 @@ The same searches are available from a terminal via the `qubitserf` command (or
 `python -m qubitserf`). For example, with a builtin code:
 
 ```bash
-qubitserf --builtin gross --method cc --json
+qubitserf --builtin gross --method cc
 ```
 
 or by piping in a code description. See the [CLI reference](cli.md) for input formats and

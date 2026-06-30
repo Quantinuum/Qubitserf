@@ -98,8 +98,9 @@ NON_CSS_8 = ["ZIYXZIII", "XIZYXIII", "IZZZZIII", "IXXXXIII",
 def test_fixed_noncss_distance(strings, expected):
     S = ref.paulis_to_symplectic(strings)
     assert ref.stabilizer_distance_bruteforce(S) == expected
-    # mitm = symplectic search; bz = weight-doubling isometry; cc -> mitm fallback.
-    for method in ("mitm", "bz", "cc"):
+    # mitm = symplectic search; bz = weight-doubling isometry. (cc is rejected on non-CSS
+    # codes -- see test_cc_rejected_on_noncss -- so it is not exercised here.)
+    for method in ("mitm", "bz"):
         r = df.stabilizer_distance(S, method=method)
         assert r.distance == expected
         assert r.proven
@@ -290,3 +291,18 @@ def test_cli_routes_noncss(tmp_path):
     import json
     assert proc.returncode == 0, proc.stderr
     assert json.loads(proc.stdout)["distance"] == 3
+
+
+# --------------------------------------------------------------------------- #
+# cc is rejected on genuinely non-CSS codes (no silent fallback)
+# --------------------------------------------------------------------------- #
+def test_cc_rejected_on_noncss():
+    S = ref.paulis_to_symplectic(FIVE_QUBIT)   # non-CSS [[5,1,3]]
+    import pytest as _pytest
+    with _pytest.raises(ValueError, match="cc"):
+        df.stabilizer_distance(S, method="cc")
+    with _pytest.raises(ValueError, match="cc"):
+        df.subsystem_stabilizer_distance(S, method="cc")
+    # bz and mitm still work on the same non-CSS code.
+    assert df.stabilizer_distance(S, method="bz").distance == 3
+    assert df.stabilizer_distance(S, method="mitm").distance == 3

@@ -207,6 +207,9 @@ def subsystem_distance_raw(Gx, Gz, method, which, backend, threads, max_weight, 
         int(threads), int(max_weight), 1 if verbose else 0,
         ctypes.byref(out),
     )
+    if rc == 3:
+        raise ValueError("method 'cc' (connected cluster) is not supported for non-CSS "
+                         "codes; use 'bz' or 'mitm'")
     if rc != 0:
         raise RuntimeError("qubitserf_subsystem_distance failed (rc=%d)" % rc)
     return out
@@ -224,6 +227,9 @@ def stabilizer_distance_raw(S, method, which, backend, threads, max_weight, verb
         int(threads), int(max_weight), 1 if verbose else 0,
         ctypes.byref(out),
     )
+    if rc == 3:
+        raise ValueError("method 'cc' (connected cluster) is not supported for non-CSS "
+                         "codes; use 'bz' or 'mitm'")
     if rc != 0:
         raise RuntimeError("qubitserf_stabilizer_distance failed (rc=%d)" % rc)
     return out
@@ -241,6 +247,9 @@ def subsystem_stabilizer_distance_raw(G, method, which, backend, threads, max_we
         int(threads), int(max_weight), 1 if verbose else 0,
         ctypes.byref(out),
     )
+    if rc == 3:
+        raise ValueError("method 'cc' (connected cluster) is not supported for non-CSS "
+                         "codes; use 'bz' or 'mitm'")
     if rc != 0:
         raise RuntimeError("qubitserf_subsystem_stabilizer_distance failed (rc=%d)" % rc)
     return out

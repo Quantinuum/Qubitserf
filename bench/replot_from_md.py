@@ -171,6 +171,16 @@ REED_MULLER = {
 # The only difference: METHOD_LABEL now says "qubitserf"; reed_muller titles
 # carry the original "(d=N)" suffix.
 # --------------------------------------------------------------------------- #
+# Per-family plot titles. The four below are set explicitly; any other family falls back
+# to "qubitserf <fam> benchmark".
+TITLES = {
+    "toric": "qubitserf toric benchmark",
+    "surface": "qubitserf surface benchmark",
+    "reed_muller_r1": "qubitserf distance 4 RM",
+    "reed_muller_r2": "qubitserf distance 8 RM",
+}
+
+
 def plot_family(fam: str, rows: list, title_suffix: str = "",
                 min_points: int = 2) -> str | None:
     # comprehensive.py:maybe_plot draws a method only with >= 2 points; the 5 md
@@ -199,7 +209,7 @@ def plot_family(fam: str, rows: list, title_suffix: str = "",
     ax.set_yscale("log")
     ax.set_xlabel("n (physical qubits)")
     ax.set_ylabel("time (s, log)")
-    ax.set_title(f"qubitserf comprehensive: {fam}{title_suffix}")
+    ax.set_title(TITLES.get(fam, f"qubitserf {fam} benchmark{title_suffix}"))
     ax.legend(fontsize=8)
     ax.grid(True, which="both", alpha=0.3)
     path = os.path.join(HERE, f"comprehensive_{fam}.png")

@@ -243,15 +243,16 @@ Which engines generalize:
   enumeration changes — a "coordinate" is a **qubit** and each chosen qubit takes one of the
   three nonzero Paulis `Z`, `X`, `Y` (`C(n,w)·3^w` partial operators of weight `w`). This is
   exactly the original qubitserf's "middle algorithm".
-- **CC — no** (falls back to MITM). Connected-cluster grows single-type clusters over a sparse
-  CSS Tanner graph, which a general non-CSS code does not provide. (The connectedness argument
+- **CC — no** (**rejected**). Connected-cluster grows single-type clusters over a sparse CSS
+  Tanner graph, which a general non-CSS code does not provide. (The connectedness argument
   itself does generalize — a min-weight logical has connected Tanner support for any stabilizer
   code — but each clustered qubit would branch over `Z/X/Y` and the syndrome bookkeeping
   becomes the symplectic product, with a `3^{cluster}` branching cost; this is left for future
-  work, and `cc` falls back to MITM with a one-line stderr note.)
+  work.) Rather than silently substitute another method, `method="cc"` on a genuinely non-CSS
+  code is **rejected** — the library returns an error and the Python API raises `ValueError`.
 
-So `method="bz"` (default) and `"mitm"` both solve genuinely non-CSS codes; only `"cc"` falls
-back. A code whose rows are all pure-`X`/pure-`Z` is detected up front and routed to the CSS
+So `method="bz"` (default) and `"mitm"` both solve genuinely non-CSS codes; `"cc"` is rejected
+on them. A code whose rows are all pure-`X`/pure-`Z` is detected up front and routed to the CSS
 solvers above, so the CSS fast paths (and their BZ/CC/GPU acceleration) are fully preserved.
 The same symplectic reduction gives the **dressed** distance of a non-CSS subsystem code
 (search `C(center(G)) \ rowspace(G)`, with the stabilizer center

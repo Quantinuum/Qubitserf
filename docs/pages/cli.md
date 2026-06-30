@@ -52,12 +52,11 @@ The CLI accepts a code in one of three ways:
 | `--method {bz,cc,mitm}` | Which algorithm to run. | `method=` in [`css_distance`](api.md#css_distance) |
 | `--backend {auto,cpu,gpu}` | Backend for the BZ enumeration; `gpu` auto-detects the available accelerator (`cc`/`mitm` are CPU). | `backend=` |
 | `--which {min,z,x}` | Z-distance, X-distance, or the minimum. | `which=` |
-| `-o`, `--operator STR` | Compute **operator weight**: the minimum weight of a Pauli operator (`STR`, may contain `Y`) modulo the stabilizer/gauge group. With C++ stdin input, the last Pauli line is the operator and the preceding lines are the generators. | [`operator_weight`](api.md#operator_weight) |
+| `-o`, `--operator PAULI` | Compute **operator weight**: the minimum weight of the Pauli operator `PAULI` (a command-line argument; may contain `Y`) modulo the stabilizer/gauge group. The generators are read from stdin or a file. `-o` and `--operator` are identical. | [`operator_weight`](api.md#operator_weight) |
 | `--subsystem` | Treat the X/Z (or symplectic) input as **gauge** generators and compute the **dressed** subsystem distance. | [`subsystem_css_distance`](api.md#subsystem_css_distance) / [`subsystem_stabilizer_distance`](api.md#subsystem_stabilizer_distance) |
 | `--symplectic FILE` | A symplectic stabiliser matrix (`2n` columns, `[z\|x]` order) for a general non-CSS code. | [`stabilizer_distance`](api.md#stabilizer_distance) |
 | `--threads N` | CPU threads (`0` = hardware concurrency). | `threads=` |
 | `--max-weight W` | Safety cap on the enumeration weight (`0` = no cap). | `max_weight=` |
-| `--json` | Emit the result as JSON instead of human-readable text. | — |
 
 Each option maps directly onto the corresponding [Python API](api.md) argument, so the
 [algorithm guidance](algorithms.md) and the [rule of thumb](algorithms.md#rule-of-thumb)
@@ -73,13 +72,6 @@ XXXX
 ZZZZ
 <Ctrl-D>
 2 2
-```
-
-Print machine-readable output from a stabilizer file:
-
-```console
-$ qubitserf example_code.txt --json
-{"distance": 3, "lower_bound": 3, "proven": true, "seconds": 0.001, "backend": "cpu", "which": "d"}
 ```
 
 Find the Z-distance of a CSS code from parity-check files on the GPU:
@@ -101,16 +93,15 @@ range. Switch to `--method cc` for sparse codes to certify them — see
 
 ## Operator weight
 
-`--operator` computes the minimum weight of a Pauli operator modulo the stabilizer group —
-the minimum-weight coset leader (see [Algorithms](algorithms.md#operator-weight)). The Python
-CLI takes the operator (it may contain `Y`) as `--operator STR`, with the generators from
-stdin or a file; the development C++ CLI uses the `-o` convention instead, where the
-**last** stdin Pauli line is the operator and the preceding lines are the generators (and
-spells the flag `-o`). The default output is `max(z_weight, x_weight)`; `--zx` prints
-`z_weight x_weight`. A Steane logical `Z` has Z-weight 3 and X-weight 0:
+`-o`/`--operator` computes the minimum weight of a Pauli operator modulo the stabilizer group
+— the minimum-weight coset leader (see [Algorithms](algorithms.md#operator-weight)). The
+operator (it may contain `Y`) is given as a command-line argument — `-o PAULI` and
+`--operator PAULI` are identical — and the generators are read from stdin or a file. The
+default output is `max(z_weight, x_weight)`; `--zx` prints `z_weight x_weight`. A Steane
+logical `Z` has Z-weight 3 and X-weight 0:
 
 ```console
-$ printf 'IIIXXXX\nIXXIIXX\nXIXIXIX\nIIIZZZZ\nIZZIIZZ\nZIZIZIZ\n' | qubitserf --operator ZZZZZZZ --zx
+$ printf 'IIIXXXX\nIXXIIXX\nXIXIXIX\nIIIZZZZ\nIZZIIZZ\nZIZIZIZ\n' | qubitserf -o ZZZZZZZ --zx
 3 0
 ```
 

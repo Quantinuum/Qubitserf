@@ -225,10 +225,11 @@ def stabilizer_distance(S, *, method="bz", which="min", backend="auto",
         problem of length ``3n`` and runs Brouwer-Zimmermann on it (symplectic distance
         = half the binary distance);
       * ``"mitm"`` uses the symplectic meet-in-the-middle search;
-      * ``"cc"`` has no non-CSS form and falls back to ``"mitm"`` (one-line stderr note).
+      * ``"cc"`` has no sound non-CSS form (it needs a sparse single-type CSS Tanner graph),
+        so it is **rejected** for a non-CSS code -- raises ``ValueError`` (use bz or mitm).
     ``which`` is ignored for a non-CSS code (no separate Z/X distances).
 
-    method:  "bz" (isometry, default), "mitm", or "cc" (CSS only; else -> mitm).
+    method:  "bz" (isometry, default) or "mitm"; "cc" is CSS-only (raises on a non-CSS code).
     which:   "min"/"z"/"x" (CSS only).
     backend: "auto", "cpu", or "gpu".
     """
@@ -251,7 +252,8 @@ def subsystem_stabilizer_distance(G, *, method="bz", which="min", backend="auto"
     every stabilizer but lies outside the gauge group.
 
     Methods behave as in :func:`stabilizer_distance`: ``"bz"`` (default) via the
-    weight-doubling isometry, ``"mitm"``, or ``"cc"`` (CSS only; else -> mitm).
+    weight-doubling isometry, or ``"mitm"``; ``"cc"`` is CSS-only and raises ``ValueError``
+    on a non-CSS code.
     """
     G = _as_symplectic(G)
     w = _WHICH.get(str(which).lower())

@@ -392,4 +392,163 @@ BZResult mitm_distance(const DistProblem& prob, const BZOptions& opt) {
     return res;
 }
 
+// ---- interleaved CSS min over two subproblems -----------------------------------
+//
+// Like cc_css_min: advance the Z- and X-subproblems one weight level at a time so both
+// lower bounds rise together (a side stalling on a hard level no longer starves the other),
+// capping a side once it cannot lower the running best. Verbose lines are tagged "Z"/"X".
+namespace {
+
+// One MITM subproblem, stepped one weight level at a time (the body of the mitm_distance
+// loop). Held in place (ColumnViews own their buffers), so do not copy/move after setup().
+struct MitmSide {
+    bool has_logicals = false;
+    GF2Mat Hcode;
+    ColumnView synV, logV;
+    std::vector<int> left, right;
+    bool sym = false, count_all = false;
+    int qubits = 0, ncoord = 0, n = 0, target = 0, threads = 1, seed_upper = 0;
+    const char* tag = "";
+
+    int found = -1, level = 0;
+    bool resolved = false, confirmed = false;
+
+    MitmSide() = default;
+    MitmSide(const MitmSide&) = delete;
+    MitmSide& operator=(const MitmSide&) = delete;
+
+    void setup(const DistProblem& prob, const BZOptions& opt, const char* t) {
+        tag = t; n = prob.n;
+        const int K = prob.code_gen.rows;
+        has_logicals = !(K == 0 || (!prob.count_all && prob.check.rows == 0));
+        if (!has_logicals) { resolved = true; confirmed = true; return; }
+        Hcode = nullspace(prob.code_gen);
+        sym = prob.symplectic; count_all = prob.count_all; qubits = prob.qubits;
+        ncoord = sym ? prob.qubits : n;
+        synV.build(Hcode, n);
+        if (!count_all) logV.build(prob.check, n);
+        const int nL = ncoord / 2;
+        for (int j = 0; j < nL; ++j) left.push_back(j);
+        for (int j = nL; j < ncoord; ++j) right.push_back(j);
+        int cap = ncoord;
+        if (opt.max_weight > 0) cap = std::min(cap, opt.max_weight);
+        seed_upper = prob.seed_upper;
+        target = (prob.seed_upper > 0) ? std::min(prob.seed_upper, cap) : cap;
+        threads = opt.threads > 0 ? opt.threads
+                                  : (int)std::max(1u, std::thread::hardware_concurrency());
+    }
+
+    // Search weight level d; returns true on a hit (then found=d).
+    bool step(int d) {
+        ++level;
+        bool hit = sym
+            ? has_codeword_of_weight_sym(d, left, right, qubits, synV, logV, threads)
+            : has_codeword_of_weight(d, left, right, synV, logV, count_all, threads);
+        if (hit) found = d;
+        return hit;
+    }
+};
+
+// Assemble a single side's BZResult from its stepper state.
+BZResult assemble_mitm_side(const MitmSide& S, double seconds, const std::string& backend) {
+    BZResult r;
+    r.backend = backend;
+    r.distance = S.found;
+    r.lower_bound = (S.found >= 0) ? S.found : 0;
+    r.levels = S.level;
+    r.proven = (S.found >= 0);
+    r.seconds = seconds;
+    return r;
+}
+
+// Step Z and X one weight level at a time. With cap_to_min, a side stops the moment it
+// cannot lower the running best -- once dZ=2 is found, X only searches weights < 2 (no
+// wasted search of X>=2). WITHOUT cap_to_min (the --zx case), there is NO cross-side cap:
+// each side runs to its own first hit / seed ceiling, so finding Z never stops X being
+// found; the interleaving only keeps both bounds advancing together. Verbose tagged "Z"/"X".
+void mitm_interleave_core(MitmSide& Z, MitmSide& X, const BZOptions& opt, bool cap_to_min,
+                          std::chrono::steady_clock::time_point t0) {
+    using clk = std::chrono::steady_clock;
+    MitmSide* sides[2] = {&Z, &X};
+    int best = WEIGHT_NONE;
+    if (cap_to_min) {
+        if (Z.has_logicals && Z.seed_upper > 0) best = std::min(best, Z.seed_upper);
+        if (X.has_logicals && X.seed_upper > 0) best = std::min(best, X.seed_upper);
+    }
+    const int maxd = std::max(Z.has_logicals ? Z.target : 0, X.has_logicals ? X.target : 0);
+
+    for (int d = 1; d <= maxd; ++d) {
+        for (MitmSide* S : sides) {
+            if (S->resolved) continue;
+            if (d > S->target) {            // reached its own ceiling without a hit
+                if (S->seed_upper > 0 && S->target == S->seed_upper) {
+                    S->found = S->seed_upper; S->confirmed = true;   // seed certifies it
+                    if (cap_to_min) best = std::min(best, S->found);
+                    if (opt.verbose)
+                        verbose_final(S->found,
+                                      std::chrono::duration<double>(clk::now() - t0).count(), S->tag);
+                }                                                    // else: max_weight cap (unproven)
+                S->resolved = true; continue;
+            }
+            if (cap_to_min && d >= best) {  // can't lower the running min -> cap (dS >= best)
+                S->confirmed = true;        // distance is >= best (searched 1..best-1, no hit)
+                if (S->seed_upper > 0 && best == S->seed_upper) {
+                    S->found = best;        // and the seed pins it exactly at best
+                    if (opt.verbose)
+                        verbose_final(best,
+                                      std::chrono::duration<double>(clk::now() - t0).count(), S->tag);
+                }
+                S->resolved = true; continue;
+            }
+            auto te0 = clk::now();
+            bool hit = S->step(d);
+            if (hit) {
+                if (cap_to_min) best = std::min(best, d);
+                S->confirmed = true; S->resolved = true;
+                if (opt.verbose)
+                    verbose_final(d, std::chrono::duration<double>(clk::now() - t0).count(), S->tag);
+            } else if (opt.verbose) {
+                verbose_bound(d, std::chrono::duration<double>(clk::now() - te0).count(), S->tag);
+            }
+        }
+        if (Z.resolved && X.resolved) break;
+    }
+}
+
+} // namespace
+
+BZResult mitm_min_interleaved(const DistProblem& pz, const DistProblem& px,
+                              const BZOptions& opt) {
+    using clk = std::chrono::steady_clock;
+    auto t0 = clk::now();
+    MitmSide Z, X;
+    Z.setup(pz, opt, "Z");
+    X.setup(px, opt, "X");
+    mitm_interleave_core(Z, X, opt, /*cap_to_min=*/true, t0);
+
+    auto v = [](const MitmSide& S) { return S.found >= 0 ? S.found : WEIGHT_NONE; };
+    int dist = std::min(v(Z), v(X));
+    BZResult r;
+    r.backend = opt.backend.empty() ? std::string("cpu") : opt.backend;
+    r.distance = (dist >= WEIGHT_NONE) ? -1 : dist;
+    r.lower_bound = (dist >= WEIGHT_NONE) ? 0 : dist;
+    r.levels = std::max(Z.level, X.level);
+    r.proven = Z.confirmed && X.confirmed && (dist < WEIGHT_NONE);
+    r.seconds = std::chrono::duration<double>(clk::now() - t0).count();
+    return r;
+}
+
+std::pair<BZResult, BZResult> mitm_zx_interleaved(const DistProblem& pz, const DistProblem& px,
+                                                  const BZOptions& opt) {
+    using clk = std::chrono::steady_clock;
+    auto t0 = clk::now();
+    MitmSide Z, X;
+    Z.setup(pz, opt, "Z");
+    X.setup(px, opt, "X");
+    mitm_interleave_core(Z, X, opt, /*cap_to_min=*/false, t0);   // no cross-side cap: both full
+    double secs = std::chrono::duration<double>(clk::now() - t0).count();
+    std::string be = opt.backend.empty() ? std::string("cpu") : opt.backend;
+    return {assemble_mitm_side(Z, secs, be), assemble_mitm_side(X, secs, be)};
+}
+
 } // namespace qubitserf
