@@ -85,23 +85,35 @@ $ qminweight example_code.txt --method cc --threads 8
 3
 ```
 
-Verbose mode prints progress diagnostics to stderr; the final distance still
-goes to stdout. For example, with connected cluster:
+Verbose mode prints progress diagnostics to stderr, imitating the qubitserf
+interface: a running lower bound (`Distance bound: >N`, the weight level just
+ruled out) with its elapsed time, then the exact `Distance: =N` with the total
+elapsed time. The final distance still goes to stdout.
+
+For the connected-cluster CSS distance (`--method cc`), the Z- and X-distance
+searches are **interleaved** weight level by weight level and tagged `[Z]`/`[X]`,
+so both lower bounds advance in step — if one side stalls on a hard level, the
+other still reports its bound. For example, on a toric `[[288,2,12]]` code:
 
 ```console
-$ qminweight example_code.txt --method cc -v
-[cc dZ] n=7 checks=3 logicals=1 threads=7 maxw=7
-[cc dZ] no weight-1 logical -> d>1  (0.11s)
-[cc dZ] no weight-2 logical -> d>2  (0.10s)
-[cc dZ] d=3  FOUND weight-3 logical  (0.10s)
-[cc dX] n=7 checks=3 logicals=1 threads=7 maxw=7
-[cc dX] no weight-1 logical -> d>1  (0.10s)
-[cc dX] no weight-2 logical -> d>2  (0.11s)
-[cc dX] d=3  FOUND weight-3 logical  (0.10s)
-3
+$ qminweight --hx Hx.txt --hz Hz.txt --method cc -v
+[Z] Distance bound: >1
+Elapsed:[0ms]
+[X] Distance bound: >1
+Elapsed:[0ms]
+...
+[Z] Distance bound: >11
+Elapsed:[2ms]
+[X] Distance bound: >11
+Elapsed:[2ms]
+[Z] Distance: =12
+Elapsed:[9ms]
+[X] Distance: =12
+Elapsed:[9ms]
+12
 ```
 
-Timing and thread counts vary by machine and problem size.
+Timing varies by machine and problem size.
 
 Machine-readable output, with timing and backend varying by machine:
 
@@ -366,5 +378,4 @@ If you use qminweight in academic work, please cite the package and the underlyi
             and meet-in-the-middle solvers},
   url    = {https://github.com/Quantinuum/qminweight}
 }
-
 ```

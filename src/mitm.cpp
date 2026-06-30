@@ -24,6 +24,7 @@
 #include "qminweight/css.hpp"
 #include "qminweight/gf2.hpp"
 #include "qminweight/combinatorics.hpp"
+#include "qminweight/progress.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -248,17 +249,24 @@ BZResult mitm_distance(const DistProblem& prob, const BZOptions& opt) {
     int level = 0;
     for (int d = 1; d <= target; ++d) {
         ++level;
+        auto te0 = clk::now();
         if (has_codeword_of_weight(d, left, right, synV, logV, prob.count_all, threads)) {
             found = d;
+            if (opt.verbose)
+                verbose_final(d, std::chrono::duration<double>(clk::now() - t0).count());
             break;
         }
         if (opt.verbose)
-            std::fprintf(stderr, "[mitm %s] d=%d no logical yet\n", res.backend.c_str(), d);
+            verbose_bound(d, std::chrono::duration<double>(clk::now() - te0).count());
     }
 
     // If we only stopped because we hit the seeded upper bound without an explicit hit,
     // the seed itself certifies a logical of that weight exists.
-    if (found < 0 && prob.seed_upper > 0 && target == prob.seed_upper) found = prob.seed_upper;
+    if (found < 0 && prob.seed_upper > 0 && target == prob.seed_upper) {
+        found = prob.seed_upper;
+        if (opt.verbose)
+            verbose_final(found, std::chrono::duration<double>(clk::now() - t0).count());
+    }
 
     res.distance = found;
     res.levels = level;

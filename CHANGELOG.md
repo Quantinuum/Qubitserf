@@ -20,12 +20,20 @@ All notable changes to **qminweight** are documented here.
   `bench/gpu_vs_cpu.py` reports the >10 ms-code median with a 2x goal gate.
 
 ### Changed
+- **Verbose output now imitates the qubitserf interface** across all three methods
+  (`cc`/`bz`/`mitm`). Each ruled-out weight level prints `Distance bound: >N` followed by
+  `Elapsed:[<level time>]`, and the result prints `Distance: =N` followed by
+  `Elapsed:[<total time>]` — milliseconds under one second (`[15ms]`), seconds with three
+  decimals above (`[1.087s]`). The previous per-backend `[cc <dZ|dX>] ...` lines and the
+  in-level heartbeat were replaced by this shared format (`include/qminweight/progress.hpp`).
 - **Connected cluster** (`method="cc"`) now honours `verbose=True` (`-v` on the CLI), which
-  previously only affected the `bz`/`mitm` paths. It prints, on stderr in the repo's
-  `[cc <dZ|dX>] ...` style: a header (n / checks / logicals / threads), a per-weight-level
-  line giving the converging lower bound (`no weight-N logical -> d>N`) or the hit
-  (`FOUND weight-N logical`) with per-level timing, and a ~5 s in-level heartbeat
-  (`seeds k/n`) so a long weight level is never silent.
+  previously only affected the `bz`/`mitm` paths.
+- **Connected-cluster CSS distance now interleaves the Z- and X-distance searches** weight
+  level by weight level, instead of running one to completion before the other. Both lower
+  bounds advance together, so a side that stalls on a hard level no longer starves the other
+  of any bound; verbose lines are tagged `[Z]`/`[X]` to keep the two streams distinct. Once a
+  side is found, the other's remaining search is capped at that weight (a heavier codeword
+  can't lower the min), and the result is still the exact `min(d_Z, d_X)`.
 
 ### Benchmarks
 - **Comprehensive benchmark extended to n ≤ 288** (`bench/comprehensive.py`): toric and

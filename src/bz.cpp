@@ -1,5 +1,6 @@
 #include "qminweight/bz.hpp"
 #include "qminweight/combinatorics.hpp"
+#include "qminweight/progress.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -148,11 +149,16 @@ BZResult bz_distance(const DistProblem& prob, const BZOptions& opt) {
             outer += std::max(0, (d + 1) - (K - ranks[g]));
         if (prob.even) outer += (outer & 1);       // distance is even => round up
 
-        if (opt.verbose)
-            std::fprintf(stderr, "[bz %s] d=%d upper=%d lower=%d\n",
-                         res.backend.c_str(), d, inner, outer);
+        if (inner <= outer) {
+            res.proven = true;
+            if (opt.verbose)
+                verbose_final(inner, std::chrono::duration<double>(clk::now() - t0).count());
+            break;
+        }
 
-        if (inner <= outer) { res.proven = true; break; }
+        if (opt.verbose)
+            verbose_bound(std::max(0, outer - 1),
+                          std::chrono::duration<double>(clk::now() - te0).count());
     }
 
     res.distance = (inner >= WEIGHT_NONE) ? -1 : inner;

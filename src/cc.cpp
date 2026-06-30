@@ -1,5 +1,6 @@
 #include "qminweight/cc.hpp"
 #include "qminweight/css.hpp"
+#include "qminweight/progress.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -83,82 +84,135 @@ struct CCSearch {
     }
 };
 
+// Does a weight-d e in ker(H) with L*e != 0 exist? Parallel search over all seed qubits.
+bool cc_level(const CCData& D, int d, int T) {
+    std::atomic<int> next{0};
+    std::atomic<bool> hit{false};
+    auto worker = [&]() {
+        CCSearch s; s.D = &D; s.target = d; s.hit = &hit;
+        s.syn.assign(D.sw, 0ull); s.lg.assign(D.lw, 0ull); s.incl.assign(D.n, 0);
+        for (;;) {
+            if (hit.load(std::memory_order_relaxed)) break;
+            int e0 = next.fetch_add(1);
+            if (e0 >= D.n) break;
+            if (s.search_seed(e0)) { hit.store(true); break; }
+        }
+    };
+    std::vector<std::thread> pool;
+    for (int t = 0; t < T; ++t) pool.emplace_back(worker);
+    for (auto& th : pool) th.join();
+    return hit.load();
+}
+
 // Min weight of e in ker(H) with L*e != 0, searched up to maxw. Returns WEIGHT_NONE if none.
-// With verbose, reports progress on stderr in the repo's "[cc <label>] ..." style: a header,
-// a ~5s in-level heartbeat (seeds dispatched / total) so a long weight level is never silent,
-// and a per-level line giving the converging lower bound ("d>N") or the hit ("FOUND").
-int cc_search(const CCData& D, int maxw, int nthreads, bool verbose, const char* label) {
+// With verbose, reports progress on stderr in the qubitserf style: a per-level "Distance
+// bound: >N" (the level just ruled out) with its elapsed time, then a final "Distance: =N".
+int cc_search(const CCData& D, int maxw, int nthreads, bool verbose, const char* tag) {
     using clk = std::chrono::steady_clock;
     if (D.kl == 0) return -1;               // no logicals
     int T = std::max(1, std::min(nthreads, D.n));
-    if (verbose)
-        std::fprintf(stderr, "[cc %s] n=%d checks=%d logicals=%d threads=%d maxw=%d\n",
-                     label, D.n, D.mh, D.kl, T, maxw);
+    auto t_all = clk::now();
     for (int d = 1; d <= maxw; ++d) {
         auto td0 = clk::now();
-        std::atomic<int> next{0};
-        std::atomic<bool> hit{false};
-        auto worker = [&]() {
-            CCSearch s; s.D = &D; s.target = d; s.hit = &hit;
-            s.syn.assign(D.sw, 0ull); s.lg.assign(D.lw, 0ull); s.incl.assign(D.n, 0);
-            for (;;) {
-                if (hit.load(std::memory_order_relaxed)) break;
-                int e0 = next.fetch_add(1);
-                if (e0 >= D.n) break;
-                if (s.search_seed(e0)) { hit.store(true); break; }
-            }
-        };
-        std::vector<std::thread> pool;
-        for (int t = 0; t < T; ++t) pool.emplace_back(worker);
-
-        // Heartbeat: while the pool grinds on weight d, a monitor thread prints how many seed
-        // qubits have been dispatched, every ~5s, so the user can see liveness on a slow level.
-        std::atomic<bool> level_done{false};
-        std::thread monitor;
-        if (verbose) {
-            monitor = std::thread([&]() {
-                while (!level_done.load(std::memory_order_relaxed)) {
-                    for (int i = 0; i < 50 && !level_done.load(std::memory_order_relaxed); ++i)
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    if (level_done.load(std::memory_order_relaxed)) break;
-                    int seeds = std::min(next.load(std::memory_order_relaxed), D.n);
-                    double el = std::chrono::duration<double>(clk::now() - td0).count();
-                    std::fprintf(stderr, "[cc %s] d=%d  seeds %d/%d  %.0fs\n",
-                                 label, d, seeds, D.n, el);
-                }
-            });
-        }
-
-        for (auto& th : pool) th.join();
-        level_done.store(true);
-        if (monitor.joinable()) monitor.join();
-
-        double el = std::chrono::duration<double>(clk::now() - td0).count();
-        if (hit.load()) {
+        if (cc_level(D, d, T)) {
             if (verbose)
-                std::fprintf(stderr, "[cc %s] d=%d  FOUND weight-%d logical  (%.2fs)\n",
-                             label, d, d, el);
+                verbose_final(d, std::chrono::duration<double>(clk::now() - t_all).count(), tag);
             return d;
         }
         if (verbose)
-            std::fprintf(stderr, "[cc %s] no weight-%d logical -> d>%d  (%.2fs)\n",
-                         label, d, d, el);
+            verbose_bound(d, std::chrono::duration<double>(clk::now() - td0).count(), tag);
     }
     return WEIGHT_NONE;
 }
 
-BZResult cc_one(const GF2Mat& H, const GF2Mat& L, const BZOptions& opt, const char* label) {
+BZResult cc_one(const GF2Mat& H, const GF2Mat& L, const BZOptions& opt, const char* tag) {
     using clk = std::chrono::steady_clock;
     auto t0 = clk::now();
     BZResult res; res.backend = "cc";
     CCData D = build_cc(H, L);
     int nthreads = opt.threads > 0 ? opt.threads : (int)std::thread::hardware_concurrency();
     int maxw = opt.max_weight > 0 ? std::min(opt.max_weight, D.n) : D.n;
-    int d = cc_search(D, maxw, nthreads, opt.verbose, label);
+    int d = cc_search(D, maxw, nthreads, opt.verbose, tag);
     res.distance = (d >= WEIGHT_NONE) ? -1 : d;
     res.lower_bound = res.distance;          // exact when found
     res.proven = (d < WEIGHT_NONE);
     res.levels = (d >= WEIGHT_NONE) ? maxw : d;
+    res.seconds = std::chrono::duration<double>(clk::now() - t0).count();
+    return res;
+}
+
+// CSS min distance with the Z- and X-subproblems INTERLEAVED weight level by weight
+// level, so both lower bounds advance in step. (Running one to completion first would
+// starve the other of any bound if the first gets stuck on a hard level.) Each side's
+// progress is tagged "Z"/"X" so the two streams stay distinguishable.
+BZResult cc_css_min(const GF2Mat& Hx, const GF2Mat& Hz, const BZOptions& opt) {
+    using clk = std::chrono::steady_clock;
+    auto t0 = clk::now();
+
+    DistProblem pz = css_problem(Hx, Hz, 'Z');   // Z-distance: e in ker(Hx), nontrivial vs X-logicals
+    DistProblem px = css_problem(Hx, Hz, 'X');   // X-distance: e in ker(Hz), nontrivial vs Z-logicals
+    CCData DZ = build_cc(Hx, pz.check);
+    CCData DX = build_cc(Hz, px.check);
+
+    int nthreads = opt.threads > 0 ? opt.threads : (int)std::thread::hardware_concurrency();
+    int TZ = std::max(1, std::min(nthreads, DZ.n));
+    int TX = std::max(1, std::min(nthreads, DX.n));
+    int maxw = opt.max_weight > 0
+                   ? std::min(opt.max_weight, std::max(DZ.n, DX.n))
+                   : std::max(DZ.n, DX.n);
+
+    bool zno = (DZ.kl == 0), xno = (DX.kl == 0);  // a side with no logicals has no distance
+    int dz = 0, dx = 0;                           // found distance (0 = not yet found)
+    int rz = 0, rx = 0;                           // weights ruled out: that distance > r
+    int best = WEIGHT_NONE;                        // min found distance so far (upper bound on min)
+    int levels = 0;
+
+    // A side is worth searching at weight d only if it has logicals, hasn't been found, d is
+    // within its qubit count, and d can still beat the best-so-far (rz < best, i.e. d <= best).
+    auto z_active = [&](int d) { return !zno && dz == 0 && d <= DZ.n && rz < best; };
+    auto x_active = [&](int d) { return !xno && dx == 0 && d <= DX.n && rx < best; };
+
+    for (int d = 1; d <= maxw; ++d) {
+        if (!z_active(d) && !x_active(d)) break;
+        levels = d;
+        if (z_active(d)) {
+            auto td0 = clk::now();
+            if (cc_level(DZ, d, TZ)) {
+                dz = d; best = std::min(best, d);
+                if (opt.verbose)
+                    verbose_final(d, std::chrono::duration<double>(clk::now() - t0).count(), "Z");
+            } else {
+                rz = d;
+                if (opt.verbose)
+                    verbose_bound(d, std::chrono::duration<double>(clk::now() - td0).count(), "Z");
+            }
+        }
+        if (x_active(d)) {
+            auto td0 = clk::now();
+            if (cc_level(DX, d, TX)) {
+                dx = d; best = std::min(best, d);
+                if (opt.verbose)
+                    verbose_final(d, std::chrono::duration<double>(clk::now() - t0).count(), "X");
+            } else {
+                rx = d;
+                if (opt.verbose)
+                    verbose_bound(d, std::chrono::duration<double>(clk::now() - td0).count(), "X");
+            }
+        }
+    }
+
+    // A side is resolved if it has no logicals, was found, or was ruled out through `best`
+    // (so its distance exceeds the min and can't change the answer).
+    bool zres = zno || dz > 0 || (best < WEIGHT_NONE && rz >= best);
+    bool xres = xno || dx > 0 || (best < WEIGHT_NONE && rx >= best);
+
+    auto v = [](int d) { return d <= 0 ? WEIGHT_NONE : d; };
+    int dist = std::min(v(dz), v(dx));
+    BZResult res; res.backend = "cc";
+    res.distance = (dist >= WEIGHT_NONE) ? -1 : dist;
+    res.lower_bound = res.distance;
+    res.levels = levels;
+    res.proven = zres && xres;
     res.seconds = std::chrono::duration<double>(clk::now() - t0).count();
     return res;
 }
@@ -168,22 +222,13 @@ BZResult cc_one(const GF2Mat& H, const GF2Mat& L, const BZOptions& opt, const ch
 BZResult cc_css_distance(const GF2Mat& Hx, const GF2Mat& Hz, char which, const BZOptions& opt) {
     if (which == 'X') {
         DistProblem p = css_problem(Hx, Hz, 'X');   // p.check = Z-logicals
-        return cc_one(Hz, p.check, opt, "dX");
+        return cc_one(Hz, p.check, opt, "X");
     }
     if (which == 'Z') {
         DistProblem p = css_problem(Hx, Hz, 'Z');   // p.check = X-logicals
-        return cc_one(Hx, p.check, opt, "dZ");
+        return cc_one(Hx, p.check, opt, "Z");
     }
-    BZResult z = cc_css_distance(Hx, Hz, 'Z', opt);
-    BZResult x = cc_css_distance(Hx, Hz, 'X', opt);
-    auto v = [](int d) { return d < 0 ? WEIGHT_NONE : d; };
-    BZResult r = (v(x.distance) < v(z.distance)) ? x : z;
-    r.distance = std::min(v(z.distance), v(x.distance));
-    if (r.distance >= WEIGHT_NONE) r.distance = -1;
-    r.lower_bound = r.distance;
-    r.seconds = z.seconds + x.seconds;
-    r.proven = z.proven && x.proven;
-    return r;
+    return cc_css_min(Hx, Hz, opt);
 }
 
 } // namespace qminweight
