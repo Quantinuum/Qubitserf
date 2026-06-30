@@ -17,8 +17,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import qminweight as df
-from qminweight import codes
+import qubitserf as df
+from qubitserf import codes
 
 import _reference as ref
 

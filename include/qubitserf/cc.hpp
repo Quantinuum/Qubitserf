@@ -10,10 +10,10 @@
 // bivariate-bicycle codes (e.g. the gross code) where BZ's lower bound is too weak. It is
 // inherently a sequential, data-dependent search; we parallelize over independent seeds.
 #pragma once
-#include "qminweight/bz.hpp"   // BZResult, BZOptions
-#include "qminweight/gf2.hpp"
+#include "qubitserf/bz.hpp"   // BZResult, BZOptions
+#include "qubitserf/gf2.hpp"
 
-namespace qminweight {
+namespace qubitserf {
 
 // CSS distance via connected cluster. which = 'Z', 'X', or 'M' (= min). Uses the ORIGINAL
 // sparse Hx/Hz (do not pass a row-reduced version -- sparsity is the whole point).
@@ -27,4 +27,4 @@ BZResult cc_subsystem_distance(const GF2Mat& Sx, const GF2Mat& Sz,
                                const GF2Mat& detZ, const GF2Mat& detX,
                                char which, const BZOptions& opt);
 
-} // namespace qminweight
+} // namespace qubitserf

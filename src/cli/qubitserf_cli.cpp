@@ -1,9 +1,9 @@
-// qminweight command-line interface.
+// qubitserf command-line interface.
 //
 // Mirrors Quantinuum's Qubitserf tool: reads Pauli stabiliser strings from stdin
 // (one stabiliser per line; chars I/X/Y/Z and . / _ for identity; blank line or EOF
 // terminates) and prints the minimum distance of the resulting CSS code. Unlike
-// Qubitserf, qminweight only supports CSS codes here, so every stabiliser must be a pure
+// Qubitserf, qubitserf only supports CSS codes here, so every stabiliser must be a pure
 // X-type or pure Z-type operator (no Y, no mixed X/Z on one line).
 //
 // Flags:
@@ -39,21 +39,21 @@
 #include <string>
 #include <vector>
 
-#include "qminweight/bz.hpp"
-#include "qminweight/cc.hpp"
-#include "qminweight/css.hpp"
-#include "qminweight/gf2.hpp"
-#include "qminweight/mitm.hpp"
-#include "qminweight/op_weight.hpp"
+#include "qubitserf/bz.hpp"
+#include "qubitserf/cc.hpp"
+#include "qubitserf/css.hpp"
+#include "qubitserf/gf2.hpp"
+#include "qubitserf/mitm.hpp"
+#include "qubitserf/op_weight.hpp"
 
-using namespace qminweight;
+using namespace qubitserf;
 
 namespace {
 
 const char* kUsage =
-    "Usage: qminweight [OPTIONS]\n"
-    "       cat code.txt | qminweight [OPTIONS]\n"
-    "       qminweight --hx Hx.txt --hz Hz.txt [OPTIONS]\n"
+    "Usage: qubitserf [OPTIONS]\n"
+    "       cat code.txt | qubitserf [OPTIONS]\n"
+    "       qubitserf --hx Hx.txt --hz Hz.txt [OPTIONS]\n"
     "\n"
     "Compute the minimum distance of a CSS code.\n"
     "\n"
@@ -86,7 +86,7 @@ struct Options {
 };
 
 [[noreturn]] void die(const std::string& msg) {
-    std::cerr << "qminweight: " << msg << "\n";
+    std::cerr << "qubitserf: " << msg << "\n";
     std::exit(2);
 }
 
@@ -311,7 +311,7 @@ BZResult solve_component(const GF2Mat& Hx, const GF2Mat& Hz, char which, const O
 // Report a non-proven result on stderr so stdout stays just the number.
 void note_if_unproven(const BZResult& r, const char* label) {
     if (!r.proven) {
-        std::cerr << "qminweight: " << label << " d in ["
+        std::cerr << "qubitserf: " << label << " d in ["
                   << r.lower_bound << ", " << r.distance
                   << "] (not proven)\n";
     }
@@ -380,13 +380,13 @@ int main(int argc, char** argv) {
         int on = 0;
         read_operator_stdin(Gx, Gz, z_op, x_op, on);
         if (o.verbose)
-            std::cerr << "qminweight: operator weight method=" << o.method
+            std::cerr << "qubitserf: operator weight method=" << o.method
                       << " qubits=" << on << " Gx_rows=" << Gx.rows
                       << " Gz_rows=" << Gz.rows << (o.subsystem ? " (gauge)" : "") << "\n";
         BZOptions opt = make_opt(o);
         OpWeight w = css_operator_weight(Gx, Gz, z_op.data(), x_op.data(), on, o.method, opt);
         if (!w.proven)
-            std::cerr << "qminweight: operator weight not proven (z=" << w.z_weight
+            std::cerr << "qubitserf: operator weight not proven (z=" << w.z_weight
                       << ", x=" << w.x_weight << ")\n";
         if (o.zx) std::cout << w.z_weight << ' ' << w.x_weight << std::endl;
         else      std::cout << std::max(w.z_weight, w.x_weight) << std::endl;
@@ -407,7 +407,7 @@ int main(int argc, char** argv) {
     (void)n;
 
     if (o.verbose) {
-        std::cerr << "qminweight: method=" << o.method << " backend=" << o.backend
+        std::cerr << "qubitserf: method=" << o.method << " backend=" << o.backend
                   << " qubits=" << Hx.cols
                   << " Hx_rows=" << Hx.rows << " Hz_rows=" << Hz.rows << "\n";
     }

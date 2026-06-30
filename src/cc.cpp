@@ -1,6 +1,6 @@
-#include "qminweight/cc.hpp"
-#include "qminweight/css.hpp"
-#include "qminweight/progress.hpp"
+#include "qubitserf/cc.hpp"
+#include "qubitserf/css.hpp"
+#include "qubitserf/progress.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -8,7 +8,7 @@
 #include <thread>
 #include <vector>
 
-namespace qminweight {
+namespace qubitserf {
 
 namespace {
 
@@ -105,7 +105,7 @@ bool cc_level(const CCData& D, int d, int T) {
 }
 
 // Min weight of e in ker(H) with L*e != 0, searched up to maxw. Returns WEIGHT_NONE if none.
-// With verbose, reports progress on stderr in the qubitserf style: a per-level "Distance
+// With verbose, reports progress on stderr in the original qubitserf style: a per-level "Distance
 // bound: >N" (the level just ruled out) with its elapsed time, then a final "Distance: =N".
 int cc_search(const CCData& D, int maxw, int nthreads, bool verbose, const char* tag) {
     using clk = std::chrono::steady_clock;
@@ -252,4 +252,4 @@ BZResult cc_subsystem_distance(const GF2Mat& Sx, const GF2Mat& Sz,
     return r;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

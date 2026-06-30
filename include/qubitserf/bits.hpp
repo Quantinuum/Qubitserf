@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace qminweight {
+namespace qubitserf {
 
 using u64 = std::uint64_t;
 using u32 = std::uint32_t;
@@ -42,4 +42,4 @@ inline int vec_dot(const u64* a, const u64* b, int stride) {
     return popcount64(acc) & 1;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

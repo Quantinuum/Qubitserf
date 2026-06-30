@@ -1,13 +1,13 @@
-// Verbose progress output, imitating the qubitserf CLI interface: a running lower
-// bound on the distance ("Distance bound: >N") with a per-level elapsed time, then a
+// Verbose progress output, matching the original qubitserf's CLI progress format: a running
+// lower bound on the distance ("Distance bound: >N") with a per-level elapsed time, then a
 // final exact line ("Distance: =N") with the total elapsed time. All on stderr so
 // stdout stays just the number.
 #pragma once
 #include <cstdio>
 
-namespace qminweight {
+namespace qubitserf {
 
-// Elapsed duration in qubitserf's format: integer milliseconds below one second
+// Elapsed duration in the original qubitserf's format: integer milliseconds below one second
 // ("Elapsed:[15ms]"), seconds with three decimals at or above ("Elapsed:[1.087s]").
 inline void fprint_elapsed(std::FILE* f, double secs) {
     if (secs < 1.0)
@@ -32,4 +32,4 @@ inline void verbose_final(int d, double total_secs, const char* tag = "") {
     fprint_elapsed(stderr, total_secs);
 }
 
-} // namespace qminweight
+} // namespace qubitserf

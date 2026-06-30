@@ -3,10 +3,10 @@
 // pluggable backend.
 #pragma once
 #include <string>
-#include "qminweight/css.hpp"
-#include "qminweight/backend.hpp"
+#include "qubitserf/css.hpp"
+#include "qubitserf/backend.hpp"
 
-namespace qminweight {
+namespace qubitserf {
 
 struct BZResult {
     int distance = -1;
@@ -30,4 +30,4 @@ BZResult bz_distance(const DistProblem& prob, const BZOptions& opt);
 // CSS distance = min(Z-distance, X-distance).
 BZResult bz_css_distance(const GF2Mat& Hx, const GF2Mat& Hz, const BZOptions& opt);
 
-} // namespace qminweight
+} // namespace qubitserf

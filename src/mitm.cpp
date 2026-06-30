@@ -20,11 +20,11 @@
 // right parts of weight wR, matching synL == synR and demanding the logical mismatch.
 // The first d with a hit is the exact distance.
 
-#include "qminweight/mitm.hpp"
-#include "qminweight/css.hpp"
-#include "qminweight/gf2.hpp"
-#include "qminweight/combinatorics.hpp"
-#include "qminweight/progress.hpp"
+#include "qubitserf/mitm.hpp"
+#include "qubitserf/css.hpp"
+#include "qubitserf/gf2.hpp"
+#include "qubitserf/combinatorics.hpp"
+#include "qubitserf/progress.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -35,7 +35,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace qminweight {
+namespace qubitserf {
 
 namespace {
 
@@ -392,4 +392,4 @@ BZResult mitm_distance(const DistProblem& prob, const BZOptions& opt) {
     return res;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

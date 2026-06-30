@@ -3,7 +3,7 @@
 Bivariate-bicycle codes are the regime where Webster et al. recommend connected-cluster
 or Gurobi rather than Brouwer-Zimmermann: here the BZ search dimension K = n - rank(Hx)
 = 78 exceeds n/2 = 72, so only ONE disjoint full information set fits and the BZ lower
-bound rises only ~1 per weight level. qminweight still *finds* the distance (12) instantly
+bound rises only ~1 per weight level. qubitserf still *finds* the distance (12) instantly
 via the random-information-set seed, and brackets it rigorously, but certifying the lower
 bound would require enumerating to d=10 (~C(78,10) ~ 1e13 combinations).
 
@@ -12,8 +12,8 @@ bound would require enumerating to d=10 (~C(78,10) ~ 1e13 combinations).
 from __future__ import annotations
 import time
 
-import qminweight as df
-from qminweight import codes
+import qubitserf as df
+from qubitserf import codes
 
 
 def main():

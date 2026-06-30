@@ -1,4 +1,4 @@
-"""qminweight: fast GPU + CPU quantum & classical code distance finding.
+"""qubitserf: fast GPU + CPU quantum & classical code distance finding.
 
 Deterministic algorithms (Brouwer-Zimmermann, meet-in-the-middle) accelerated on the
 GPU via combinatorial-number-system work splitting.

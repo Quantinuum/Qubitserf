@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Configure + build qminweight with the Apple toolchain (the homebrew clang on PATH
+# Configure + build qubitserf with the Apple toolchain (the homebrew clang on PATH
 # lacks the macOS SDK/frameworks, so we pin xcrun's clang).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -18,4 +18,4 @@ cmake --build "$BUILD_DIR" -j"$JOBS"
 
 echo
 echo "Built. Shared library:"
-ls -1 python/qminweight/_lib/ 2>/dev/null || true
+ls -1 python/qubitserf/_lib/ 2>/dev/null || true

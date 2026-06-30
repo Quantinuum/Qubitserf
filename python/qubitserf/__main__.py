@@ -1,4 +1,4 @@
-"""Enable ``python -m qminweight``."""
+"""Enable ``python -m qubitserf``."""
 import sys
 
 from .cli import main

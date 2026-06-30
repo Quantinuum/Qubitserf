@@ -14,7 +14,7 @@ import sys
 
 import numpy as np
 
-from qminweight import codes
+from qubitserf import codes
 
 
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,7 +25,7 @@ def _run(args, *, stdin=None):
     env = dict(os.environ)
     env["PYTHONPATH"] = _PY_DIR + os.pathsep + env.get("PYTHONPATH", "")
     return subprocess.run(
-        [sys.executable, "-m", "qminweight", *args],
+        [sys.executable, "-m", "qubitserf", *args],
         input=stdin, capture_output=True, text=True, env=env,
     )
 

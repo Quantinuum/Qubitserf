@@ -1,13 +1,13 @@
-"""Code-file parsers shared by the qminweight command-line interface.
+"""Code-file parsers shared by the qubitserf command-line interface.
 
 Supported inputs:
   * Pauli stabiliser strings (one stabiliser per line; I/./_ = identity, X, Y, Z).
-    A blank line terminates, mirroring Qubitserf. Only CSS codes are accepted, so each
+    A blank line terminates, mirroring the original qubitserf. Only CSS codes are accepted, so each
     stabiliser must be pure X-type or pure Z-type; X rows become Hx, Z rows become Hz.
   * 0/1 text matrices (whitespace-separated, one matrix row per line) for --hx / --hz
     and --classical. MatrixMarket ``.mtx`` files are also read (via scipy if installed,
     otherwise with a small built-in coordinate parser).
-  * Built-in code generators from ``qminweight.codes`` selected by ``NAME[:L]``.
+  * Built-in code generators from ``qubitserf.codes`` selected by ``NAME[:L]``.
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def parse_pauli(text: str) -> Tuple[np.ndarray, np.ndarray]:
     for raw in text.splitlines():
         line = raw.rstrip("\r")
         if line.strip() == "":
-            break  # blank line terminates input, like Qubitserf
+            break  # blank line terminates input, like the original qubitserf
         lines.append(line)
     if not lines:
         raise ValueError("no stabilisers found (expected Pauli strings)")
@@ -79,7 +79,7 @@ def parse_stabilizers(text: str) -> np.ndarray:
     """Parse general Pauli stabiliser strings into a symplectic ``[z | x]`` matrix.
 
     Unlike :func:`parse_pauli` this accepts ``Y`` and rows that mix X and Z (i.e. genuine
-    non-CSS codes). Reads lines until a blank line or EOF (mirroring Qubitserf). Returns an
+    non-CSS codes). Reads lines until a blank line or EOF (mirroring the original qubitserf). Returns an
     ``(m, 2n)`` uint8 matrix: row r is the Pauli with Z-support in columns ``[0, n)`` and
     X-support in columns ``[n, 2n)`` (a ``Y`` sets both). All-identity rows are dropped.
     """

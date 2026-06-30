@@ -5,14 +5,14 @@
 //   xcrun clang++ -std=c++17 -O2 -Iinclude \
 //     src/gf2.cpp src/css.cpp src/bz.cpp src/backend_cpu.cpp src/mitm.cpp \
 //     src/tests/mitm_smoke.cpp -o /tmp/mitm_smoke && /tmp/mitm_smoke
-#include "qminweight/bz.hpp"
-#include "qminweight/mitm.hpp"
-#include "qminweight/css.hpp"
+#include "qubitserf/bz.hpp"
+#include "qubitserf/mitm.hpp"
+#include "qubitserf/css.hpp"
 #include <cstdio>
 #include <string>
 #include <vector>
 
-using namespace qminweight;
+using namespace qubitserf;
 
 static GF2Mat mat(std::vector<std::vector<int>> rows) {
     int r = (int)rows.size(), c = r ? (int)rows[0].size() : 0;

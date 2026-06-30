@@ -1,10 +1,10 @@
 // Cross-check every available backend against the CPU reference on known codes.
-#include "qminweight/bz.hpp"
+#include "qubitserf/bz.hpp"
 #include <cstdio>
 #include <vector>
 #include <string>
 
-using namespace qminweight;
+using namespace qubitserf;
 
 static GF2Mat mat(std::vector<std::vector<int>> rows) {
     int r = (int)rows.size(), c = r ? (int)rows[0].size() : 0;

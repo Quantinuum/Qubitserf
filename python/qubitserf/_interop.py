@@ -9,7 +9,7 @@ anything that yields an ``(Hx, Hz)`` pair of GF(2) matrices via one of, in order
   * ``.Hx`` and ``.Hz`` attributes  (``lib.CSSCode``, ``codeaut.CSSCode``).
 
 This shim is intentionally DUPLICATED -- dependency-free (numpy only) -- across
-qminweight / codeaut / qecdb_client / lib so the standalone packages never import
+qubitserf / codeaut / qecdb_client / lib so the standalone packages never import
 one another.  Keep the four copies in sync.
 """
 from __future__ import annotations

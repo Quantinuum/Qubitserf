@@ -20,8 +20,8 @@ Env:
 from __future__ import annotations
 import os, time, statistics, sys
 import numpy as np
-import qminweight as df
-from qminweight import codes
+import qubitserf as df
+from qubitserf import codes
 
 REPEAT = int(os.environ.get("REPEAT", "3"))
 WHICH = os.environ.get("WHICH", "min")

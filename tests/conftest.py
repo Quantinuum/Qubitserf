@@ -1,4 +1,4 @@
-"""Shared pytest fixtures/helpers for the qminweight test suite.
+"""Shared pytest fixtures/helpers for the qubitserf test suite.
 
 Run from the repo root with:
 
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-import qminweight as df
+import qubitserf as df
 
 
 # Public backends that are actually usable on this machine (e.g. ['cpu', 'gpu']).

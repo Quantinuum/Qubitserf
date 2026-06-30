@@ -13,7 +13,7 @@ Usage (internal):
     python _ref_runner.py css   <Hx.npy> <Hz.npy>
     python _ref_runner.py class <H.npy>          # H is a *parity-check* matrix
 
-For the classical case we treat the parity-check matrix exactly as qminweight
+For the classical case we treat the parity-check matrix exactly as qubitserf
 does (code = ker(H)) and feed it to the reference's single-block path.
 
 The reference package (`codedistance`) has a circular-import quirk and pulls in
@@ -80,7 +80,7 @@ def run_classical(h_path: str) -> dict:
     params = {"LOCheck": False}
     t0 = time.perf_counter()
     # Single-block path; reference treats H as a stabiliser/parity matrix and
-    # enumerates the code ker(H) -> same semantics as qminweight.classical_distance.
+    # enumerates the code ker(H) -> same semantics as qubitserf.classical_distance.
     res = D.codeDistance(H, None, tB=1, method="BZDistMW", params=dict(params))
     dt = time.perf_counter() - t0
     return {"ok": True, "n": int(res["n"]), "k": int(res["k"]),

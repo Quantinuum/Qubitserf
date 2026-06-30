@@ -1,11 +1,11 @@
-#include "qminweight/backend.hpp"
-#include "qminweight/combinatorics.hpp"
+#include "qubitserf/backend.hpp"
+#include "qubitserf/combinatorics.hpp"
 #include <thread>
 #include <vector>
 #include <atomic>
 #include <algorithm>
 
-namespace qminweight {
+namespace qubitserf {
 
 static std::atomic<int> g_cpu_threads{0};
 void set_cpu_threads(int n) { g_cpu_threads.store(n); }
@@ -101,4 +101,4 @@ Backend* select_backend(const std::string& name) {
     return cpu_backend();
 }
 
-} // namespace qminweight
+} // namespace qubitserf

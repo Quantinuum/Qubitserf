@@ -1,6 +1,6 @@
-"""GPU scaling benchmark for qminweight (no reference comparison).
+"""GPU scaling benchmark for qubitserf (no reference comparison).
 
-Shows qminweight solving codes far beyond where the reference BZ implementation is
+Shows qubitserf solving codes far beyond where the reference BZ implementation is
 feasible (it times out above ~n=100). Reports CPU and GPU wall-clock times and
 the speedup, and verifies the GPU result matches the CPU result.
 
@@ -12,8 +12,8 @@ from __future__ import annotations
 import os
 import time
 
-import qminweight as df
-from qminweight import codes
+import qubitserf as df
+from qubitserf import codes
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCALING_MD = os.path.join(HERE, "scaling.md")
@@ -60,8 +60,8 @@ def main():
               f"{(f'{sp:.1f}x' if sp else '-'):>8}")
 
     with open(SCALING_MD, "w") as f:
-        f.write("# qminweight GPU scaling\n\n")
-        f.write("qminweight on codes beyond the reach of the reference BZ implementation "
+        f.write("# qubitserf GPU scaling\n\n")
+        f.write("qubitserf on codes beyond the reach of the reference BZ implementation "
                 "(`codedistance.BZDistMW` times out above ~n=100). GPU result verified "
                 "equal to CPU where both ran.\n\n")
         f.write("| code | n | d | t_cpu | t_gpu | cpu/gpu |\n")

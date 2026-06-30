@@ -8,17 +8,17 @@
 // existing BZ / MITM solvers answer it exactly -- no bespoke search. An operator part
 // that already lies in the group's rowspace has weight 0 (it is equivalent to identity).
 //
-// NB: this is the CORRECT definition. Quantinuum's qubitserf matches MITM syndromes
+// NB: this is the CORRECT definition. The original Quantinuum qubitserf matches MITM syndromes
 // against [Hz ; X-logicals], which is only a valid parity-check of rowspace(Gz) when the
 // Z-generators are self-orthogonal; for non-self-orthogonal codes (surface, toric,
 // bivariate-bicycle) it returns wrong (nonzero) answers for stabilizer operators.
 #pragma once
 #include <cstdint>
 #include <string>
-#include "qminweight/bz.hpp"   // BZOptions
-#include "qminweight/gf2.hpp"
+#include "qubitserf/bz.hpp"   // BZOptions
+#include "qubitserf/gf2.hpp"
 
-namespace qminweight {
+namespace qubitserf {
 
 struct OpWeight {
     int z_weight = -1;   // min weight of the Z-part modulo rowspace(Gz)
@@ -36,4 +36,4 @@ OpWeight css_operator_weight(const GF2Mat& Gx, const GF2Mat& Gz,
                              const uint8_t* z_op, const uint8_t* x_op, int n,
                              const std::string& method, const BZOptions& opt);
 
-} // namespace qminweight
+} // namespace qubitserf

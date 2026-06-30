@@ -18,7 +18,7 @@
 // toolchain is not assumed to be installed.
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
-#include "qminweight/backend.hpp"
+#include "qubitserf/backend.hpp"
 #include <vector>
 #include <map>
 #include <mutex>
@@ -27,7 +27,7 @@
 #include <cstdlib>
 #include <cstdio>
 
-namespace qminweight {
+namespace qubitserf {
 
 namespace {
 
@@ -39,7 +39,7 @@ constexpr int MAX_D     = 32;  // combination weight <= 32 on the GPU path (else
 // Lower than the historical 1<<20: the variant kernel makes the GPU pay off much sooner.
 static u64 gpu_min_work() {
     static u64 v = [] {
-        const char* e = std::getenv("QMINWEIGHT_GPU_MIN_WORK");
+        const char* e = std::getenv("QUBITSERF_GPU_MIN_WORK");
         return e ? (u64)std::strtoull(e, nullptr, 10) : (u64)(1u << 18);
     }();
     return v;
@@ -208,11 +208,11 @@ struct MetalBackend : Backend {
             std::string src = make_kernel_src(stride, posn);
             id<MTLLibrary> lib = [dev newLibraryWithSource:[NSString stringWithUTF8String:src.c_str()]
                                                    options:nil error:&err];
-            if (!lib) { NSLog(@"qminweight metal compile error: %@", err); return nil; }
+            if (!lib) { NSLog(@"qubitserf metal compile error: %@", err); return nil; }
             id<MTLFunction> fn = [lib newFunctionWithName:@"bz_enumerate"];
             id<MTLComputePipelineState> pso =
                 [dev newComputePipelineStateWithFunction:fn error:&err];
-            if (!pso) { NSLog(@"qminweight metal pipeline error: %@", err); return nil; }
+            if (!pso) { NSLog(@"qubitserf metal pipeline error: %@", err); return nil; }
             pipelines[key] = pso;
             return pso;
         }
@@ -331,4 +331,4 @@ Backend* metal_backend() {
     return &inst;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

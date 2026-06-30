@@ -1,8 +1,8 @@
-"""Console entry point for qminweight.
+"""Console entry point for qubitserf.
 
 Usage::
 
-    qminweight [INPUT] [options]
+    qubitserf [INPUT] [options]
 
 INPUT is a file of Pauli stabiliser strings, ``-`` for stdin, or omitted when the code
 is supplied via ``--hx/--hz``, ``--classical`` or ``--builtin``. By default the minimum
@@ -19,7 +19,7 @@ from . import api, io
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="qminweight",
+        prog="qubitserf",
         description="Compute the minimum distance of a quantum (CSS) or classical code.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
@@ -27,16 +27,16 @@ def _build_parser() -> argparse.ArgumentParser:
             "  INPUT                Pauli stabiliser strings from a file, or '-' for stdin\n"
             "  --hx FILE --hz FILE  X and Z parity-check matrices (0/1 text or .mtx)\n"
             "  --classical FILE     a single classical parity-check matrix\n"
-            "  --builtin NAME[:L]   a generator from qminweight.codes "
+            "  --builtin NAME[:L]   a generator from qubitserf.codes "
             "(steane, shor, toric:L,\n"
             "                       surface:L, gross, repetition:L, hamming:L)\n"
             "\nexamples:\n"
-            "  qminweight --builtin steane\n"
-            "  qminweight --builtin gross --method cc\n"
-            "  cat code.txt | qminweight -\n"
-            "  qminweight --hx Hx.txt --hz Hz.txt --zx\n"
-            "  qminweight --hx Gx.txt --hz Gz.txt --subsystem   # dressed distance\n"
-            "  qminweight --builtin steane --operator ZZZZZZZ   # operator weight\n"
+            "  qubitserf --builtin steane\n"
+            "  qubitserf --builtin gross --method cc\n"
+            "  cat code.txt | qubitserf -\n"
+            "  qubitserf --hx Hx.txt --hz Hz.txt --zx\n"
+            "  qubitserf --hx Gx.txt --hz Gz.txt --subsystem   # dressed distance\n"
+            "  qubitserf --builtin steane --operator ZZZZZZZ   # operator weight\n"
         ),
     )
     p.add_argument("input", nargs="?", default=None,
@@ -79,7 +79,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--list-backends", action="store_true",
                    help="list usable backends and exit")
     p.add_argument("--version", action="store_true",
-                   help="print the qminweight version and exit")
+                   help="print the qubitserf version and exit")
     return p
 
 
@@ -138,7 +138,7 @@ def _emit(result, *, which_label, json_out, zx, second=None):
         else:
             for r, lbl in ((z, "dZ"), (x, "dX")):
                 if not r.proven:
-                    print("qminweight: %s in [%d, %d] (not proven)"
+                    print("qubitserf: %s in [%d, %d] (not proven)"
                           % (lbl, r.lower_bound, r.distance), file=sys.stderr)
             print("%d %d" % (z.distance, x.distance))
         return
@@ -154,7 +154,7 @@ def _emit(result, *, which_label, json_out, zx, second=None):
         }))
     else:
         if not result.proven:
-            print("qminweight: %s in [%d, %d] (not proven)"
+            print("qubitserf: %s in [%d, %d] (not proven)"
                   % (which_label, result.lower_bound, result.distance),
                   file=sys.stderr)
         print(result.distance)
@@ -193,7 +193,7 @@ def main() -> int:
     try:
         kind, A, B = _resolve_input(args)
     except (ValueError, FileNotFoundError, OSError) as e:
-        print("qminweight: %s" % e, file=sys.stderr)
+        print("qubitserf: %s" % e, file=sys.stderr)
         return 1
 
     common = dict(method=args.method, backend=args.backend,
@@ -203,16 +203,16 @@ def main() -> int:
     try:
         if kind == "classical":
             if args.subsystem or args.operator is not None:
-                print("qminweight: --subsystem/--operator require a CSS code",
+                print("qubitserf: --subsystem/--operator require a CSS code",
                       file=sys.stderr)
                 return 1
             if args.zx:
-                print("qminweight: --zx is only meaningful for CSS codes",
+                print("qubitserf: --zx is only meaningful for CSS codes",
                       file=sys.stderr)
                 return 1
             if args.method == "cc":
                 # connected-cluster has no classical entry point in the API
-                print("qminweight: --method cc is for CSS codes; use bz or mitm for "
+                print("qubitserf: --method cc is for CSS codes; use bz or mitm for "
                       "classical codes", file=sys.stderr)
                 return 1
             r = api.classical_distance(A, **common)
@@ -224,11 +224,11 @@ def main() -> int:
             S = A
             n = S.shape[1] // 2
             if args.zx:
-                print("qminweight: --zx is only meaningful for CSS codes "
+                print("qubitserf: --zx is only meaningful for CSS codes "
                       "(a non-CSS distance is a single number)", file=sys.stderr)
                 return 1
             if args.which != "min":
-                print("qminweight: --which is only meaningful for CSS codes; reporting "
+                print("qubitserf: --which is only meaningful for CSS codes; reporting "
                       "the full non-CSS distance", file=sys.stderr)
 
             if args.operator is not None:
@@ -273,7 +273,7 @@ def main() -> int:
             _emit(r, which_label=label, json_out=args.json, zx=False)
         return 0
     except (RuntimeError, ValueError) as e:
-        print("qminweight: %s" % e, file=sys.stderr)
+        print("qubitserf: %s" % e, file=sys.stderr)
         return 1
 
 

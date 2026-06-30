@@ -1,6 +1,6 @@
-// Stable C ABI for the qminweight library (consumed from Python via ctypes).
-#ifndef QMINWEIGHT_CAPI_H
-#define QMINWEIGHT_CAPI_H
+// Stable C ABI for the qubitserf library (consumed from Python via ctypes).
+#ifndef QUBITSERF_CAPI_H
+#define QUBITSERF_CAPI_H
 
 #include <stdint.h>
 
@@ -16,24 +16,24 @@ typedef struct {
     int    levels;       // weight levels enumerated
     double seconds;      // wall time
     char   backend[16];  // backend actually used
-} QMinWeightResult;
+} QubitserfResult;
 
 // method: "bz" or "mitm". which: 'Z', 'X', or 'M' for min(Z,X).
 // backend: "auto","cpu","gpu". threads: 0 => hardware concurrency.
 // max_weight: 0 => no cap. Returns 0 on success, nonzero on error.
-int qminweight_css_distance(
+int qubitserf_css_distance(
     const uint8_t* Hx, int hx_rows, int hx_cols,
     const uint8_t* Hz, int hz_rows, int hz_cols,
     const char* method, char which, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out);
+    QubitserfResult* out);
 
 // Minimum distance of a classical linear code with parity-check matrix H.
-int qminweight_classical_distance(
+int qubitserf_classical_distance(
     const uint8_t* H, int rows, int cols,
     const char* method, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out);
+    QubitserfResult* out);
 
 // Result returned by the operator-weight entry point.
 typedef struct {
@@ -42,30 +42,30 @@ typedef struct {
     int    proven;       // 1 (MITM coset leader is exact)
     double seconds;
     char   backend[16];
-} QMinWeightOpResult;
+} QubitserfOpResult;
 
 // Operator weight (min weight modulo the group <Gx (X-type), Gz (Z-type)>).
 // z_op/x_op are length-n 0/1 vectors (Z-support and X-support; a Y sets both bits).
 // Pass stabilizer generators for a stabilizer code, gauge generators for a subsystem code.
 // method: "bz" or "mitm" (operator weight reduces to a DistProblem); "cc" falls back
 // to "bz". Returns 0 on success, nonzero on error.
-int qminweight_operator_weight(
+int qubitserf_operator_weight(
     const uint8_t* Gx, int gx_rows, int gx_cols,
     const uint8_t* Gz, int gz_rows, int gz_cols,
     const uint8_t* z_op, const uint8_t* x_op, int n,
     const char* method, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightOpResult* out);
+    QubitserfOpResult* out);
 
 // Subsystem CSS dressed distance from gauge generators Gx (X-type), Gz (Z-type).
 // Computes the stabilizer center internally. which: 'Z','X','M'. method: "bz"|"cc"|"mitm".
-// Reuses QMinWeightResult. Returns 0 on success.
-int qminweight_subsystem_distance(
+// Reuses QubitserfResult. Returns 0 on success.
+int qubitserf_subsystem_distance(
     const uint8_t* Gx, int gx_rows, int gx_cols,
     const uint8_t* Gz, int gz_rows, int gz_cols,
     const char* method, char which, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out);
+    QubitserfResult* out);
 
 // ---- general (non-CSS) stabilizer codes, symplectic [z|x] representation --------------
 //
@@ -78,21 +78,21 @@ int qminweight_subsystem_distance(
 // symplectic meet-in-the-middle search is used and `which` is ignored (a single number).
 // method "bz" / "cc" fall back to "mitm" for non-CSS input (with a one-line stderr note),
 // since neither has a sound symplectic generalization. Returns 0 on success.
-int qminweight_stabilizer_distance(
+int qubitserf_stabilizer_distance(
     const uint8_t* S, int rows, int cols,
     const char* method, char which, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out);
+    QubitserfResult* out);
 
 // Dressed distance of a general (non-CSS) subsystem code from its gauge generators G
 // (rows x 2n, [z|x] order). The stabilizer center is computed internally; the dressed
 // distance is the min symplectic weight in C(center) \ rowspace(G). CSS fast path and the
-// bz/cc->mitm fallback behave as in qminweight_stabilizer_distance. Returns 0 on success.
-int qminweight_subsystem_stabilizer_distance(
+// bz/cc->mitm fallback behave as in qubitserf_stabilizer_distance. Returns 0 on success.
+int qubitserf_subsystem_stabilizer_distance(
     const uint8_t* G, int rows, int cols,
     const char* method, char which, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out);
+    QubitserfResult* out);
 
 // Operator weight of a general Pauli modulo the group <G> (rows x 2n, [z|x] order):
 // the minimum symplectic weight over the coset op + rowspace(G). `op` is a length-2n
@@ -100,18 +100,18 @@ int qminweight_subsystem_stabilizer_distance(
 // stabilizer code, gauge generators for a subsystem code. The result is returned in
 // `out->distance` (lower_bound/proven set consistently). method "bz"/"cc" -> "mitm" for
 // non-CSS. Returns 0 on success.
-int qminweight_stabilizer_operator_weight(
+int qubitserf_stabilizer_operator_weight(
     const uint8_t* G, int rows, int cols,
     const uint8_t* op, int op_len,
     const char* method, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out);
+    QubitserfResult* out);
 
-int         qminweight_backend_available(const char* name); // 1 if usable
-const char* qminweight_version(void);
+int         qubitserf_backend_available(const char* name); // 1 if usable
+const char* qubitserf_version(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // QMINWEIGHT_CAPI_H
+#endif // QUBITSERF_CAPI_H

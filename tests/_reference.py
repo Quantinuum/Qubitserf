@@ -1,6 +1,7 @@
-"""Pure-Python / numpy correctness ORACLE for qminweight's two imported features.
+"""Pure-Python / numpy correctness ORACLE for the two features carried over from the
+original qubitserf (operator weight and subsystem dressed distance).
 
-This module has **no dependency on the compiled qminweight library** -- it uses
+This module has **no dependency on the compiled qubitserf library** -- it uses
 only numpy. It is the ground-truth ("oracle") against which the package's
 C++/Python implementations are cross-checked in the pytest suite.
 
@@ -173,12 +174,13 @@ def _gf2_matmul(A, B) -> np.ndarray:
 
 
 # --------------------------------------------------------------------------- #
-# Operator weight -- minimum-weight coset leader (the qubitserf-CORRECT def.)
+# Operator weight -- minimum-weight coset leader (the corrected definition, i.e. the
+# fix over the original qubitserf).
 #
 # The min weight of an operator equivalent to `vec` modulo the multipliable
 # group is the minimum Hamming weight over the coset  vec + rowspace(G).
-# This is 0 exactly when vec in rowspace(G) -- the case qubitserf gets wrong for
-# non-self-orthogonal codes (it returns d instead of 0 for a stabilizer).
+# This is 0 exactly when vec in rowspace(G) -- the case the original qubitserf gets wrong
+# for non-self-orthogonal codes (it returns d instead of 0 for a stabilizer).
 # --------------------------------------------------------------------------- #
 def coset_min_weight_rowspace(G, vec) -> int:
     """Min weight over ``vec + rowspace(G)`` by ROWSPACE enumeration (method a).

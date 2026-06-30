@@ -1,6 +1,6 @@
 # Algorithms
 
-`qminweight` implements **three** deterministic, exact distance algorithms. They compute the
+`qubitserf` implements **three** deterministic, exact distance algorithms. They compute the
 same thing — the minimum Hamming weight of a non-trivial logical codeword — and serve as
 cross-checks on one another, but they have different cost profiles, so the right choice
 depends on the code.
@@ -52,7 +52,7 @@ at all. Everything runs on bit-packed GF(2) words (`uint64`) with hardware `popc
 - even-weight rounding of the lower bound for even codes;
 - **hybrid CPU/GPU dispatch**: each weight level goes to the GPU only when its candidate
   count is large enough to amortize launch latency; small levels run on the multicore CPU,
-  so the GPU is never a slowdown (tunable via `QMINWEIGHT_GPU_MIN_WORK`);
+  so the GPU is never a slowdown (tunable via `QUBITSERF_GPU_MIN_WORK`);
 - on the GPU: a **threadgroup tree-reduction** of the per-thread minimum (one atomic per
   threadgroup), per-solve-keyed device buffers (uploaded once), and compact per-thread
   state to keep occupancy high;
@@ -66,7 +66,7 @@ weak (high-rate / bivariate-bicycle), where the enumeration is unavoidably deep.
 ### The `[lower, upper]` bracket
 
 BZ's weakness is codes whose information-set lower bound is loose (high-rate / LDPC). There
-the enumeration to certify the lower bound is unavoidably deep, so qminweight reports a
+the enumeration to certify the lower bound is unavoidably deep, so qubitserf reports a
 rigorous `[lower_bound, distance]` **bracket** rather than blocking forever: it still
 *finds* the true distance instantly via the random-information-set seed, but the
 `proven=False` flag tells you the lower bound was not closed. This is exactly the situation
@@ -90,7 +90,7 @@ order, so the first hit is exact.
 
 Unlike Brouwer–Zimmermann, this **exploits sparsity**, so it certifies LDPC / topological /
 bivariate-bicycle codes where BZ's lower bound is too weak. It is the exact method Webster
-*et al.* recommend (after Pryadko) for sparse CSS codes. qminweight's implementation is
+*et al.* recommend (after Pryadko) for sparse CSS codes. qubitserf's implementation is
 multithreaded **over independent seed qubits**.
 
 !!! warning "Pass the original sparse matrices"
@@ -102,8 +102,8 @@ multithreaded **over independent seed qubits**.
 GPU acceleration of connected cluster is **not** provided, deliberately. CC is an
 irregular, data-dependent depth-first search — each branch has a different depth and
 frontier — which maps poorly to SIMT/SIMD execution. The survey paper marks it
-non-parallelizable, and qminweight's own research confirmed it. Its natural parallelism is
-*across independent seed qubits*, which qminweight exploits on the multicore CPU; that
+non-parallelizable, and qubitserf's own research confirmed it. Its natural parallelism is
+*across independent seed qubits*, which qubitserf exploits on the multicore CPU; that
 already certifies the hardest codes in under a second, so a GPU port would add complexity
 for likely-negative benefit. (BZ stays the GPU-accelerated path precisely because its
 enumeration *is* the embarrassingly parallel part.)
@@ -166,11 +166,11 @@ bespoke solver. If `z_vec ∈ rowspace(Gz)` the coset is the group itself and th
 z_vec])`, which is dense even when `Gz` is sparse, so the connected-cluster sparsity premise
 does not hold.
 
-### Correctness (the qubitserf fix)
+### Correctness (the fix over the original qubitserf)
 
-qminweight imports this feature and its CLI shape from Quantinuum's **qubitserf**, but fixes a
-bug. qubitserf matches MITM syndromes against `M = [Hz; X̄]` (Z-stabilizers stacked with
-X-logicals), which is a valid parity-check of the Z-stabilizer group `rowspace(Hz)` **only
+This package carries over this feature and its CLI shape from the **original qubitserf**, but
+fixes a bug. The original matches MITM syndromes against `M = [Hz; X̄]` (Z-stabilizers stacked
+with X-logicals), which is a valid parity-check of the Z-stabilizer group `rowspace(Hz)` **only
 when `Hz · Hzᵀ = 0`** — the Z-generators are mutually and self-orthogonal. For codes where
 they are not (surface, toric, bivariate-bicycle) it returns wrong answers: feeding a single
 Z-stabilizer of the planar `surface(3)` `[[13,1,3]]` code as the operator returns `3`, when
@@ -178,8 +178,8 @@ the correct answer is `0` (a stabilizer is equivalent to identity).
 
 The correct syndrome matrix is `nullspace(Gz)` (it equals `[Hx; X̄]` for an ordinary
 stabilizer code, but is computed directly and is uniform for stabilizer *and* subsystem
-codes). The coset-leader reduction above uses it implicitly, so qminweight is correct on every
-code and agrees with qubitserf exactly on self-orthogonal codes (Steane, `Hx = Hz`).
+codes). The coset-leader reduction above uses it implicitly, so this package is correct on every
+code and agrees with the original exactly on self-orthogonal codes (Steane, `Hx = Hz`).
 
 ## Subsystem dressed distance
 
@@ -237,12 +237,12 @@ Which engines generalize:
   Hamming distance of this length-`3n` code — computed by the *existing* binary BZ (and its GPU
   enumeration). Every `φ`-image has even weight, so BZ's even-distance rounding applies for
   free. This is the `SAVED_ISOMETRY` reduction of Sabater–Vera et al.
-  ([arXiv:2408.10743](https://arxiv.org/abs/2408.10743)); `qminweight` builds it in
+  ([arXiv:2408.10743](https://arxiv.org/abs/2408.10743)); `qubitserf` builds it in
   `isometry_extend` / `symplectic_bz_distance` (`stab.cpp`).
 - **MITM — yes**. The coordinate-split / syndrome-match structure is unchanged; only the
   enumeration changes — a "coordinate" is a **qubit** and each chosen qubit takes one of the
   three nonzero Paulis `Z`, `X`, `Y` (`C(n,w)·3^w` partial operators of weight `w`). This is
-  exactly Quantinuum qubitserf's "middle algorithm".
+  exactly the original qubitserf's "middle algorithm".
 - **CC — no** (falls back to MITM). Connected-cluster grows single-type clusters over a sparse
   CSS Tanner graph, which a general non-CSS code does not provide. (The connectedness argument
   itself does generalize — a min-weight logical has connected Tanner support for any stabilizer
@@ -284,7 +284,7 @@ for bivariate-bicycle codes, **not** BZ. See the measured numbers in
   cluster, and MITM, and the source of the algorithm recommendations
   (`codeDistance` / `codeDistancePYPI`).
 - L. Hernando, E. S. Quintana-Ortí & M. Grassl, *Improved Brouwer–Zimmermann*,
-  [arXiv:2408.10743](https://arxiv.org/abs/2408.10743). The improved BZ that qminweight's
+  [arXiv:2408.10743](https://arxiv.org/abs/2408.10743). The improved BZ that qubitserf's
   `bz` follows, with the matroid-partitioning lower bound.
 - The connected-cluster method is due to L. P. Pryadko (as surveyed in the Webster *et al.*
   paper).

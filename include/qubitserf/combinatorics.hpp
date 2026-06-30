@@ -6,9 +6,9 @@
 // unrank its start index once and then step with advance().
 #pragma once
 #include <vector>
-#include "qminweight/bits.hpp"
+#include "qubitserf/bits.hpp"
 
-namespace qminweight {
+namespace qubitserf {
 
 constexpr u64 BINOM_INF = ~0ull; // saturating "infinity" for overflowing binomials
 
@@ -69,4 +69,4 @@ inline bool next_comb(int K, int d, int* pos) {
     return true;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

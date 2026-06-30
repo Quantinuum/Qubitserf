@@ -1,7 +1,7 @@
 # Build artifacts
 build/
 build_*/
-python/qminweight/_lib/
+python/qubitserf/_lib/
 *.so
 *.dylib
 *.dll

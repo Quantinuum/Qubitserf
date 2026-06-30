@@ -18,11 +18,11 @@
 #pragma once
 #include <cstdint>
 #include <utility>
-#include "qminweight/bz.hpp"
-#include "qminweight/css.hpp"
-#include "qminweight/gf2.hpp"
+#include "qubitserf/bz.hpp"
+#include "qubitserf/css.hpp"
+#include "qubitserf/gf2.hpp"
 
-namespace qminweight {
+namespace qubitserf {
 
 // Exchange the [z | x] halves of every row: swap(z|x) = (x|z). `m` must have an even
 // number of columns (== 2*qubits).
@@ -72,4 +72,4 @@ DistProblem isometry_extend(const DistProblem& sp);
 // for plain stabilizer distance, subsystem dressed distance, and operator-weight cosets.
 BZResult symplectic_bz_distance(const DistProblem& sp, const BZOptions& opt);
 
-} // namespace qminweight
+} // namespace qubitserf

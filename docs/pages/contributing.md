@@ -3,13 +3,13 @@
 ## Repository layout
 
 ```
-include/qminweight/   public C++ headers
+include/qubitserf/   public C++ headers
                     (bits, gf2, combinatorics, css, backend, bz, cc, mitm, capi)
 src/                core (gf2, css, bz, cc, mitm), backend_cpu, capi
 src/metal/          Metal GPU backend (runtime-compiled MSL kernel)
 src/cuda/           CUDA GPU backend (built only when a CUDA toolkit is present)
 src/tests/          standalone C++ test executables (smoke, backend_compare, mitm_smoke)
-python/qminweight/    ctypes wrapper (_native), high-level API (api), code generators (codes)
+python/qubitserf/    ctypes wrapper (_native), high-level API (api), code generators (codes)
 tests/              pytest validation suite
 bench/              benchmarks vs the reference implementations
 docs/               this documentation
@@ -17,7 +17,7 @@ docs/               this documentation
 
 The native core is pure C++17 with no third-party dependencies; the GPU backends are
 optional and selected at configure time. Python talks to the compiled
-`libqminweight.{dylib,so,dll}` through `ctypes` — there is no compiled extension module, so
+`libqubitserf.{dylib,so,dll}` through `ctypes` — there is no compiled extension module, so
 the Python layer stays trivially portable.
 
 ## Building
@@ -30,12 +30,12 @@ root:
 ```
 
 This pins Apple's `clang++` on macOS (so the Metal frameworks resolve), builds a Release
-library into `python/qminweight/_lib/`, and — unless you pass `-DQMINWEIGHT_TESTS=OFF` — also
+library into `python/qubitserf/_lib/`, and — unless you pass `-DQUBITSERF_TESTS=OFF` — also
 builds the C++ test executables. Extra arguments are forwarded to CMake:
 
 ```bash
-./build.sh -DQMINWEIGHT_METAL=OFF      # CPU-only on macOS
-./build.sh -DQMINWEIGHT_CUDA=OFF       # skip the CUDA probe
+./build.sh -DQUBITSERF_METAL=OFF      # CPU-only on macOS
+./build.sh -DQUBITSERF_CUDA=OFF       # skip the CUDA probe
 ```
 
 ## Running the tests
@@ -70,24 +70,24 @@ When built (the default), the standalone test executables land in the build dire
 run without Python:
 
 ```bash
-./build/qminweight_smoke      # BZ pipeline on codes with known distance (classical + CSS)
-./build/qminweight_compare    # backend agreement (CPU vs GPU)
+./build/qubitserf_smoke      # BZ pipeline on codes with known distance (classical + CSS)
+./build/qubitserf_compare    # backend agreement (CPU vs GPU)
 ```
 
-`qminweight_smoke` checks BZ distances against hard-coded known values (repetition, Hamming,
+`qubitserf_smoke` checks BZ distances against hard-coded known values (repetition, Hamming,
 Steane, ...) and exits non-zero on any mismatch, so it's a fast sanity gate after a core
 change.
 
 ## Code conventions
 
 - **GF(2) representation.** Codewords are bit-packed into `uint64` words and operated on
-  with hardware `popcount`; matrices are the `GF2Mat` type in `include/qminweight/gf2.hpp`.
+  with hardware `popcount`; matrices are the `GF2Mat` type in `include/qubitserf/gf2.hpp`.
   Keep this packing — it is what makes the enumeration fast.
 - **Sparse vs dense.** `cc` must receive the *original sparse* `Hx`/`Hz`; do not row-reduce
   before handing matrices to connected cluster. `bz`/`mitm` build their own information-set
   / parity-check representations internally.
 - **The C boundary.** All language interop goes through `src/capi.cpp` / the C API; the
-  Python `_native.py` mirrors the `QMinWeightResult` struct and the function signatures
+  Python `_native.py` mirrors the `QubitserfResult` struct and the function signatures
   exactly. If you change the C ABI, update both sides in the same change.
 - **Determinism.** The CPU backend is the deterministic ground truth and every other
   backend/algorithm is validated against it. Any GPU change must keep the

@@ -1,8 +1,8 @@
-#include "qminweight/gf2.hpp"
+#include "qubitserf/gf2.hpp"
 #include <algorithm>
 #include <utility>
 
-namespace qminweight {
+namespace qubitserf {
 
 void GF2Mat::swap_rows(int a, int b) {
     if (a == b) return;
@@ -114,4 +114,4 @@ GF2Mat transpose(const GF2Mat& m) {
     return t;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

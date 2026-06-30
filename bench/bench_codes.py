@@ -1,8 +1,8 @@
 """Extra code-family generators for the comprehensive benchmark.
 
-These augment ``qminweight.codes`` with a few named CSS and classical codes that
+These augment ``qubitserf.codes`` with a few named CSS and classical codes that
 the comprehensive benchmark sweeps over.  Nothing here mutates the library; we
-only *call* ``qminweight.codes`` generators and re-package their outputs with a
+only *call* ``qubitserf.codes`` generators and re-package their outputs with a
 benchmark-friendly signature:
 
     CSS       generator -> (name, Hx, Hz, known_d_or_None)
@@ -16,7 +16,7 @@ from math import comb
 
 import numpy as np
 
-from qminweight import codes
+from qubitserf import codes
 
 
 # --------------------------------------------------------------------------- #
@@ -47,7 +47,7 @@ def bb_gross_144_12_12():
 def bb_288():
     """A larger [[288,12,12]] bivariate-bicycle code (l=m=12, same A/B family).
 
-    Distance is left unknown (qminweight is ground truth) so a capped BZ bracket
+    Distance is left unknown (qubitserf is ground truth) so a capped BZ bracket
     never trips a spurious mismatch.
     """
     Hx, Hz = bb(12, 12)
@@ -63,7 +63,7 @@ def hgp_hamming(r: int):
     Hx, Hz = codes.hypergraph_product(h, h)
     # HGP(H,H) distance equals the classical distance of the base code (=3 for
     # Hamming) when the base has full row rank; we leave it unknown (None) so the
-    # benchmark treats qminweight's answer as ground truth and just cross-checks.
+    # benchmark treats qubitserf's answer as ground truth and just cross-checks.
     return (f"hgp(ham{r}) ", Hx, Hz, 3)
 
 
@@ -109,7 +109,7 @@ def classical_hamming(r: int):
 
 
 def classical_random_ldpc(m: int, n: int, col_weight: int = 3, seed: int = 0):
-    """Random column-regular LDPC code (distance unknown -> qminweight decides)."""
+    """Random column-regular LDPC code (distance unknown -> qubitserf decides)."""
     H = codes.random_ldpc_parity(m, n, col_weight, seed=seed)
     return (f"rand_ldpc({m},{n},{col_weight})", H, None)
 
@@ -120,7 +120,7 @@ def classical_random_ldpc(m: int, n: int, col_weight: int = 3, seed: int = 0):
 def css_families():
     """Ordered dict {family_name: [(name, Hx, Hz, known_d)]}.
 
-    Sizes are kept so qminweight finishes fast; the comprehensive driver applies
+    Sizes are kept so qubitserf finishes fast; the comprehensive driver applies
     per-method time budgets and caps BZ on the hard (sparse, weak-BZ-bound)
     codes so nothing hangs.
     """

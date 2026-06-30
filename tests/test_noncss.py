@@ -1,6 +1,6 @@
 """Cross-check the native non-CSS (general stabilizer / subsystem) features.
 
-Covers the symplectic generalization of qminweight:
+Covers the symplectic generalization of the distance solver:
   * ``stabilizer_distance``            -- min symplectic weight in C(S) \\ rowspace(S)
   * ``subsystem_stabilizer_distance``  -- dressed distance of a non-CSS gauge group
   * ``pauli_operator_weight``          -- min symplectic weight over op + rowspace(G)
@@ -8,7 +8,11 @@ Covers the symplectic generalization of qminweight:
 Ground truth: the pure-numpy oracles in ``_reference`` (``stabilizer_distance_bruteforce``,
 ``dressed_stabilizer_distance_bruteforce``, ``symplectic_coset_min_weight_bruteforce``),
 each independent of the compiled library. The fixed codes are additionally cross-checked
-against Quantinuum's qubitserf ``interface`` binary when it is available.
+against the *original* qubitserf ``interface`` binary -- the legacy Quantinuum C++ tool this
+package supersedes -- as an external sanity check, *when that binary is available*. This is a
+legacy cross-check only: the original binary is never built or fetched here, so the test skips
+cleanly (and is unaffected by this package's own release) whenever it is not already present
+(see ``_qubitserf_bin`` below).
 
 Run from the repo root:
     PYTHONPATH=python /opt/miniconda3/envs/sage_env/bin/python -m pytest tests/ -q
@@ -22,7 +26,7 @@ import subprocess
 import numpy as np
 import pytest
 
-import qminweight as df
+import qubitserf as df
 
 import _reference as ref
 
@@ -47,7 +51,7 @@ def rand_isotropic(n, m, rng):
 
 
 def symplectic_to_paulis(S):
-    """Convert an (m, 2n) [z|x] matrix to Pauli strings (for qubitserf input)."""
+    """Convert an (m, 2n) [z|x] matrix to Pauli strings (for the original qubitserf binary)."""
     n = S.shape[1] // 2
     out = []
     for r in S:
@@ -60,6 +64,13 @@ def symplectic_to_paulis(S):
 
 
 def _qubitserf_bin():
+    """Locate a pre-built *original* qubitserf ``interface`` binary, or return None.
+
+    This only *probes* for an already-present legacy binary (``$QUBITSERF_BIN``, a
+    ``qubitserf_interface`` on PATH, or a local probe build). It never clones or builds the
+    original tool, so it cannot accidentally pick up this package's own superseding code; when
+    nothing is found the dependent tests skip.
+    """
     return (os.environ.get("QUBITSERF_BIN")
             or shutil.which("qubitserf_interface")
             or ("/tmp/qubitserf_probe/build/interface"
@@ -69,7 +80,7 @@ def _qubitserf_bin():
 def qubitserf_distance(strings):
     binp = _qubitserf_bin()
     if not binp:
-        pytest.skip("qubitserf interface binary not available")
+        pytest.skip("original qubitserf interface binary not available")
     out = subprocess.run([binp], input="\n".join(strings) + "\n\n",
                          capture_output=True, text=True).stdout.strip().splitlines()
     return int(out[-1])
@@ -81,7 +92,7 @@ NON_CSS_8 = ["ZIYXZIII", "XIZYXIII", "IZZZZIII", "IXXXXIII",
 
 
 # --------------------------------------------------------------------------- #
-# Fixed codes: native == oracle == qubitserf
+# Fixed codes: native == oracle == original qubitserf (legacy cross-check)
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("strings,expected", [(FIVE_QUBIT, 3), (NON_CSS_8, 3)])
 def test_fixed_noncss_distance(strings, expected):
@@ -106,7 +117,7 @@ def test_five_qubit_helper():
 
 
 # --------------------------------------------------------------------------- #
-# Random non-CSS stabilizer codes: native == oracle (and == qubitserf)
+# Random non-CSS stabilizer codes: native == oracle (and == original qubitserf)
 # --------------------------------------------------------------------------- #
 def test_random_noncss_stabilizer_distance():
     rng = np.random.default_rng(0x5AB)
@@ -153,7 +164,7 @@ def test_noncss_bz_isometry_matches_mitm_and_oracle():
 
 def test_random_noncss_vs_qubitserf():
     if not _qubitserf_bin():
-        pytest.skip("qubitserf interface binary not available")
+        pytest.skip("original qubitserf interface binary not available")
     rng = np.random.default_rng(0xC0DE)
     checked = 0
     for _ in range(20):
@@ -272,7 +283,7 @@ def test_cli_routes_noncss(tmp_path):
     import sys
     src = "\n".join(FIVE_QUBIT) + "\n\n"
     proc = subprocess.run(
-        [sys.executable, "-m", "qminweight", "-", "--json"],
+        [sys.executable, "-m", "qubitserf", "-", "--json"],
         input=src, capture_output=True, text=True,
         env={**os.environ, "PYTHONPATH": os.path.join(os.getcwd(), "python")},
     )

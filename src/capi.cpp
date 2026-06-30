@@ -1,19 +1,19 @@
-#include "qminweight/capi.h"
-#include "qminweight/bz.hpp"
-#include "qminweight/mitm.hpp"
-#include "qminweight/cc.hpp"
-#include "qminweight/css.hpp"
-#include "qminweight/op_weight.hpp"
-#include "qminweight/stab.hpp"
+#include "qubitserf/capi.h"
+#include "qubitserf/bz.hpp"
+#include "qubitserf/mitm.hpp"
+#include "qubitserf/cc.hpp"
+#include "qubitserf/css.hpp"
+#include "qubitserf/op_weight.hpp"
+#include "qubitserf/stab.hpp"
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <utility>
 
-using namespace qminweight;
+using namespace qubitserf;
 
 namespace {
-void fill(QMinWeightResult* out, const BZResult& r) {
+void fill(QubitserfResult* out, const BZResult& r) {
     out->distance = r.distance;
     out->lower_bound = r.lower_bound;
     out->proven = r.proven ? 1 : 0;
@@ -26,12 +26,12 @@ void fill(QMinWeightResult* out, const BZResult& r) {
 
 extern "C" {
 
-int qminweight_css_distance(
+int qubitserf_css_distance(
     const uint8_t* Hx, int hx_rows, int hx_cols,
     const uint8_t* Hz, int hz_rows, int hz_cols,
     const char* method, char which, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out) {
+    QubitserfResult* out) {
     if (!out || !Hx || !Hz) return 1;
     GF2Mat mHx = from_dense(Hx, hx_rows, hx_cols);
     GF2Mat mHz = from_dense(Hz, hz_rows, hz_cols);
@@ -73,11 +73,11 @@ int qminweight_css_distance(
     return 0;
 }
 
-int qminweight_classical_distance(
+int qubitserf_classical_distance(
     const uint8_t* H, int rows, int cols,
     const char* method, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out) {
+    QubitserfResult* out) {
     if (!out || !H) return 1;
     GF2Mat mH = from_dense(H, rows, cols);
     set_cpu_threads(threads);
@@ -91,13 +91,13 @@ int qminweight_classical_distance(
     return 0;
 }
 
-int qminweight_operator_weight(
+int qubitserf_operator_weight(
     const uint8_t* Gx, int gx_rows, int gx_cols,
     const uint8_t* Gz, int gz_rows, int gz_cols,
     const uint8_t* z_op, const uint8_t* x_op, int n,
     const char* method, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightOpResult* out) {
+    QubitserfOpResult* out) {
     if (!out || !Gx || !Gz || !z_op || !x_op) return 1;
     GF2Mat mGx = from_dense(Gx, gx_rows, gx_cols);
     GF2Mat mGz = from_dense(Gz, gz_rows, gz_cols);
@@ -118,12 +118,12 @@ int qminweight_operator_weight(
     return 0;
 }
 
-int qminweight_subsystem_distance(
+int qubitserf_subsystem_distance(
     const uint8_t* Gx, int gx_rows, int gx_cols,
     const uint8_t* Gz, int gz_rows, int gz_cols,
     const char* method, char which, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out) {
+    QubitserfResult* out) {
     if (!out || !Gx || !Gz) return 1;
     GF2Mat mGx = from_dense(Gx, gx_rows, gx_cols);
     GF2Mat mGz = from_dense(Gz, gz_rows, gz_cols);
@@ -177,7 +177,7 @@ namespace {
 // CSS Hx/Hz solvers; non-CSS input uses the symplectic MITM (bz/cc fall back to mitm).
 int symplectic_distance_driver(const GF2Mat& gauge, bool subsystem,
                                const char* method, char which, const BZOptions& opt,
-                               QMinWeightResult* out) {
+                               QubitserfResult* out) {
     if (gauge.cols % 2 != 0) return 2;   // not a [z|x] matrix
     std::string m = method ? method : "bz";
 
@@ -229,7 +229,7 @@ int symplectic_distance_driver(const GF2Mat& gauge, bool subsystem,
         r = mitm_distance(prob, opt);
     } else if (m == "cc") {
         std::fprintf(stderr,
-            "qminweight: connected-cluster has no non-CSS generalization; using the "
+            "qubitserf: connected-cluster has no non-CSS generalization; using the "
             "symplectic meet-in-the-middle search instead.\n");
         r = mitm_distance(prob, opt);
     } else {  // bz (default): isometry to a length-3n binary code, then classical BZ.
@@ -241,11 +241,11 @@ int symplectic_distance_driver(const GF2Mat& gauge, bool subsystem,
 
 } // namespace
 
-int qminweight_stabilizer_distance(
+int qubitserf_stabilizer_distance(
     const uint8_t* S, int rows, int cols,
     const char* method, char which, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out) {
+    QubitserfResult* out) {
     if (!out || !S) return 1;
     GF2Mat mS = from_dense(S, rows, cols);
     set_cpu_threads(threads);
@@ -255,11 +255,11 @@ int qminweight_stabilizer_distance(
     return symplectic_distance_driver(mS, /*subsystem=*/false, method, which, opt, out);
 }
 
-int qminweight_subsystem_stabilizer_distance(
+int qubitserf_subsystem_stabilizer_distance(
     const uint8_t* G, int rows, int cols,
     const char* method, char which, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out) {
+    QubitserfResult* out) {
     if (!out || !G) return 1;
     GF2Mat mG = from_dense(G, rows, cols);
     set_cpu_threads(threads);
@@ -269,12 +269,12 @@ int qminweight_subsystem_stabilizer_distance(
     return symplectic_distance_driver(mG, /*subsystem=*/true, method, which, opt, out);
 }
 
-int qminweight_stabilizer_operator_weight(
+int qubitserf_stabilizer_operator_weight(
     const uint8_t* G, int rows, int cols,
     const uint8_t* op, int op_len,
     const char* method, const char* backend,
     int threads, int max_weight, int verbose,
-    QMinWeightResult* out) {
+    QubitserfResult* out) {
     if (!out || !G || !op) return 1;
     if (cols % 2 != 0 || op_len != cols) return 2;
     GF2Mat mG = from_dense(G, rows, cols);
@@ -295,7 +295,7 @@ int qminweight_stabilizer_operator_weight(
             r = mitm_distance(prob, opt);
         } else if (m == "cc") {
             std::fprintf(stderr,
-                "qminweight: connected-cluster has no operator-weight form; using the "
+                "qubitserf: connected-cluster has no operator-weight form; using the "
                 "symplectic meet-in-the-middle search instead.\n");
             r = mitm_distance(prob, opt);
         } else {  // bz (default): same weight-doubling isometry as the distance path.
@@ -306,7 +306,7 @@ int qminweight_stabilizer_operator_weight(
     return 0;
 }
 
-int qminweight_backend_available(const char* name) {
+int qubitserf_backend_available(const char* name) {
     std::string requested = name ? name : "auto";
     Backend* b = select_backend(requested);
     // select_backend falls back to cpu; report whether the requested public backend
@@ -317,6 +317,6 @@ int qminweight_backend_available(const char* name) {
     return b && b->name() == requested && b->available() ? 1 : 0;
 }
 
-const char* qminweight_version(void) { return "0.1.0"; }
+const char* qubitserf_version(void) { return "0.1.0"; }
 
 } // extern "C"

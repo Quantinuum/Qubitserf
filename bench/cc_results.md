@@ -1,8 +1,8 @@
-# qminweight connected-cluster benchmark
+# qubitserf connected-cluster benchmark
 
-`cc` = qminweight connected cluster; `bz` = qminweight Brouwer-Zimmermann (capped on hard codes, shown as the rigorous `[lower,upper]` bracket); reference = `codeDistance` package.
+`cc` = qubitserf connected cluster; `bz` = qubitserf Brouwer-Zimmermann (capped on hard codes, shown as the rigorous `[lower,upper]` bracket); reference = `codeDistance` package.
 
-| code | n | d | qminweight cc | qminweight bz | ref BZDistMW | ref connectedClusterMW |
+| code | n | d | qubitserf cc | qubitserf bz | ref BZDistMW | ref connectedClusterMW |
 |---|---|---|---|---|---|---|
 | steane [[7,1,3]] | 7 | 3 | d=3 (539us) | d=3 (228us) | d=3 (1.0ms) | d=3 (1.8ms) |
 | shor [[9,1,3]] | 9 | 3 | d=3 (521us) | d=3 (241us) | d=3 (1.1ms) | d=0 (482us) |
@@ -15,6 +15,6 @@
 
 ## Takeaway
 
-On sparse codes whose BZ lower bound is weak (bivariate-bicycle, large toric), qminweight's connected cluster certifies the exact distance in well under a second, while Brouwer-Zimmermann (qminweight's and the reference's) cannot prove it in tractable time. On small codes all methods agree.
+On sparse codes whose BZ lower bound is weak (bivariate-bicycle, large toric), qubitserf's connected cluster certifies the exact distance in well under a second, while Brouwer-Zimmermann (qubitserf's and the reference's) cannot prove it in tractable time. On small codes all methods agree.
 
-qminweight's CC is the *same algorithm* as the reference's `connectedClusterMW`, but a compiled, seed-parallel implementation: it is tens to hundreds of times faster, and it certifies the gross code `[[144,12,12]]` (~0.4 s) where the reference's own connected cluster times out (>30 s).
+qubitserf's CC is the *same algorithm* as the reference's `connectedClusterMW`, but a compiled, seed-parallel implementation: it is tens to hundreds of times faster, and it certifies the gross code `[[144,12,12]]` (~0.4 s) where the reference's own connected cluster times out (>30 s).

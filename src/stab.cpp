@@ -1,10 +1,10 @@
-#include "qminweight/stab.hpp"
-#include "qminweight/bz.hpp"
-#include "qminweight/css.hpp"
+#include "qubitserf/stab.hpp"
+#include "qubitserf/bz.hpp"
+#include "qubitserf/css.hpp"
 #include <algorithm>
 #include <cstdio>
 
-namespace qminweight {
+namespace qubitserf {
 
 namespace {
 
@@ -181,7 +181,7 @@ BZResult symplectic_bz_distance(const DistProblem& sp, const BZOptions& opt) {
     DistProblem e = isometry_extend(sp);
     if (opt.verbose)
         std::fprintf(stderr,
-            "qminweight: non-CSS BZ via the (a|b)->(a|b|a^b) isometry; the bounds below "
+            "qubitserf: non-CSS BZ via the (a|b)->(a|b|a^b) isometry; the bounds below "
             "are Hamming weights of the length-%d code (= 2 x symplectic weight), so the "
             "symplectic distance is half the reported value.\n", e.n);
     BZResult r = bz_distance(e, opt);
@@ -191,4 +191,4 @@ BZResult symplectic_bz_distance(const DistProblem& sp, const BZOptions& opt) {
     return r;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

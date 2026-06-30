@@ -1,4 +1,4 @@
-"""ctypes binding to the compiled libqminweight shared library."""
+"""ctypes binding to the compiled libqubitserf shared library."""
 from __future__ import annotations
 import ctypes
 import os
@@ -8,7 +8,7 @@ import glob
 import numpy as np
 
 
-class QMinWeightResult(ctypes.Structure):
+class QubitserfResult(ctypes.Structure):
     _fields_ = [
         ("distance", ctypes.c_int),
         ("lower_bound", ctypes.c_int),
@@ -19,7 +19,7 @@ class QMinWeightResult(ctypes.Structure):
     ]
 
 
-class QMinWeightOpResult(ctypes.Structure):
+class QubitserfOpResult(ctypes.Structure):
     _fields_ = [
         ("z_weight", ctypes.c_int),
         ("x_weight", ctypes.c_int),
@@ -30,24 +30,24 @@ class QMinWeightOpResult(ctypes.Structure):
 
 
 def _find_library() -> str:
-    override = os.environ.get("QMINWEIGHT_LIB")
+    override = os.environ.get("QUBITSERF_LIB")
     if override:
         if not os.path.exists(override):
-            raise FileNotFoundError("QMINWEIGHT_LIB=%s does not exist" % override)
+            raise FileNotFoundError("QUBITSERF_LIB=%s does not exist" % override)
         return override
     here = os.path.dirname(os.path.abspath(__file__))
     libdir = os.path.join(here, "_lib")
-    names = ["libqminweight.dylib", "libqminweight.so", "qminweight.dll"]
+    names = ["libqubitserf.dylib", "libqubitserf.so", "qubitserf.dll"]
     for n in names:
         p = os.path.join(libdir, n)
         if os.path.exists(p):
             return p
     # also accept anything matching in _lib
-    for p in glob.glob(os.path.join(libdir, "*qminweight*")):
+    for p in glob.glob(os.path.join(libdir, "*qubitserf*")):
         if p.endswith((".dylib", ".so", ".dll")):
             return p
     raise FileNotFoundError(
-        "libqminweight not found in {}. Build it first: run ./build.sh".format(libdir)
+        "libqubitserf not found in {}. Build it first: run ./build.sh".format(libdir)
     )
 
 
@@ -61,26 +61,26 @@ def lib():
     _lib = ctypes.CDLL(_find_library())
 
     u8p = ctypes.POINTER(ctypes.c_uint8)
-    rp = ctypes.POINTER(QMinWeightResult)
-    orp = ctypes.POINTER(QMinWeightOpResult)
+    rp = ctypes.POINTER(QubitserfResult)
+    orp = ctypes.POINTER(QubitserfOpResult)
 
-    _lib.qminweight_css_distance.restype = ctypes.c_int
-    _lib.qminweight_css_distance.argtypes = [
+    _lib.qubitserf_css_distance.restype = ctypes.c_int
+    _lib.qubitserf_css_distance.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
         u8p, ctypes.c_int, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
         ctypes.c_int, ctypes.c_int, ctypes.c_int,
         rp,
     ]
-    _lib.qminweight_classical_distance.restype = ctypes.c_int
-    _lib.qminweight_classical_distance.argtypes = [
+    _lib.qubitserf_classical_distance.restype = ctypes.c_int
+    _lib.qubitserf_classical_distance.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char_p,
         ctypes.c_int, ctypes.c_int, ctypes.c_int,
         rp,
     ]
-    _lib.qminweight_operator_weight.restype = ctypes.c_int
-    _lib.qminweight_operator_weight.argtypes = [
+    _lib.qubitserf_operator_weight.restype = ctypes.c_int
+    _lib.qubitserf_operator_weight.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
         u8p, ctypes.c_int, ctypes.c_int,
         u8p, u8p, ctypes.c_int,
@@ -88,40 +88,40 @@ def lib():
         ctypes.c_int, ctypes.c_int, ctypes.c_int,
         orp,
     ]
-    _lib.qminweight_subsystem_distance.restype = ctypes.c_int
-    _lib.qminweight_subsystem_distance.argtypes = [
+    _lib.qubitserf_subsystem_distance.restype = ctypes.c_int
+    _lib.qubitserf_subsystem_distance.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
         u8p, ctypes.c_int, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
         ctypes.c_int, ctypes.c_int, ctypes.c_int,
         rp,
     ]
-    _lib.qminweight_stabilizer_distance.restype = ctypes.c_int
-    _lib.qminweight_stabilizer_distance.argtypes = [
+    _lib.qubitserf_stabilizer_distance.restype = ctypes.c_int
+    _lib.qubitserf_stabilizer_distance.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
         ctypes.c_int, ctypes.c_int, ctypes.c_int,
         rp,
     ]
-    _lib.qminweight_subsystem_stabilizer_distance.restype = ctypes.c_int
-    _lib.qminweight_subsystem_stabilizer_distance.argtypes = [
+    _lib.qubitserf_subsystem_stabilizer_distance.restype = ctypes.c_int
+    _lib.qubitserf_subsystem_stabilizer_distance.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
         ctypes.c_int, ctypes.c_int, ctypes.c_int,
         rp,
     ]
-    _lib.qminweight_stabilizer_operator_weight.restype = ctypes.c_int
-    _lib.qminweight_stabilizer_operator_weight.argtypes = [
+    _lib.qubitserf_stabilizer_operator_weight.restype = ctypes.c_int
+    _lib.qubitserf_stabilizer_operator_weight.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
         u8p, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char_p,
         ctypes.c_int, ctypes.c_int, ctypes.c_int,
         rp,
     ]
-    _lib.qminweight_backend_available.restype = ctypes.c_int
-    _lib.qminweight_backend_available.argtypes = [ctypes.c_char_p]
-    _lib.qminweight_version.restype = ctypes.c_char_p
-    _lib.qminweight_version.argtypes = []
+    _lib.qubitserf_backend_available.restype = ctypes.c_int
+    _lib.qubitserf_backend_available.argtypes = [ctypes.c_char_p]
+    _lib.qubitserf_version.restype = ctypes.c_char_p
+    _lib.qubitserf_version.argtypes = []
     return _lib
 
 
@@ -139,8 +139,8 @@ def _ptr(a: np.ndarray):
 def css_distance_raw(Hx, Hz, method, which, backend, threads, max_weight, verbose):
     L = lib()
     ax, az = _as_u8(Hx), _as_u8(Hz)
-    out = QMinWeightResult()
-    rc = L.qminweight_css_distance(
+    out = QubitserfResult()
+    rc = L.qubitserf_css_distance(
         _ptr(ax), ax.shape[0], ax.shape[1],
         _ptr(az), az.shape[0], az.shape[1],
         method.encode(), which.encode()[:1] or b"M", backend.encode(),
@@ -148,22 +148,22 @@ def css_distance_raw(Hx, Hz, method, which, backend, threads, max_weight, verbos
         ctypes.byref(out),
     )
     if rc != 0:
-        raise RuntimeError("qminweight_css_distance failed (rc=%d)" % rc)
+        raise RuntimeError("qubitserf_css_distance failed (rc=%d)" % rc)
     return out
 
 
 def classical_distance_raw(H, method, backend, threads, max_weight, verbose):
     L = lib()
     a = _as_u8(H)
-    out = QMinWeightResult()
-    rc = L.qminweight_classical_distance(
+    out = QubitserfResult()
+    rc = L.qubitserf_classical_distance(
         _ptr(a), a.shape[0], a.shape[1],
         method.encode(), backend.encode(),
         int(threads), int(max_weight), 1 if verbose else 0,
         ctypes.byref(out),
     )
     if rc != 0:
-        raise RuntimeError("qminweight_classical_distance failed (rc=%d)" % rc)
+        raise RuntimeError("qubitserf_classical_distance failed (rc=%d)" % rc)
     return out
 
 
@@ -182,8 +182,8 @@ def operator_weight_raw(Gx, Gz, z_op, x_op, method, backend, threads, max_weight
         raise ValueError("Gx and Gz must have the same number of columns (n)")
     if z.shape[0] != n or x.shape[0] != n:
         raise ValueError("z_op and x_op must be length n = %d" % n)
-    out = QMinWeightOpResult()
-    rc = L.qminweight_operator_weight(
+    out = QubitserfOpResult()
+    rc = L.qubitserf_operator_weight(
         _ptr(ax), ax.shape[0], ax.shape[1],
         _ptr(az), az.shape[0], az.shape[1],
         _ptr(z), _ptr(x), n,
@@ -192,15 +192,15 @@ def operator_weight_raw(Gx, Gz, z_op, x_op, method, backend, threads, max_weight
         ctypes.byref(out),
     )
     if rc != 0:
-        raise RuntimeError("qminweight_operator_weight failed (rc=%d)" % rc)
+        raise RuntimeError("qubitserf_operator_weight failed (rc=%d)" % rc)
     return out
 
 
 def subsystem_distance_raw(Gx, Gz, method, which, backend, threads, max_weight, verbose):
     L = lib()
     ax, az = _as_u8(Gx), _as_u8(Gz)
-    out = QMinWeightResult()
-    rc = L.qminweight_subsystem_distance(
+    out = QubitserfResult()
+    rc = L.qubitserf_subsystem_distance(
         _ptr(ax), ax.shape[0], ax.shape[1],
         _ptr(az), az.shape[0], az.shape[1],
         method.encode(), which.encode()[:1] or b"M", backend.encode(),
@@ -208,7 +208,7 @@ def subsystem_distance_raw(Gx, Gz, method, which, backend, threads, max_weight, 
         ctypes.byref(out),
     )
     if rc != 0:
-        raise RuntimeError("qminweight_subsystem_distance failed (rc=%d)" % rc)
+        raise RuntimeError("qubitserf_subsystem_distance failed (rc=%d)" % rc)
     return out
 
 
@@ -217,15 +217,15 @@ def stabilizer_distance_raw(S, method, which, backend, threads, max_weight, verb
     a = _as_u8(S)
     if a.shape[1] % 2 != 0:
         raise ValueError("symplectic stabilizer matrix must have 2n (even) columns")
-    out = QMinWeightResult()
-    rc = L.qminweight_stabilizer_distance(
+    out = QubitserfResult()
+    rc = L.qubitserf_stabilizer_distance(
         _ptr(a), a.shape[0], a.shape[1],
         method.encode(), which.encode()[:1] or b"M", backend.encode(),
         int(threads), int(max_weight), 1 if verbose else 0,
         ctypes.byref(out),
     )
     if rc != 0:
-        raise RuntimeError("qminweight_stabilizer_distance failed (rc=%d)" % rc)
+        raise RuntimeError("qubitserf_stabilizer_distance failed (rc=%d)" % rc)
     return out
 
 
@@ -234,15 +234,15 @@ def subsystem_stabilizer_distance_raw(G, method, which, backend, threads, max_we
     a = _as_u8(G)
     if a.shape[1] % 2 != 0:
         raise ValueError("symplectic gauge matrix must have 2n (even) columns")
-    out = QMinWeightResult()
-    rc = L.qminweight_subsystem_stabilizer_distance(
+    out = QubitserfResult()
+    rc = L.qubitserf_subsystem_stabilizer_distance(
         _ptr(a), a.shape[0], a.shape[1],
         method.encode(), which.encode()[:1] or b"M", backend.encode(),
         int(threads), int(max_weight), 1 if verbose else 0,
         ctypes.byref(out),
     )
     if rc != 0:
-        raise RuntimeError("qminweight_subsystem_stabilizer_distance failed (rc=%d)" % rc)
+        raise RuntimeError("qubitserf_subsystem_stabilizer_distance failed (rc=%d)" % rc)
     return out
 
 
@@ -254,8 +254,8 @@ def stabilizer_operator_weight_raw(G, op, method, backend, threads, max_weight, 
         raise ValueError("symplectic gauge matrix must have 2n (even) columns")
     if o.shape[0] != a.shape[1]:
         raise ValueError("operator must be a length-2n symplectic [z|x] vector")
-    out = QMinWeightResult()
-    rc = L.qminweight_stabilizer_operator_weight(
+    out = QubitserfResult()
+    rc = L.qubitserf_stabilizer_operator_weight(
         _ptr(a), a.shape[0], a.shape[1],
         _ptr(o), o.shape[0],
         method.encode(), backend.encode(),
@@ -263,13 +263,13 @@ def stabilizer_operator_weight_raw(G, op, method, backend, threads, max_weight, 
         ctypes.byref(out),
     )
     if rc != 0:
-        raise RuntimeError("qminweight_stabilizer_operator_weight failed (rc=%d)" % rc)
+        raise RuntimeError("qubitserf_stabilizer_operator_weight failed (rc=%d)" % rc)
     return out
 
 
 def backend_available(name: str) -> bool:
-    return bool(lib().qminweight_backend_available(name.encode()))
+    return bool(lib().qubitserf_backend_available(name.encode()))
 
 
 def version() -> str:
-    return lib().qminweight_version().decode()
+    return lib().qubitserf_version().decode()

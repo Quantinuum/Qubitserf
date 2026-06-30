@@ -5,9 +5,9 @@
 #pragma once
 #include <vector>
 #include <string>
-#include "qminweight/bits.hpp"
+#include "qubitserf/bits.hpp"
 
-namespace qminweight {
+namespace qubitserf {
 
 constexpr int WEIGHT_NONE = 1 << 30;
 
@@ -72,4 +72,4 @@ inline int eval_combo(const EnumPlan& p, int g, const int* pos, u64* scratch) {
     return vec_weight(scratch, p.stride);
 }
 
-} // namespace qminweight
+} // namespace qubitserf

@@ -1,4 +1,4 @@
-"""Benchmark qminweight (CPU / GPU) against the reference BZ finder.
+"""Benchmark qubitserf (CPU / GPU) against the reference BZ finder.
 
 Reference: ``codedistance.BZDistMW`` (the Brouwer-Zimmermann implementation that
 ships with the codeDistancePYPI package the paper uses).
@@ -31,8 +31,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-import qminweight as df
-from qminweight import codes
+import qubitserf as df
+from qubitserf import codes
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -111,7 +111,7 @@ def _save_npy(arr: np.ndarray, tmpdir: str, name: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# qminweight invocation
+# qubitserf invocation
 # --------------------------------------------------------------------------- #
 def time_css(Hx, Hz, backend: str, tries: int = 1):
     """Return (distance, best_distance, seconds, stable, values)."""
@@ -176,7 +176,7 @@ def fmt(x):
 # --------------------------------------------------------------------------- #
 def build_css_codes():
     """List of (name, Hx, Hz) where the GPU can matter."""
-    # Sizes chosen so qminweight-CPU stays bounded (a few seconds) while still
+    # Sizes chosen so qubitserf-CPU stays bounded (a few seconds) while still
     # reaching the regime where the GPU clearly wins.  surface L=8 (n=145) is
     # omitted: its CPU BZ search runs for minutes, which would dominate the
     # whole benchmark; toric L=8 (n=128) and surface L=7 (n=113) already show
@@ -202,15 +202,15 @@ def build_classical_codes():
     # Each entry: (name, H, run_reference?).  The reference's single-block path
     # enumerates ker(H) and gets stuck on the degenerate even-code structure of
     # the repetition parity checks, so we skip the reference there (and say so)
-    # while still timing qminweight, which solves them instantly.
+    # while still timing qubitserf, which solves them instantly.
     out = []
     # Hamming codes: reference handles these fine (non-degenerate).
     for r in (3, 4):
         out.append((f"hamming r={r}", codes.hamming_parity(r), True))
-    # Repetition codes: qminweight exact; reference would hang -> skip reference.
+    # Repetition codes: qubitserf exact; reference would hang -> skip reference.
     for n in (6, 8):
         out.append((f"repetition n={n}", codes.repetition_parity(n), False))
-    # A random LDPC parity check (qminweight only; reference distance of ker(H)).
+    # A random LDPC parity check (qubitserf only; reference distance of ker(H)).
     out.append(("rand_ldpc(12,18,3)", codes.random_ldpc_parity(12, 18, 3, seed=1), True))
     return out
 
@@ -224,7 +224,7 @@ def sweep_css(ref_ok: bool, tmpdir: str):
         row = Row(name=name, n=n)
         print(f"\n[css] {name:18s} n={n}")
 
-        # ---- qminweight CPU (ground truth) ----
+        # ---- qubitserf CPU (ground truth) ----
         try:
             dcpu, _, tcpu, _, _ = time_css(Hx, Hz, "cpu")
             row.d_cpu, row.t_cpu = dcpu, tcpu
@@ -234,7 +234,7 @@ def sweep_css(ref_ok: bool, tmpdir: str):
             print(f"    cpu   FAILED: {exc}")
             dcpu = None
 
-        # ---- qminweight GPU ----
+        # ---- qubitserf GPU ----
         if HAS_GPU:
             try:
                 dgpu, dbest, tgpu, stable, vals = time_css(Hx, Hz, "gpu",
@@ -393,7 +393,7 @@ def summarize(rows):
 
 
 def main():
-    print("qminweight benchmark")
+    print("qubitserf benchmark")
     print("backends:", BACKENDS)
     ref_ok = reference_available()
     print("reference (codedistance.BZDistMW) available:", ref_ok,
@@ -434,20 +434,20 @@ def main():
                     f"max {max(cpu_su):.2f}x, median {sorted(cpu_su)[len(cpu_su)//2]:.2f}x "
                     "(values < 1 mean the CPU was faster — expected for small codes where "
                     "GPU dispatch overhead dominates).")
-    # Where the reference timed out but qminweight finished:
+    # Where the reference timed out but qubitserf finished:
     ref_timeouts = [r.name for r in css_rows + class_rows
                     if "timeout" in (r.ref_note or "").lower()]
     if ref_timeouts:
         summ.append(f"- Reference **timed out** (>{REF_TIMEOUT:.0f}s) on: "
-                    f"{', '.join(ref_timeouts)} — qminweight solved all of these.")
+                    f"{', '.join(ref_timeouts)} — qubitserf solved all of these.")
     # Distance agreement:
     if mismatches:
-        summ.append("- **DISTANCE MISMATCHES DETECTED** (qminweight vs reference / "
+        summ.append("- **DISTANCE MISMATCHES DETECTED** (qubitserf vs reference / "
                     "gpu-best vs cpu):")
         for nm, a, b in mismatches:
             summ.append(f"    - {nm}: {a} vs {b}")
     else:
-        summ.append("- **All distances matched**: qminweight-cpu equals the reference "
+        summ.append("- **All distances matched**: qubitserf-cpu equals the reference "
                     "BZDistMW on every code where the reference finished, and GPU's "
                     "best-of-retries value equals the CPU value everywhere.")
     summ.append("")
@@ -470,10 +470,10 @@ def main():
 
     # ---- write results.md ----
     with open(RESULTS_MD, "w") as f:
-        f.write("# qminweight benchmark results\n\n")
+        f.write("# qubitserf benchmark results\n\n")
         f.write("Generated by `bench/benchmark.py`. Reference = "
                 "`codedistance.BZDistMW` (Brouwer-Zimmermann).\n\n")
-        f.write("Columns: `d(cpu)` is qminweight on the CPU (ground truth, deterministic); "
+        f.write("Columns: `d(cpu)` is qubitserf on the CPU (ground truth, deterministic); "
                 "`d(gpu)` is the GPU distance, verified identical across "
                 f"{GPU_TRIES} runs (`*` = GPU runs disagreed, should never appear); "
                 "`d(ref)` is the reference distance. `t_*` are wall-clock times. "

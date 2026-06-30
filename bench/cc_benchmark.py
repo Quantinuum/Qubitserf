@@ -1,6 +1,6 @@
 """Connected-cluster benchmark.
 
-Compares qminweight's connected-cluster (`method="cc"`) against qminweight's
+Compares qubitserf's connected-cluster (`method="cc"`) against qubitserf's
 Brouwer-Zimmermann and the reference `codeDistance` package (both its BZ
 `BZDistMW` and its own connected cluster `connectedClusterMW`), on small codes
 (where everything agrees) and on sparse codes whose BZ lower bound is too weak to
@@ -15,8 +15,8 @@ import os
 import tempfile
 import time
 
-import qminweight as df
-from qminweight import codes
+import qubitserf as df
+from qubitserf import codes
 from benchmark import run_reference, reference_available, _save_npy, fmt_t
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -72,14 +72,14 @@ def main():
     ref_ok = reference_available()
     print(f"reference available: {ref_ok}; REF_TIMEOUT={REF_TIMEOUT:.0f}s; BZ_CAP={BZ_CAP}")
     rows = []
-    print(f"{'code':>24} {'d':>3} {'cc':>14} {'bz(qminweight)':>20} "
+    print(f"{'code':>24} {'d':>3} {'cc':>14} {'bz(qubitserf)':>20} "
           f"{'ref BZDistMW':>18} {'ref connCluster':>18}")
     for name, (Hx, Hz), want, hard in CASES:
         rcc, tcc = time_df(Hx, Hz, "cc")
         cc_cell = f"d={rcc.distance} ({fmt_t(tcc)})"
         assert rcc.distance == want, f"{name}: cc d={rcc.distance} != {want}"
 
-        # qminweight BZ: full where provable, capped (bracket) on hard codes
+        # qubitserf BZ: full where provable, capped (bracket) on hard codes
         if hard:
             rbz, tbz = time_df(Hx, Hz, "bz", max_weight=BZ_CAP)
             bz_cell = f"[{rbz.lower_bound},{rbz.distance}] capped ({fmt_t(tbz)})"
@@ -94,21 +94,21 @@ def main():
         print(f"{name:>24} {want:>3} {cc_cell:>14} {bz_cell:>20} {ref_bz:>18} {ref_cc:>18}")
 
     with open(CC_MD, "w") as f:
-        f.write("# qminweight connected-cluster benchmark\n\n")
-        f.write("`cc` = qminweight connected cluster; `bz` = qminweight Brouwer-Zimmermann "
+        f.write("# qubitserf connected-cluster benchmark\n\n")
+        f.write("`cc` = qubitserf connected cluster; `bz` = qubitserf Brouwer-Zimmermann "
                 "(capped on hard codes, shown as the rigorous `[lower,upper]` bracket); "
                 "reference = `codeDistance` package.\n\n")
-        f.write("| code | n | d | qminweight cc | qminweight bz | ref BZDistMW | ref connectedClusterMW |\n")
+        f.write("| code | n | d | qubitserf cc | qubitserf bz | ref BZDistMW | ref connectedClusterMW |\n")
         f.write("|---|---|---|---|---|---|---|\n")
         for name, n, d, cc, bz, rbz, rcc in rows:
             f.write(f"| {name} | {n} | {d} | {cc} | {bz} | {rbz} | {rcc} |\n")
         f.write("\n## Takeaway\n\n")
         f.write("On sparse codes whose BZ lower bound is weak (bivariate-bicycle, large "
-                "toric), qminweight's connected cluster certifies the exact distance in "
-                "well under a second, while Brouwer-Zimmermann (qminweight's and the "
+                "toric), qubitserf's connected cluster certifies the exact distance in "
+                "well under a second, while Brouwer-Zimmermann (qubitserf's and the "
                 "reference's) cannot prove it in tractable time. On small codes all "
                 "methods agree.\n\n"
-                "qminweight's CC is the *same algorithm* as the reference's "
+                "qubitserf's CC is the *same algorithm* as the reference's "
                 "`connectedClusterMW`, but a compiled, seed-parallel implementation: it is "
                 "tens to hundreds of times faster, and it certifies the gross code "
                 "`[[144,12,12]]` (~0.4 s) where the reference's own connected cluster "

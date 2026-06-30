@@ -1,10 +1,10 @@
-#include "qminweight/op_weight.hpp"
-#include "qminweight/css.hpp"
-#include "qminweight/bz.hpp"
-#include "qminweight/mitm.hpp"
+#include "qubitserf/op_weight.hpp"
+#include "qubitserf/css.hpp"
+#include "qubitserf/bz.hpp"
+#include "qubitserf/mitm.hpp"
 #include <cstdio>
 
-namespace qminweight {
+namespace qubitserf {
 
 OpWeight css_operator_weight(const GF2Mat& Gx, const GF2Mat& Gz,
                              const uint8_t* z_op, const uint8_t* x_op, int n,
@@ -13,7 +13,7 @@ OpWeight css_operator_weight(const GF2Mat& Gx, const GF2Mat& Gz,
     std::string m = method;
     if (m == "cc") {
         std::fprintf(stderr,
-            "qminweight: operator weight has no connected-cluster form (the coset "
+            "qubitserf: operator weight has no connected-cluster form (the coset "
             "parity-check is dense); using BZ instead.\n");
         m = "bz";
     }
@@ -35,4 +35,4 @@ OpWeight css_operator_weight(const GF2Mat& Gx, const GF2Mat& Gz,
     return w;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

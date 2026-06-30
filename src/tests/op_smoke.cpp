@@ -1,17 +1,17 @@
 // Smoke test for operator weight (coset leader) and subsystem (dressed) distance.
 //
-// Guards in particular the qubitserf operator-weight bug: a single stabilizer row fed as
-// the operator MUST have weight 0, including on a NON-self-orthogonal code (surface(3)),
-// where qubitserf's [Hz; X-logical] syndrome match returns a wrong nonzero answer.
-#include "qminweight/op_weight.hpp"
-#include "qminweight/css.hpp"
-#include "qminweight/bz.hpp"
-#include "qminweight/mitm.hpp"
+// Guards in particular the original qubitserf's operator-weight bug: a single stabilizer row
+// fed as the operator MUST have weight 0, including on a NON-self-orthogonal code (surface(3)),
+// where the original qubitserf's [Hz; X-logical] syndrome match returns a wrong nonzero answer.
+#include "qubitserf/op_weight.hpp"
+#include "qubitserf/css.hpp"
+#include "qubitserf/bz.hpp"
+#include "qubitserf/mitm.hpp"
 #include <cstdio>
 #include <string>
 #include <vector>
 
-using namespace qminweight;
+using namespace qubitserf;
 
 static GF2Mat mat(std::vector<std::vector<int>> rows) {
     int r = (int)rows.size(), c = r ? (int)rows[0].size() : 0;

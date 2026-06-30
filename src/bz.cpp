@@ -1,6 +1,6 @@
-#include "qminweight/bz.hpp"
-#include "qminweight/combinatorics.hpp"
-#include "qminweight/progress.hpp"
+#include "qubitserf/bz.hpp"
+#include "qubitserf/combinatorics.hpp"
+#include "qubitserf/progress.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -9,7 +9,7 @@
 #include <random>
 #include <thread>
 
-namespace qminweight {
+namespace qubitserf {
 
 // Random-information-set upper bound (the QDistRnd heuristic), used only to SEED the
 // exact BZ bound: a tighter starting upper bound lets the proof terminate many weight
@@ -124,7 +124,7 @@ BZResult bz_distance(const DistProblem& prob, const BZOptions& opt) {
     int outer = 0;                                 // lower bound
     const int maxw = opt.max_weight > 0 ? std::min(K, opt.max_weight) : K;
 
-    static const bool profile = std::getenv("QMINWEIGHT_PROFILE") != nullptr;
+    static const bool profile = std::getenv("QUBITSERF_PROFILE") != nullptr;
 
     int level = 0;
     for (int d = 1; d <= maxw; ++d) {
@@ -182,4 +182,4 @@ BZResult bz_css_distance(const GF2Mat& Hx, const GF2Mat& Hz, const BZOptions& op
     return r;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

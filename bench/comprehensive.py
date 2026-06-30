@@ -1,11 +1,11 @@
-"""Comprehensive qminweight benchmark across several CSS / classical families.
+"""Comprehensive qubitserf benchmark across several CSS / classical families.
 
 Compares, per code:
 
-  * qminweight ``cc``           (connected cluster, always certifies, sub-second)
-  * qminweight ``bz`` (cpu)     (Brouwer-Zimmermann; capped on hard codes)
-  * qminweight ``bz`` (gpu)   (same, on the GPU backend if present)
-  * qminweight ``mitm``         (meet-in-the-middle; small codes only -- slow)
+  * qubitserf ``cc``           (connected cluster, always certifies, sub-second)
+  * qubitserf ``bz`` (cpu)     (Brouwer-Zimmermann; capped on hard codes)
+  * qubitserf ``bz`` (gpu)   (same, on the GPU backend if present)
+  * qubitserf ``mitm``         (meet-in-the-middle; small codes only -- slow)
   * reference ``BZDistMW``         (codeDistance package, subprocess + timeout)
   * reference ``connectedClusterMW`` (codeDistance package, subprocess + timeout)
 
@@ -37,7 +37,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
-import qminweight as df
+import qubitserf as df
 
 # Re-use the proven reference plumbing from the existing benchmark module.
 from benchmark import run_reference, reference_available, _save_npy, fmt_t
@@ -49,7 +49,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_MD = os.path.join(HERE, "comprehensive_results.md")
 
 # Per-method, per-code wall-clock budgets (seconds).
-DF_BUDGET = float(os.environ.get("DF_BUDGET", "300"))     # in-process qminweight cap
+DF_BUDGET = float(os.environ.get("DF_BUDGET", "300"))     # in-process qubitserf cap
 MITM_MAX_N = int(os.environ.get("MITM_MAX_N", "130"))     # mitm only for n <= this
 # BZ is only *attempted* up to this n.  The in-process budget runs the native
 # solver on a daemon thread that cannot be cancelled, so a BZ call that exceeds
@@ -81,7 +81,7 @@ HAS_GPU = "gpu" in BACKENDS
 
 
 # --------------------------------------------------------------------------- #
-# In-process qminweight call with a soft wall-clock budget.
+# In-process qubitserf call with a soft wall-clock budget.
 # --------------------------------------------------------------------------- #
 # The native solver runs to completion regardless (no cooperative cancellation),
 # but we run it on a worker thread and *give up waiting* after `budget` seconds.
@@ -192,16 +192,16 @@ def _ref_to_meas(res: dict) -> Meas:
 # --------------------------------------------------------------------------- #
 METHOD_ORDER = ["cc", "bz_cpu", "bz_gpu", "mitm", "ref_bz", "ref_cc"]
 METHOD_LABEL = {
-    "cc": "qminweight cc",
-    "bz_cpu": "qminweight bz (cpu)",
-    "bz_gpu": "qminweight bz (gpu)",
-    "mitm": "qminweight mitm",
+    "cc": "qubitserf cc",
+    "bz_cpu": "qubitserf bz (cpu)",
+    "bz_gpu": "qubitserf bz (gpu)",
+    "mitm": "qubitserf mitm",
     "ref_bz": "ref BZDistMW",
     "ref_cc": "ref connClusterMW",
 }
 # Methods that, when ok and proven, give a certified exact distance to cross-check.
 CERTIFYING = ["cc", "bz_cpu", "bz_gpu", "mitm", "ref_bz", "ref_cc"]
-QMINWEIGHT_METHODS = ["cc", "bz_cpu", "bz_gpu", "mitm"]
+QUBITSERF_METHODS = ["cc", "bz_cpu", "bz_gpu", "mitm"]
 REF_METHODS = ["ref_bz", "ref_cc"]
 
 
@@ -213,7 +213,7 @@ class Row:
     meas: dict = field(default_factory=dict)   # method -> Meas
     consensus_d: object = None
     mismatch: bool = False        # any certifying disagreement at all
-    qminweight_mismatch: bool = False  # qminweight methods / known disagree (a real bug)
+    qubitserf_mismatch: bool = False  # qubitserf methods / known disagree (a real bug)
     ref_only_mismatch: bool = False  # only a reference method disagrees (ref defect)
 
     def get(self, m) -> Meas:
@@ -251,9 +251,9 @@ def t_cell(m: Meas) -> str:
 def reconcile(row: Row):
     """Collect every certified exact distance and classify any disagreement.
 
-    We separate a *qminweight* disagreement (qminweight methods or the known textbook
+    We separate a *qubitserf* disagreement (qubitserf methods or the known textbook
     distance disagree among themselves -- a real bug we must not pass silently)
-    from a *reference-only* disagreement (all qminweight methods + known agree, but
+    from a *reference-only* disagreement (all qubitserf methods + known agree, but
     one of the reference package's methods reports a different value -- a defect
     in the reference, flagged but non-fatal).
     """
@@ -274,16 +274,16 @@ def reconcile(row: Row):
 
     row.mismatch = True
     row.consensus_d = certified
-    # qminweight side (cc/bz/mitm + known textbook value)
-    df_vals = {d for nm, d in certified if nm in QMINWEIGHT_METHODS or nm == "known"}
+    # qubitserf side (cc/bz/mitm + known textbook value)
+    df_vals = {d for nm, d in certified if nm in QUBITSERF_METHODS or nm == "known"}
     ref_vals = {d for nm, d in certified if nm in REF_METHODS}
     if len(df_vals) > 1:
-        row.qminweight_mismatch = True
+        row.qubitserf_mismatch = True
     elif df_vals and ref_vals and not ref_vals.issubset(df_vals):
-        # qminweight self-consistent, but a reference method disagrees with it.
+        # qubitserf self-consistent, but a reference method disagrees with it.
         row.ref_only_mismatch = True
     else:
-        row.qminweight_mismatch = True
+        row.qubitserf_mismatch = True
     return certified
 
 
@@ -300,7 +300,7 @@ def sweep_css_family(fam_name, entries, ref_ok, tmpdir, mismatches, log):
         row = Row(name=name, n=n, known_d=known_d)
         log(f"\n[{fam_name}] {name}  n={n}{'  (hard)' if hard else ''}")
 
-        # ---- qminweight cc (always; certifies fast) ----
+        # ---- qubitserf cc (always; certifies fast) ----
         if not stop["cc"]:
             m = df_css(Hx, Hz, "cc")
             row.meas["cc"] = m
@@ -308,7 +308,7 @@ def sweep_css_family(fam_name, entries, ref_ok, tmpdir, mismatches, log):
             if m.timed_out:
                 stop["cc"] = True
 
-        # ---- qminweight bz cpu (capped on hard codes; only attempted n<=BZ_MAX_N) ----
+        # ---- qubitserf bz cpu (capped on hard codes; only attempted n<=BZ_MAX_N) ----
         if n > BZ_MAX_N:
             row.meas["bz_cpu"] = Meas(error=f"skip n>{BZ_MAX_N}")
         elif not stop["bz_cpu"]:
@@ -321,7 +321,7 @@ def sweep_css_family(fam_name, entries, ref_ok, tmpdir, mismatches, log):
             if m.timed_out and not m.capped:
                 stop["bz_cpu"] = True
 
-        # ---- qminweight bz gpu (only attempted n<=BZ_MAX_N) ----
+        # ---- qubitserf bz gpu (only attempted n<=BZ_MAX_N) ----
         if n > BZ_MAX_N:
             row.meas["bz_gpu"] = Meas(error=f"skip n>{BZ_MAX_N}")
         elif HAS_GPU and not stop["bz_gpu"]:
@@ -332,7 +332,7 @@ def sweep_css_family(fam_name, entries, ref_ok, tmpdir, mismatches, log):
             if m.timed_out and not m.capped:
                 stop["bz_gpu"] = True
 
-        # ---- qminweight mitm (small codes only) ----
+        # ---- qubitserf mitm (small codes only) ----
         if not stop["mitm"] and n <= MITM_MAX_N:
             m = df_css(Hx, Hz, "mitm")
             row.meas["mitm"] = m
@@ -360,7 +360,7 @@ def sweep_css_family(fam_name, entries, ref_ok, tmpdir, mismatches, log):
 
         certified = reconcile(row)
         if row.mismatch:
-            kind = "qminweight" if row.qminweight_mismatch else "reference-only"
+            kind = "qubitserf" if row.qubitserf_mismatch else "reference-only"
             mismatches.append((name, certified, kind))
             log(f"    !! MISMATCH ({kind}): {certified}")
         rows.append(row)
@@ -403,7 +403,7 @@ def sweep_classical(entries, ref_ok, tmpdir, mismatches, log):
 
         certified = reconcile(row)
         if row.mismatch:
-            kind = "qminweight" if row.qminweight_mismatch else "reference-only"
+            kind = "qubitserf" if row.qubitserf_mismatch else "reference-only"
             mismatches.append((name, certified, kind))
             log(f"    !! MISMATCH ({kind}): {certified}")
         rows.append(row)
@@ -430,7 +430,7 @@ def render_family(title, rows, methods) -> str:
     hdr_cells = ["code", "n", "known d"]
     for mth in methods:
         hdr_cells.append(METHOD_LABEL[mth])
-    # Speedup columns: reference methods relative to qminweight's fastest certifier.
+    # Speedup columns: reference methods relative to qubitserf's fastest certifier.
     hdr_cells += ["ref_bz / cc", "ref_cc / cc", "bz_cpu / bz_gpu"]
     sep = "|" + "|".join("---" for _ in hdr_cells) + "|"
     lines = [f"### {title}", "", "| " + " | ".join(hdr_cells) + " |", sep]
@@ -453,12 +453,12 @@ def render_family(title, rows, methods) -> str:
 def render_summary(all_rows, mismatches) -> str:
     out = ["## Summary", ""]
     out.append(f"- Backends available: `{BACKENDS}`.")
-    out.append(f"- Per-code qminweight budget: {DF_BUDGET:.0f}s; bz only for "
+    out.append(f"- Per-code qubitserf budget: {DF_BUDGET:.0f}s; bz only for "
                f"n <= {BZ_MAX_N}; mitm only for n <= {MITM_MAX_N}; reference "
                f"subprocess timeout {REF_TIMEOUT:.0f}s; BZ max_weight cap on hard "
                f"codes: {BZ_CAP}.")
 
-    # Speedups: reference (whichever method) vs qminweight cc, gathered over rows
+    # Speedups: reference (whichever method) vs qubitserf cc, gathered over rows
     # where both finished.
     ref_bz_su, ref_cc_su, gpu_su = [], [], []
     for r in all_rows:
@@ -482,9 +482,9 @@ def render_summary(all_rows, mismatches) -> str:
                    f"max {max(xs):.1f}x, min {min(xs):.1f}x "
                    f"(over {len(xs)} codes).")
 
-    stat("ref BZDistMW / qminweight cc speedup", ref_bz_su)
-    stat("ref connectedClusterMW / qminweight cc speedup", ref_cc_su)
-    stat("qminweight bz cpu / gpu speedup", gpu_su)
+    stat("ref BZDistMW / qubitserf cc speedup", ref_bz_su)
+    stat("ref connectedClusterMW / qubitserf cc speedup", ref_cc_su)
+    stat("qubitserf bz cpu / gpu speedup", gpu_su)
 
     # Where each method "wins" (fastest finished method per code).
     wins: dict[str, int] = {}
@@ -519,36 +519,36 @@ def render_summary(all_rows, mismatches) -> str:
         if not others:
             cc_only.append(r.name)
     if cc_only:
-        out.append(f"- **Only qminweight cc certified the exact distance** on: "
+        out.append(f"- **Only qubitserf cc certified the exact distance** on: "
                    f"{', '.join(cc_only)} (every other method either timed out, "
                    "was capped without proving, or was skipped).")
 
-    # Where the reference timed out but qminweight finished.
+    # Where the reference timed out but qubitserf finished.
     ref_to = [r.name for r in all_rows
               if r.get("ref_bz").timed_out or r.get("ref_cc").timed_out]
     if ref_to:
         out.append(f"- Reference timed out (> {REF_TIMEOUT:.0f}s) on: "
-                   f"{', '.join(sorted(set(ref_to)))} — qminweight cc solved all of these.")
+                   f"{', '.join(sorted(set(ref_to)))} — qubitserf cc solved all of these.")
 
-    # Distance agreement.  Split into qminweight self-disagreements (real bugs)
-    # and reference-only defects (qminweight + textbook agree; a reference method
+    # Distance agreement.  Split into qubitserf self-disagreements (real bugs)
+    # and reference-only defects (qubitserf + textbook agree; a reference method
     # is wrong).
-    df_bugs = [(nm, c) for nm, c, kind in mismatches if kind == "qminweight"]
+    df_bugs = [(nm, c) for nm, c, kind in mismatches if kind == "qubitserf"]
     ref_bugs = [(nm, c) for nm, c, kind in mismatches if kind == "reference-only"]
 
     if df_bugs:
-        out.append("- **QMINWEIGHT DISTANCE MISMATCHES DETECTED** (qminweight methods "
+        out.append("- **QUBITSERF DISTANCE MISMATCHES DETECTED** (qubitserf methods "
                    "or the known distance disagree among themselves):")
         for nm, certified in df_bugs:
             out.append(f"    - {nm}: {certified}")
     else:
-        out.append("- **All qminweight distances agree**: qminweight cc / bz (cpu+gpu) "
+        out.append("- **All qubitserf distances agree**: qubitserf cc / bz (cpu+gpu) "
                    "/ mitm reported the same exact distance on every code, matching "
                    "the known textbook distances where those are defined, and matching "
                    "the reference where the reference is correct.")
     if ref_bugs:
-        out.append("- **Reference-package defects flagged** (qminweight + textbook "
-                   "agree; a reference method disagrees -- qminweight is correct):")
+        out.append("- **Reference-package defects flagged** (qubitserf + textbook "
+                   "agree; a reference method disagrees -- qubitserf is correct):")
         for nm, certified in ref_bugs:
             out.append(f"    - {nm}: {certified}  "
                        "(reference connectedClusterMW mis-reports the Z-component)")
@@ -590,7 +590,7 @@ def maybe_plot(css_family_rows):
         ax.set_yscale("log")
         ax.set_xlabel("n (physical qubits)")
         ax.set_ylabel("time (s, log)")
-        ax.set_title(f"qminweight comprehensive: {fam}")
+        ax.set_title(f"qubitserf comprehensive: {fam}")
         ax.legend(fontsize=8)
         ax.grid(True, which="both", alpha=0.3)
         path = os.path.join(HERE, f"comprehensive_{fam}.png")
@@ -608,7 +608,7 @@ def main():
     def log(s):
         print(s, flush=True)
 
-    log("qminweight comprehensive benchmark")
+    log("qubitserf comprehensive benchmark")
     log(f"backends: {BACKENDS}")
     ref_ok = reference_available()
     log(f"reference (codeDistance) available: {ref_ok}")
@@ -643,15 +643,15 @@ def main():
     summary = render_summary(all_rows, mismatches)
 
     with open(OUT_MD, "w") as f:
-        f.write("# qminweight comprehensive benchmark results\n\n")
+        f.write("# qubitserf comprehensive benchmark results\n\n")
         f.write("Generated by `bench/comprehensive.py`. Each cell shows the "
                 "reported distance and wall-clock time. A `[lower,upper]` cell is "
                 "a BZ run capped at a max_weight (rigorous bracket, distance not "
                 "certified there). `timeout` means the per-method budget was "
                 "exceeded.\n\n")
-        f.write("Methods: **qminweight cc** (connected cluster), **qminweight bz** on "
+        f.write("Methods: **qubitserf cc** (connected cluster), **qubitserf bz** on "
                 "cpu and gpu (Brouwer-Zimmermann, capped on hard sparse codes), "
-                "**qminweight mitm** (meet-in-the-middle, small n only), and the "
+                "**qubitserf mitm** (meet-in-the-middle, small n only), and the "
                 "reference `codeDistance` package's **BZDistMW** and "
                 "**connectedClusterMW** (subprocess, hard timeout).\n\n")
         for s in sections:
@@ -667,13 +667,13 @@ def main():
 
     log("\n" + summary)
 
-    df_bugs = [m for m in mismatches if m[2] == "qminweight"]
+    df_bugs = [m for m in mismatches if m[2] == "qubitserf"]
     ref_bugs = [m for m in mismatches if m[2] == "reference-only"]
     if ref_bugs:
         log(f"\nNOTE: {len(ref_bugs)} reference-package defect(s) flagged "
-            "(qminweight correct): " + ", ".join(m[0] for m in ref_bugs))
+            "(qubitserf correct): " + ", ".join(m[0] for m in ref_bugs))
     if df_bugs:
-        log("\nERROR: qminweight distance mismatches detected (see summary).")
+        log("\nERROR: qubitserf distance mismatches detected (see summary).")
         return 1
     return 0
 

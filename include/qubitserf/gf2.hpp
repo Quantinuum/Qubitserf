@@ -1,9 +1,9 @@
 // Dense bit-packed GF(2) matrix and the linear algebra the distance algorithms need.
 #pragma once
 #include <vector>
-#include "qminweight/bits.hpp"
+#include "qubitserf/bits.hpp"
 
-namespace qminweight {
+namespace qubitserf {
 
 // Row-major bit-packed matrix over GF(2). Each row occupies `stride` u64 words.
 struct GF2Mat {
@@ -38,8 +38,8 @@ GF2Mat from_dense(const u8* data, int rows, int cols);
 int rref(GF2Mat& m, std::vector<int>* pivot_cols = nullptr);
 
 // Reduce the submatrix on the given `cols` (in order) to RREF using full-width row
-// ops. Returns the list of pivot columns (a subset of `cols`). Mirrors Qubitserf's
-// restricted_row_echelon: used to peel off disjoint information sets.
+// ops. Returns the list of pivot columns (a subset of `cols`). Mirrors the original
+// qubitserf's restricted_row_echelon: used to peel off disjoint information sets.
 std::vector<int> restricted_rref(GF2Mat& m, const std::vector<int>& cols);
 
 // Remove all-zero rows (compacting). Returns new row count.
@@ -54,4 +54,4 @@ bool in_span(const GF2Mat& rref_m, const std::vector<int>& pivot_cols, const u64
 
 GF2Mat transpose(const GF2Mat& m);
 
-} // namespace qminweight
+} // namespace qubitserf

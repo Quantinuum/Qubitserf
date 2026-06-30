@@ -16,8 +16,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import qminweight as df
-from qminweight import codes, io
+import qubitserf as df
+from qubitserf import codes, io
 
 import _reference as ref
 
@@ -70,8 +70,8 @@ def test_steane_y_operator():
 
 
 # --------------------------------------------------------------------------- #
-# surface(3) [[13,1,3]] -- the qubitserf operator-weight bug regression guard.
-# A single Z-stabilizer row is equivalent to identity -> weight 0 (qubitserf
+# surface(3) [[13,1,3]] -- regression guard for the original qubitserf's operator-weight bug.
+# A single Z-stabilizer row is equivalent to identity -> weight 0 (the original qubitserf
 # wrongly returns 3 for non-self-orthogonal codes).
 # --------------------------------------------------------------------------- #
 def test_surface3_stabilizer_is_weight_zero():

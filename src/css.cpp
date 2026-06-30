@@ -1,10 +1,10 @@
-#include "qminweight/css.hpp"
-#include "qminweight/combinatorics.hpp"
+#include "qubitserf/css.hpp"
+#include "qubitserf/combinatorics.hpp"
 #include <algorithm>
 #include <functional>
 #include <vector>
 
-namespace qminweight {
+namespace qubitserf {
 
 namespace {
 
@@ -173,7 +173,7 @@ DistProblem coset_problem(const GF2Mat& G, const uint8_t* vec) {
     return p;
 }
 
-// ---- greedy information-set sequence (Qubitserf-style peel) ----------------------
+// ---- greedy information-set sequence (original-qubitserf-style peel) ----------------------
 static std::vector<Gamma> gamma_sequence_greedy(const GF2Mat& code_gen) {
     std::vector<Gamma> seq;
     const int n = code_gen.cols;
@@ -365,4 +365,4 @@ std::vector<Gamma> gamma_sequence(const GF2Mat& code_gen) {
     return seq;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

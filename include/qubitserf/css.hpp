@@ -4,9 +4,9 @@
 #include <cstdint>
 #include <utility>
 #include <vector>
-#include "qminweight/gf2.hpp"
+#include "qubitserf/gf2.hpp"
 
-namespace qminweight {
+namespace qubitserf {
 
 // A single (Z or X) distance subproblem.
 //
@@ -78,4 +78,4 @@ DistProblem coset_problem(const GF2Mat& G, const uint8_t* vec);
 // Brouwer-Zimmermann sequence of disjoint information sets for code_gen.
 std::vector<Gamma> gamma_sequence(const GF2Mat& code_gen);
 
-} // namespace qminweight
+} // namespace qubitserf

@@ -1,4 +1,4 @@
-"""Validation tests for qminweight.css_distance / qminweight.classical_distance.
+"""Validation tests for qubitserf.css_distance / qubitserf.classical_distance.
 
 Run from the repo root:
 
@@ -21,8 +21,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import qminweight as df
-from qminweight import codes
+import qubitserf as df
+from qubitserf import codes
 
 from conftest import HAS_GPU, requires_gpu
 

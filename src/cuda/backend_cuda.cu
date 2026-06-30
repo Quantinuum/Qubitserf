@@ -25,7 +25,7 @@
 // `cw[STRIDE]` stays in registers) and on a small pos[] length bucket. The host dispatch
 // instantiates the variant matching (plan.stride, pos_bucket(plan.d)).
 
-#include "qminweight/backend.hpp"
+#include "qubitserf/backend.hpp"
 #include <cuda_runtime.h>
 #include <vector>
 #include <mutex>
@@ -33,7 +33,7 @@
 #include <cstddef>
 #include <cstdlib>
 
-namespace qminweight {
+namespace qubitserf {
 
 namespace {
 
@@ -45,7 +45,7 @@ constexpr int MAX_D     = 32;  // combination weight <= 32 on the GPU path (else
 // Lower than the historical 1<<20: the variant kernel makes the GPU pay off much sooner.
 static u64 gpu_min_work() {
     static u64 v = [] {
-        const char* e = std::getenv("QMINWEIGHT_GPU_MIN_WORK");
+        const char* e = std::getenv("QUBITSERF_GPU_MIN_WORK");
         return e ? (u64)std::strtoull(e, nullptr, 10) : (u64)(1u << 18);
     }();
     return v;
@@ -294,4 +294,4 @@ Backend* cuda_backend() {
     return &inst;
 }
 
-} // namespace qminweight
+} // namespace qubitserf

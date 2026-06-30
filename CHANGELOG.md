@@ -1,11 +1,11 @@
 # Changelog
 
-All notable changes to **qminweight** are documented here.
+All notable changes to **qubitserf** are documented here.
 
 ## [Unreleased]
 
 ### Added
-- **General (non-CSS) stabilizer & subsystem codes** — qminweight was CSS-only (separate
+- **General (non-CSS) stabilizer & subsystem codes** — qubitserf was CSS-only (separate
   `Hx`/`Hz`); it now also takes a **symplectic stabilizer matrix** `S` of shape `(m, 2n)` in
   `[z | x]` column order (row `r` is the Pauli with Z-support `S[r,:n]`, X-support `S[r,n:]`;
   a `Y` sets both) and computes the distance as the minimum **symplectic** weight (number of
@@ -21,8 +21,8 @@ All notable changes to **qminweight** are documented here.
   - `pauli_operator_weight(G, operator, ...)` — min symplectic weight over the coset
     `operator + rowspace(G)` (the non-CSS analogue of `operator_weight`; `0` iff the operator
     is in the group). Returns a `PauliOpResult`.
-  - C ABI: `qminweight_stabilizer_distance`, `qminweight_subsystem_stabilizer_distance`,
-    `qminweight_stabilizer_operator_weight`.
+  - C ABI: `qubitserf_stabilizer_distance`, `qubitserf_subsystem_stabilizer_distance`,
+    `qubitserf_stabilizer_operator_weight`.
   - CLI: a Pauli-stabiliser code containing a `Y` or a row mixing X and Z is auto-detected as
     non-CSS and routed to the symplectic solver; `--symplectic FILE` reads a `(m, 2n)` `[z|x]`
     0/1 matrix directly; `--subsystem` + a non-CSS gauge input gives the dressed distance.
@@ -38,7 +38,7 @@ All notable changes to **qminweight** are documented here.
     state of the art (Sabater–Vera et al., *Fast Algorithms… Minimum Distance of Quantum
     Codes*, arXiv:2408.10743 — `SAVED_ISOMETRY`).
   - **MITM** enumerates by qubit-support with the three nonzero Paulis `Z/X/Y` per chosen
-    qubit (matching qubitserf's "middle algorithm").
+    qubit (matching the original qubitserf's "middle algorithm").
   - **CC** needs a sparse single-type CSS Tanner graph, which a general non-CSS code does not
     provide, so it **falls back to MITM with a one-line stderr note**.
 
@@ -46,18 +46,18 @@ All notable changes to **qminweight** are documented here.
   `Hx/Hz` and solved by the existing BZ/CC/MITM CSS solvers. Verified against a pure-numpy
   brute-force oracle (`_reference.stabilizer_distance_bruteforce` /
   `dressed_stabilizer_distance_bruteforce` / `symplectic_coset_min_weight_bruteforce`), with
-  BZ and MITM cross-checked against each other, and against qubitserf's `interface` (the
-  `[[5,1,3]]` perfect code = 3, the `[[8,1,3]]` non-CSS test code = 3).
+  BZ and MITM cross-checked against each other, and against the original qubitserf's
+  `interface` binary (the `[[5,1,3]]` perfect code = 3, the `[[8,1,3]]` non-CSS test code = 3).
 - **Operator weight** — the minimum weight of a Pauli operator *modulo the stabilizer (or
   gauge) group*, i.e. the minimum-weight coset leader. The Z-part is minimized over
-  `z + rowspace(Gz)` and the X-part over `x + rowspace(Gx)`, independently. This is the
-  feature and CLI shape from Quantinuum's **qubitserf**, but with a **correctness fix**:
-  qubitserf matches MITM syndromes against `M = [Hz; X̄]`, which is a valid parity-check of
+  `z + rowspace(Gz)` and the X-part over `x + rowspace(Gx)`, independently. This carries over
+  the feature and CLI shape from the **original qubitserf**, but with a **correctness fix**:
+  the original matches MITM syndromes against `M = [Hz; X̄]`, which is a valid parity-check of
   the Z-stabilizer group *only when `Hz·Hzᵀ = 0`*. For codes whose stabilizers are not
   self-orthogonal (surface, toric, bivariate-bicycle) it returns wrong answers — e.g.
   feeding a single Z-stabilizer of the planar `surface(3)` `[[13,1,3]]` code returns `3`
   when the correct answer is `0` (a stabilizer is equivalent to identity → weight 0).
-  qminweight instead reduces the coset-leader problem to the existing `DistProblem` (append
+  This package instead reduces the coset-leader problem to the existing `DistProblem` (append
   the operator as an extra generator; a single linear detector separates the two cosets) and
   solves it with the existing **BZ** and **MITM** backends, exactly correct and verified
   against brute force. `method="cc"` falls back to `bz` (the coset's parity check is dense
@@ -95,17 +95,17 @@ All notable changes to **qminweight** are documented here.
   the smallest bucket holding `d`. Variants are compiled lazily and cached (Metal: runtime
   source templating; CUDA: `template<int STRIDE,int POSN>` + a dispatch switch). Also: a
   one-time GPU warmup dispatch, a persistent result buffer, and a lower default
-  `QMINWEIGHT_GPU_MIN_WORK` (1<<18) now that the GPU pays off sooner. The CPU remains the
+  `QUBITSERF_GPU_MIN_WORK` (1<<18) now that the GPU pays off sooner. The CPU remains the
   correctness oracle; `tests/test_distance.py` adds a deep variant-path GPU==CPU check and
   `bench/gpu_vs_cpu.py` reports the >10 ms-code median with a 2x goal gate.
 
 ### Changed
-- **Verbose output now imitates the qubitserf interface** across all three methods
-  (`cc`/`bz`/`mitm`). Each ruled-out weight level prints `Distance bound: >N` followed by
+- **Verbose output now matches the original qubitserf's progress format** across all three
+  methods (`cc`/`bz`/`mitm`). Each ruled-out weight level prints `Distance bound: >N` followed by
   `Elapsed:[<level time>]`, and the result prints `Distance: =N` followed by
   `Elapsed:[<total time>]` — milliseconds under one second (`[15ms]`), seconds with three
   decimals above (`[1.087s]`). The previous per-backend `[cc <dZ|dX>] ...` lines and the
-  in-level heartbeat were replaced by this shared format (`include/qminweight/progress.hpp`).
+  in-level heartbeat were replaced by this shared format (`include/qubitserf/progress.hpp`).
 - **Connected cluster** (`method="cc"`) now honours `verbose=True` (`-v` on the CLI), which
   previously only affected the `bz`/`mitm` paths.
 - **Connected-cluster CSS distance now interleaves the Z- and X-distance searches** weight
@@ -168,13 +168,13 @@ linear codes, with GPU acceleration.
 ### Backends
 - CPU (multithreaded), **Metal** (Apple GPU, runtime-compiled shaders), and **CUDA**
   (built when a CUDA toolkit is present). Hybrid dispatch sends a weight level to the GPU
-  only when its work amortizes launch latency (`QMINWEIGHT_GPU_MIN_WORK`).
+  only when its work amortizes launch latency (`QUBITSERF_GPU_MIN_WORK`).
 
 ### Interfaces
-- Python API (`qminweight.css_distance`, `classical_distance`, `available_backends`) and
-  code generators (`qminweight.codes`).
-- `qminweight` command-line tool (Qubitserf-compatible Pauli-string stdin) and
-  `python -m qminweight`.
+- Python API (`qubitserf.css_distance`, `classical_distance`, `available_backends`) and
+  code generators (`qubitserf.codes`).
+- `qubitserf` command-line tool (Pauli-string stdin compatible with the original qubitserf)
+  and `python -m qubitserf`.
 
 ### Packaging
 - `pip`-installable via scikit-build-core (CMake + C++17; CUDA auto-detected).

@@ -3,7 +3,7 @@ requires = ["scikit-build-core>=0.8"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "qminweight"
+name = "qubitserf"
 version = "0.1.0"
 description = "Fast GPU + CPU exact distance finding for quantum and classical codes"
 readme = "README.md"
@@ -37,21 +37,21 @@ docs = ["mkdocs", "mkdocs-material"]
 dev = ["pytest>=7", "scipy"]
 
 [project.urls]
-Homepage = "https://github.com/quantinuum/qminweight"
-Repository = "https://github.com/quantinuum/qminweight"
+Homepage = "https://github.com/quantinuum/qubitserf"
+Repository = "https://github.com/quantinuum/qubitserf"
 
 [project.scripts]
-qminweight = "qminweight.cli:main"
+qubitserf = "qubitserf.cli:main"
 
 [tool.scikit-build]
 minimum-version = "0.8"
-wheel.packages = ["python/qminweight"]
+wheel.packages = ["python/qubitserf"]
 cmake.version = ">=3.20"
 sdist.include = ["src", "include", "CMakeLists.txt", "LICENSE", "README.md"]
 
 [tool.scikit-build.cmake.define]
-QMINWEIGHT_TESTS = "OFF"
-QMINWEIGHT_CLI = "OFF"
+QUBITSERF_TESTS = "OFF"
+QUBITSERF_CLI = "OFF"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
