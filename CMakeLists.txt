@@ -84,6 +84,8 @@ if(QUBITSERF_TESTS)
   target_link_libraries(qubitserf_compare PRIVATE qubitserf)
   add_executable(qubitserf_op_smoke src/tests/op_smoke.cpp)
   target_link_libraries(qubitserf_op_smoke PRIVATE qubitserf)
+  add_executable(qubitserf_cpu_enum_ref src/tests/cpu_enum_ref.cpp)
+  target_link_libraries(qubitserf_cpu_enum_ref PRIVATE qubitserf)
 endif()
 
 # ---- C++ command-line tool (Qubitserf-style) -------------------------------------

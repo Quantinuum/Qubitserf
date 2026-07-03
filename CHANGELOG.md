@@ -32,7 +32,23 @@ All notable changes to **qubitserf** are documented here.
   - Kernel variants are now specialised per `(stride, d, tgcache)` with the weight level
     baked in as a compile-time literal; threads-per-threadgroup default dropped to 64
     (`QUBITSERF_TPT` overrides).
-- New `bench/level_bench.sh`: self-contained per-weight-level GPU timing on the Gross code.
+- **CPU BZ enumeration ~20-31x faster** — the Metal kernel's structure ported to
+  `src/backend_cpu.cpp` (two-level incremental enumeration, weight-first per-word early
+  exit, word-major transposed gamma for a vectorizable inner sweep; the multithreaded
+  chunking is unchanged). Gross Z-side per-level: d=6 2410ms -> 84ms, d=7 25.6s -> 0.84s,
+  d=9 = 79.7s (within ~4.4x of the GPU). Guarded by a new randomized oracle test
+  (`src/tests/cpu_enum_ref.cpp`, target `qubitserf_cpu_enum_ref`): 84+ random small
+  EnumPlans compared against a self-contained reference implementation (the old
+  unrank + next_comb + eval_combo path), including multithreaded chunk-boundary cases.
+- New `bench/level_bench.sh`: self-contained per-weight-level timing on the Gross code
+  (`BACKEND=--cpu` for the CPU kernel).
+- New `bench/bch_codes.py` + `bench/bz_vs_cc.py`: quantum BCH codes (CSS from
+  dual-containing narrow-sense BCH, pure python/numpy) and a BZ-vs-CC benchmark across
+  the sparse/dense divide, plotted against `d*log10(n)` (results in `bench/bz_vs_cc.md`,
+  `.png`, `.json`; `--replot` regenerates from the JSON). Headline: CC certifies sparse
+  LDPC (toric, gross) in milliseconds where BZ needs minutes, while BZ certifies the
+  dense-check `qbch [[127,71,9]]` in 26s (GPU) / 142s (CPU) where CC times out —
+  neither method dominates; the winner follows Tanner-graph sparsity.
 - Diagnostic env var `QUBITSERF_NO_EARLY_STOP` (BZ driver): disable the `inner <= outer`
   early stop, for benchmarking full levels.
 

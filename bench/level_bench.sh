@@ -9,6 +9,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 MAXW="${1:-8}"
 BIN="${BIN:-./build/qubitserf}"
+BACKEND="${BACKEND:---gpu}"   # BACKEND=--cpu for the CPU kernel
 DATA="${DATA:-bench/.cache}"
 
 # Generate the Gross code's parity-check matrices once (bivariate bicycle, l=12 m=6,
@@ -31,6 +32,6 @@ PY
 fi
 
 QUBITSERF_PROFILE=1 "$BIN" --hx "$DATA/gross_Hx.txt" --hz "$DATA/gross_Hz.txt" \
-    --bz --gpu --z --max-weight "$MAXW" -v 2>&1 \
+    --bz "$BACKEND" --z --max-weight "$MAXW" -v 2>&1 \
   | grep -E '^\[prof' \
   | sed -E 's/.*d=([0-9]+).*work=([0-9]+) -> ([0-9.]+) ms/d=\1  work=\2  \3 ms/'
