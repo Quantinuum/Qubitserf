@@ -16,8 +16,12 @@ struct EnumPlan {
     int stride = 0;            // u64 words per codeword row = words_for(n)
     int K = 0;                 // message dimension (rows per gamma)
     int d = 0;                 // combination weight to enumerate at this level
-    int num_gamma = 0;         // number of information sets
-    const u64* gamma = nullptr;// num_gamma * K * stride, row-major (g, row, word)
+    int num_gamma = 0;         // information sets to ENUMERATE this level (active prefix)
+    int num_gamma_total = 0;   // information sets in `gamma` (>= num_gamma; 0 => num_gamma).
+                               // The BZ driver sorts sets by rank (descending) and skips the
+                               // suffix whose lower-bound contribution is zero at this level;
+                               // GPU backends size their cached upload on the TOTAL count.
+    const u64* gamma = nullptr;// num_gamma_total * K * stride, row-major (g, row, word)
     int kcheck = 0;            // logical-detector rows; 0 => every codeword is logical
     const u64* check = nullptr;// kcheck * stride
     const u64* binom = nullptr;// flattened (maxN+1)*(maxK+1) saturating binomials

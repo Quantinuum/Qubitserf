@@ -235,7 +235,7 @@ struct CudaBackend : Backend {
             return plan.binom[(size_t)n * (plan.binom_maxK + 1) + k];
         };
         u64 total = binom_h(plan.K, plan.d);
-        if (total == 0) return WEIGHT_NONE;
+        if (total == 0 || plan.num_gamma == 0) return WEIGHT_NONE;
 
         // Hybrid dispatch: small levels are dominated by GPU launch latency -> CPU.
         u64 work = total > (1ull << 40) ? total : total * (u64)plan.num_gamma;
@@ -249,7 +249,10 @@ struct CudaBackend : Backend {
         u64 chunk = (total + num_threads - 1) / num_threads;
         num_threads = (total + chunk - 1) / chunk;
 
-        size_t g_bytes_ = (size_t)plan.num_gamma * plan.K * plan.stride * sizeof(u64);
+        // The cached upload must cover ALL generators: plan.num_gamma is only the active
+        // prefix this level, and a deeper level may activate more.
+        const int ng_total = plan.num_gamma_total > 0 ? plan.num_gamma_total : plan.num_gamma;
+        size_t g_bytes_ = (size_t)ng_total * plan.K * plan.stride * sizeof(u64);
         size_t c_bytes_ = (size_t)plan.kcheck * plan.stride * sizeof(u64);
         size_t b_bytes_ = (size_t)(plan.binom_maxN + 1) * (plan.binom_maxK + 1) * sizeof(u64);
 

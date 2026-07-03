@@ -88,8 +88,13 @@ BZResult bz_distance(const DistProblem& prob, const BZOptions& opt) {
         return res;
     }
 
-    // Build and flat-pack the information-set generators.
+    // Build and flat-pack the information-set generators, sorted by rank DESCENDING so
+    // the per-level active set (those with a positive lower-bound contribution) is a
+    // prefix -- rank-deficient sets contribute max(0, (d+1)-(K-rank)) = 0 at shallow
+    // levels and can be skipped there without weakening the bound.
     std::vector<Gamma> seq = gamma_sequence(prob.code_gen);
+    std::stable_sort(seq.begin(), seq.end(),
+                     [](const Gamma& a, const Gamma& b) { return a.rank > b.rank; });
     const int num_gamma = (int)seq.size();
     std::vector<u64> gamma((size_t)num_gamma * K * stride, 0ull);
     std::vector<int> ranks(num_gamma);
@@ -112,7 +117,8 @@ BZResult bz_distance(const DistProblem& prob, const BZOptions& opt) {
     static std::atomic<u64> solve_counter{0};
     EnumPlan plan;
     plan.n = n; plan.stride = stride; plan.K = K;
-    plan.num_gamma = num_gamma; plan.gamma = gamma.data();
+    plan.num_gamma = num_gamma; plan.num_gamma_total = num_gamma;
+    plan.gamma = gamma.data();
     plan.kcheck = kcheck; plan.check = check.data();
     plan.binom = bt.c.data(); plan.binom_maxN = bt.maxN; plan.binom_maxK = bt.maxK;
     plan.buffers_key = ++solve_counter;   // unique per solve -> GPU caches stay coherent
@@ -130,16 +136,23 @@ BZResult bz_distance(const DistProblem& prob, const BZOptions& opt) {
     for (int d = 1; d <= maxw; ++d) {
         plan.d = d;
         plan.current_best = inner;
+        // Only enumerate the generators whose lower-bound term (d+1)-(K-rank) is
+        // positive at this level (a prefix: ranks are sorted descending). A skipped
+        // set contributes 0 to `outer` below, so the bound is unchanged and sound;
+        // its enumeration would only duplicate the upper-bound hunt.
+        int active = 0;
+        while (active < num_gamma && (d + 1) - (K - ranks[active]) > 0) ++active;
+        plan.num_gamma = active;
         auto te0 = clk::now();
-        int found = backend->enumerate(plan);
+        int found = active > 0 ? backend->enumerate(plan) : WEIGHT_NONE;
         if (profile) {
             double ms = std::chrono::duration<double, std::milli>(clk::now() - te0).count();
             BinomTable& b = bt;
             std::fprintf(stderr,
-                "[prof %s] d=%d K=%d ng=%d stride=%d total=%llu work=%llu -> %.3f ms\n",
-                res.backend.c_str(), d, K, num_gamma, stride,
+                "[prof %s] d=%d K=%d ng=%d/%d stride=%d total=%llu work=%llu -> %.3f ms\n",
+                res.backend.c_str(), d, K, active, num_gamma, stride,
                 (unsigned long long)b.binom(K, d),
-                (unsigned long long)b.binom(K, d) * (unsigned long long)num_gamma, ms);
+                (unsigned long long)b.binom(K, d) * (unsigned long long)active, ms);
         }
         if (found < inner) inner = found;
         ++level;
@@ -149,7 +162,8 @@ BZResult bz_distance(const DistProblem& prob, const BZOptions& opt) {
             outer += std::max(0, (d + 1) - (K - ranks[g]));
         if (prob.even) outer += (outer & 1);       // distance is even => round up
 
-        if (inner <= outer) {
+        static const bool no_early_stop = std::getenv("QUBITSERF_NO_EARLY_STOP") != nullptr;
+        if (inner <= outer && !no_early_stop) {
             res.proven = true;
             if (opt.verbose)
                 verbose_final(inner, std::chrono::duration<double>(clk::now() - t0).count());
@@ -209,6 +223,8 @@ struct BzSide {
         if (!has_logicals) { resolved = true; return; }
 
         std::vector<Gamma> seq = gamma_sequence(prob.code_gen);
+        std::stable_sort(seq.begin(), seq.end(),
+                         [](const Gamma& a, const Gamma& b) { return a.rank > b.rank; });
         num_gamma = (int)seq.size();
         gamma.assign((size_t)num_gamma * K * stride, 0ull);
         ranks.resize(num_gamma);
@@ -228,7 +244,8 @@ struct BzSide {
         bt.build(K, K);
         static std::atomic<u64> solve_counter{0};
         plan.n = n; plan.stride = stride; plan.K = K;
-        plan.num_gamma = num_gamma; plan.gamma = gamma.data();
+        plan.num_gamma = num_gamma; plan.num_gamma_total = num_gamma;
+        plan.gamma = gamma.data();
         plan.kcheck = kcheck; plan.check = check.data();
         plan.binom = bt.c.data(); plan.binom_maxN = bt.maxN; plan.binom_maxK = bt.maxK;
         plan.buffers_key = ++solve_counter;
@@ -241,7 +258,12 @@ struct BzSide {
     // Enumerate weight level d; update inner (upper) and outer (lower).
     void step(int d) {
         plan.d = d; plan.current_best = inner;
-        int found = backend->enumerate(plan);
+        // Skip generators with a zero lower-bound term at this level (prefix by rank);
+        // same soundness argument as in bz_distance.
+        int active = 0;
+        while (active < num_gamma && (d + 1) - (K - ranks[active]) > 0) ++active;
+        plan.num_gamma = active;
+        int found = active > 0 ? backend->enumerate(plan) : WEIGHT_NONE;
         if (found < inner) inner = found;
         ++level;
         outer = 0;

@@ -4,6 +4,38 @@ All notable changes to **qubitserf** are documented here.
 
 ## [Unreleased]
 
+### Performance
+- **GPU (Metal) BZ enumeration ~7x faster** — the Gross `[[144,12,12]]` bivariate-bicycle
+  code, previously called out in `bench/gross_code.py` as intractable to *certify* by BZ,
+  is now **fully proven (`--zx`, dZ=dX=12, no symmetry assumptions) in under 5 minutes on
+  an Apple M4 laptop** (4:41; the d=9 level alone dropped 130s -> 17s). Stacked changes,
+  none altering the math (the CPU backend remains the oracle; `qubitserf_compare` agrees):
+  - **Zero-contribution information sets are skipped per weight level** (all backends):
+    a set with rank `r` adds `max(0, (d+1)-(K-r))` to the BZ lower bound, so a
+    rank-deficient set adds *nothing* until `d+1 > K-r` and enumerating it there only
+    duplicates the upper-bound hunt. Sets are sorted by rank (descending) and each level
+    enumerates only the positive-contribution prefix — for bivariate-bicycle codes
+    (one full-rank set + one corank-12 set) this halves every level up to d=11.
+    `EnumPlan` gains `num_gamma_total` (upload size) vs `num_gamma` (active prefix).
+  - **Two-level incremental enumeration in the Metal kernel**: the weight-d combination
+    splits into d-1 outer positions (codeword maintained by XOR-in-place on advance) and
+    an inner index swept in a tight x4-unrolled loop where the codeword is
+    `cw_base ^ row[last]`, fused into the weight test.
+  - **Weight-first early exit**: popcount runs *before* the logical-detector check with a
+    per-word exit against the current best (a codeword with weight >= best can never
+    improve it), so the check almost never executes on deep levels.
+  - **Threadgroup staging of the generators when they fit**, stored transposed
+    (word-major) so the unrolled word-0 reads of consecutive rows are contiguous
+    (bank-conflict-free). Codes whose matrices exceed the threadgroup-memory budget use a
+    device-read kernel variant — fixing a potential out-of-bounds staging for large codes
+    (e.g. `n=1024`, `K~1000`).
+  - Kernel variants are now specialised per `(stride, d, tgcache)` with the weight level
+    baked in as a compile-time literal; threads-per-threadgroup default dropped to 64
+    (`QUBITSERF_TPT` overrides).
+- New `bench/level_bench.sh`: self-contained per-weight-level GPU timing on the Gross code.
+- Diagnostic env var `QUBITSERF_NO_EARLY_STOP` (BZ driver): disable the `inner <= outer`
+  early stop, for benchmarking full levels.
+
 ### Changed
 - **CSS min distance now interleaves the Z- and X-subproblems for *all three* methods**
   (`bz`, `mitm`, and `cc`) — previously only `cc` did. The Z- and X-searches advance one

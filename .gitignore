@@ -26,3 +26,6 @@ site/
 
 # OS / editor
 .DS_Store
+
+# Bench cache
+bench/.cache/
