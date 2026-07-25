@@ -1,7 +1,8 @@
 # Build artifacts
 build/
 build_*/
-python/qubitserf/_lib/
+python/qubitserf/distfind/_lib/
+python/qubitserf/codeaut/_lib/
 *.so
 *.dylib
 *.dll
@@ -28,4 +29,5 @@ site/
 .DS_Store
 
 # Bench cache
-bench/.cache/
+bench/distfind/.cache/
+bench/codeaut/.cache/

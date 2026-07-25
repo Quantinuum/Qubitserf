@@ -5,8 +5,8 @@ This page assumes you've [built the native library and installed the package](in
 ## Hello, distance
 
 ```python
-import qubitserf as df
-from qubitserf import codes
+from qubitserf import distfind as df
+from qubitserf.distfind import codes
 
 # Which backends did the build give us?
 print(df.available_backends())          # e.g. ['cpu', 'gpu']
@@ -26,8 +26,8 @@ enumerated, the wall-clock seconds, and which backend ran.
 Pass a parity-check matrix `H` to `classical_distance`:
 
 ```python
-import qubitserf as df
-from qubitserf import codes
+from qubitserf import distfind as df
+from qubitserf.distfind import codes
 
 # The [7, 4, 3] Hamming code.
 H = codes.hamming_parity(3)
@@ -44,8 +44,8 @@ By default `css_distance` uses Brouwer–Zimmermann (`method="bz"`). For
 certifies codes BZ cannot:
 
 ```python
-from qubitserf import codes
-import qubitserf as df
+from qubitserf.distfind import codes
+from qubitserf import distfind as df
 
 # IBM gross code: a [[144, 12, 12]] bivariate-bicycle code.
 Hx, Hz = codes.gross_code()
@@ -75,16 +75,16 @@ available backend). The `gpu` option auto-detects the machine-specific accelerat
 ```python
 df.css_distance(Hx, Hz, backend="cpu")     # force the multicore CPU backend
 df.css_distance(Hx, Hz, backend="gpu")     # use the available GPU accelerator
-df.css_distance(Hx, Hz, backend="auto")    # let qubitserf choose (default)
+df.css_distance(Hx, Hz, backend="auto")    # let distfind choose (default)
 ```
 
 ## Command line
 
-The same searches are available from a terminal via the `qubitserf` command (or
-`python -m qubitserf`). For example, with a builtin code:
+The same searches are available from a terminal via the `distfind` command (or
+`python -m qubitserf.distfind`). For example, with a builtin code:
 
 ```bash
-qubitserf --builtin gross --method cc
+distfind --builtin gross --method cc
 ```
 
 or by piping in a code description. See the [CLI reference](cli.md) for input formats and

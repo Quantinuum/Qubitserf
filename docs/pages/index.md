@@ -1,9 +1,9 @@
-# qubitserf
+# distfind
 
 **Fast GPU and multicore-CPU code-distance finding for quantum and
 classical codes.** A self-contained C++ core with a Python (`ctypes`) front end.
 
-`qubitserf` computes the *exact* minimum distance of CSS quantum stabilizer codes and
+`distfind` computes the *exact* minimum distance of CSS quantum stabilizer codes and
 classical linear codes using **deterministic** algorithms — Brouwer–Zimmermann (BZ),
 connected cluster (CC), and meet-in-the-middle (MITM) — with the exponential enumeration
 offloaded to the GPU where it pays off.
@@ -23,15 +23,15 @@ Brouwer–Zimmermann improvements of Hernando, Quintana-Ortí & Grassl,
 The two algorithms cover two complementary regimes:
 
 - **Connected cluster certifies the IBM gross code `[[144, 12, 12]]` in ~0.3 s** (377 ms
-  measured) by exploiting its sparsity, where both qubitserf's own Brouwer–Zimmermann and
+  measured) by exploiting its sparsity, where both distfind's own Brouwer–Zimmermann and
   the reference `codeDistance` package time out (>30 s), and where Magma-style BZ would
   need on the order of tens of hours.
 - **Brouwer–Zimmermann on the GPU is up to ~500× faster** than the default
   reference BZ on the codes where the reference finishes at all. On larger codes the
-  reference times out (>30 s) where qubitserf solves them in well under a second.
+  reference times out (>30 s) where distfind solves them in well under a second.
 
-These numbers come from [`bench/results.md`](benchmarks.md) and
-[`bench/cc_results.md`](benchmarks.md); they are not invented for the docs.
+These numbers come from [`bench/distfind/results.md`](benchmarks.md) and
+[`bench/distfind/cc_results.md`](benchmarks.md); they are not invented for the docs.
 
 ## Features
 
@@ -50,7 +50,7 @@ These numbers come from [`bench/results.md`](benchmarks.md) and
   bit-packed GF(2) words with hardware popcount. A hybrid dispatcher keeps small weight
   levels on the CPU so the GPU is never a slowdown.
 - **A clean Python API** (`css_distance`, `classical_distance`, `available_backends`,
-  `version`) plus a library of code generators in `qubitserf.codes` (toric, surface,
+  `version`) plus a library of code generators in `qubitserf.distfind.codes` (toric, surface,
   hypergraph product, bivariate bicycle / gross code, Hamming, repetition, random LDPC).
 - **A command-line interface** for piping in Pauli strings or parity-check matrices.
 
@@ -60,8 +60,8 @@ These numbers come from [`bench/results.md`](benchmarks.md) and
 |---|---|
 | [Installation](installation.md) | Building the native library and `pip install` |
 | [Quickstart](quickstart.md) | Minimal Python and CLI examples |
-| [Python API](api.md) | `css_distance`, `classical_distance`, `Result`, `qubitserf.codes` |
-| [Command line](cli.md) | The `qubitserf` / `python -m qubitserf` CLI |
+| [Python API](api.md) | `css_distance`, `classical_distance`, `Result`, `qubitserf.distfind.codes` |
+| [Command line](cli.md) | The `distfind` / `python -m qubitserf.distfind` CLI |
 | [Algorithms](algorithms.md) | BZ, CC, MITM — how they work and when to use each |
 | [Benchmarks](benchmarks.md) | Measured numbers vs the reference, and how to reproduce |
 | [Contributing](contributing.md) | Repo layout, building, running the tests |

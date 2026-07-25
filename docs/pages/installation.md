@@ -1,7 +1,7 @@
 # Installation
 
-`qubitserf` is a C++ core compiled into a single shared library
-(`libqubitserf.dylib` / `.so` / `.dll`), driven from Python through a thin `ctypes`
+`distfind` is a C++ core compiled into a single shared library
+(`libdistfind.dylib` / `.so` / `.dll`), driven from Python through a thin `ctypes`
 binding. Installation is two steps: **build the native library**, then **install the
 Python package**.
 
@@ -28,7 +28,7 @@ From the repository root:
 ```
 
 This configures and builds a Release library into
-`python/qubitserf/_lib/libqubitserf.dylib` (the location the Python package looks in).
+`python/qubitserf/distfind/_lib/libdistfind.dylib` (the location the Python package looks in).
 
 ### Apple-toolchain note
 
@@ -39,12 +39,12 @@ if it picked that up. The script handles this for you — you do not need to set
 
 ### CUDA
 
-The CUDA implementation is governed by the `QUBITSERF_CUDA` CMake option (on by default).
+The CUDA implementation is governed by the `DISTFIND_CUDA` CMake option (on by default).
 At configure time CMake probes for a CUDA compiler; if found, `src/cuda/backend_cuda.cu`
 is compiled and exposed through the public `gpu` backend, otherwise you'll see:
 
 ```
-qubitserf: CUDA toolkit not found, skipping CUDA backend
+distfind: CUDA toolkit not found, skipping CUDA backend
 ```
 
 and only CPU, plus any other available accelerator implementation, is built.
@@ -54,9 +54,9 @@ and only CPU, plus any other available accelerator implementation, is built.
 `build.sh` forwards any extra arguments straight to CMake, so you can toggle features:
 
 ```bash
-./build.sh -DQUBITSERF_METAL=OFF      # CPU-only on macOS
-./build.sh -DQUBITSERF_CUDA=OFF       # skip the CUDA probe
-./build.sh -DQUBITSERF_TESTS=OFF      # don't build the C++ smoke tests
+./build.sh -DDISTFIND_METAL=OFF      # CPU-only on macOS
+./build.sh -DDISTFIND_CUDA=OFF       # skip the CUDA probe
+./build.sh -DDISTFIND_TESTS=OFF      # don't build the C++ smoke tests
 ```
 
 You can also point the build at a different directory with the `BUILD_DIR` environment
@@ -71,24 +71,24 @@ pip install .
 ```
 
 The native library built by `build.sh` is packaged as package data
-(`python/qubitserf/_lib/*.dylib` / `*.so` / `*.dll`). **Build the native library first,
+(`python/qubitserf/distfind/_lib/*.dylib` / `*.so` / `*.dll`). **Build the native library first,
 then `pip install`** — the wheel does not compile the C++ for you.
 
 For an editable/dev install, add the package directory to `PYTHONPATH` instead:
 
 ```bash
-PYTHONPATH=python python -c "import qubitserf; print(qubitserf.version())"
+PYTHONPATH=python python -c "import qubitserf.distfind as df; print(df.version())"
 ```
 
 ### Pointing at a library elsewhere
 
-If your `libqubitserf` lives outside `python/qubitserf/_lib`, set the `QUBITSERF_LIB`
+If your `libdistfind` lives outside `python/qubitserf/distfind/_lib`, set the `DISTFIND_LIB`
 environment variable to its full path and the loader will use it directly.
 
 ## Verify the install
 
 ```python
-import qubitserf as df
+from qubitserf import distfind as df
 
 print(df.version())              # e.g. "0.1.0"
 print(df.available_backends())   # e.g. ['cpu', 'gpu']

@@ -4,6 +4,42 @@ All notable changes to **qubitserf** are documented here.
 
 ## [Unreleased]
 
+### Removed — inexact automorphism entry points (breaking)
+- **The `"partial"` CSS method is gone.** `css_automorphisms(..., method="partial")` (and its
+  `"affine"` / `"structural"` / `"cyclic"` / `"poly"` / `"fast"` aliases) now raises `ValueError`,
+  and `codeaut --method partial` is no longer accepted; `METHODS` is `("auto", "leon", "bz")`.
+  The cyclic/affine and Tanner-graph structural subgroups it exposed remain as **internal** stages
+  of the `"auto"` ladder, where they are only reached after the exact engines fail and anything
+  they return is still flagged `complete=False`. Results for `auto` / `leon` / `bz` are unchanged.
+- **The Tanner-graph automorphism wrappers are gone**: `codeaut.css_tanner_graph_automorphisms`
+  and `codeaut.classical_tanner_automorphisms`, plus the `codeaut.parity_check_automorphism_group`
+  / `codeaut.tanner_permutation_group` re-exports. They returned a basis-dependent *subgroup* of
+  the true automorphism group, which is too easy to mistake for the group itself. The
+  implementations stay in `codeaut.graphaut` for internal use by the `bz` incidence route.
+- The easy interface is now three entry points: `classical_automorphisms`, `css_automorphisms`,
+  `group_intersection`.
+- **README rewritten** around the library's capabilities (distance, operator weight, automorphism
+  groups) rather than its two-module layout, and trimmed to the public, exact surface.
+
+### Merged codeaut into qubitserf
+- **`qubitserf` is now a two-part package.** The former standalone `codeaut` project (automorphism
+  groups of binary linear and CSS quantum codes) is merged in as the `qubitserf.codeaut`
+  subpackage, and the original distance-finding code is renamed to `qubitserf.distfind`. The two
+  libraries stay compartmentalized — separate Python subpackages, separate native shared libraries
+  (`libdistfind`, `libcodeaut`), and lazy submodule imports so importing one never pulls in the
+  other's dependencies.
+- **Two CLIs.** The distance CLI is now **`distfind`** (was `qubitserf`); the automorphism CLI
+  **`codeaut`** is unchanged. Both are console scripts and both work via
+  `python -m qubitserf.distfind` / `python -m qubitserf.codeaut`.
+- **Full `distfind` rename of the native layer.** The C++ `namespace qubitserf`, the
+  `include/distfind/` headers, the `qubitserf_*` extern-C symbols, and the runtime env vars are
+  renamed to `distfind` / `DISTFIND_*` (e.g. `QUBITSERF_LIB` -> `DISTFIND_LIB`,
+  `QUBITSERF_GPU_MIN_WORK` -> `DISTFIND_GPU_MIN_WORK`).
+- **Repository layout.** `src/distfind` + `src/codeaut`, `include/distfind` + `include/codeaut`,
+  `python/qubitserf/{distfind,codeaut}`, `tests/{distfind,codeaut}`, `bench/{distfind,codeaut}`.
+  A single `CMakeLists.txt` builds both libraries and `build.sh` drops each into its subpackage.
+- **Benchmarks moved out of the README** into [`BENCHMARKS.md`](BENCHMARKS.md).
+
 ### Performance
 - **GPU (Metal) BZ enumeration ~7x faster** — the Gross `[[144,12,12]]` bivariate-bicycle
   code, previously called out in `bench/gross_code.py` as intractable to *certify* by BZ,
@@ -44,8 +80,8 @@ All notable changes to **qubitserf** are documented here.
   (`BACKEND=--cpu` for the CPU kernel).
 - New `bench/bch_codes.py` + `bench/bz_vs_cc.py`: quantum BCH codes (CSS from
   dual-containing narrow-sense BCH, pure python/numpy) and a BZ-vs-CC benchmark across
-  the sparse/dense divide, plotted against `d*log10(n)` (results in `bench/bz_vs_cc.md`,
-  `.png`, `.json`; `--replot` regenerates from the JSON). Headline: CC certifies sparse
+  the sparse/dense divide (results in `bench/bz_vs_cc.md`, `.json`; `--replot`
+  regenerates the table from the JSON). Headline: CC certifies sparse
   LDPC (toric, gross) in milliseconds where BZ needs minutes, while BZ certifies the
   dense-check `qbch [[127,71,9]]` in 26s (GPU) / 142s (CPU) where CC times out —
   neither method dominates; the winner follows Tanner-graph sparsity.
@@ -53,6 +89,24 @@ All notable changes to **qubitserf** are documented here.
   early stop, for benchmarking full levels.
 
 ### Changed
+- **Comprehensive benchmark re-run at a 30 s per-run budget with the current solvers;
+  all family charts regenerated.** Substantive methodology changes:
+  - **Reference columns are now reused from a frozen cache** (`bench/ref_cache.json`)
+    rather than re-executing the external `codeDistance` package. qubitserf's `cc`/`bz`/
+    `mitm` are still measured live, so a `ref/cc` speedup pairs a fresh qubitserf timing
+    with the (unchanged) reference timing; codes with no cached reference — the
+    Reed-Muller families — show `n/a`.
+  - **Toric/surface BZ is no longer pre-capped/skipped** (removed from `HARD_CSS_NAMES`):
+    it runs uncapped and is stopped only by the 30 s budget, so it now *certifies*
+    toric/surface `L=9` (GPU: 6.4 s / 3.4 s) and only times out at `L=10`, instead of
+    being abandoned at `L=9`. A **drain-on-timeout** was added to `comprehensive.py` so a
+    timed-out, uncancellable native solver finishes before the next code runs and can't
+    inflate its timing.
+  - The **toric/surface plots gained a top distance-`d` axis** (`d`, not raw `n`, is the
+    hardness scale for these families).
+- **`bench/bz_vs_cc` (the 330 s sparse/dense table) dropped its `d*log10(n)` column and
+  its scatter chart (`bz_vs_cc.png`) was retired.** The >30 s measurements are preserved
+  (the table is regenerated from `bz_vs_cc.json` via `--replot`, not re-run).
 - **CSS min distance now interleaves the Z- and X-subproblems for *all three* methods**
   (`bz`, `mitm`, and `cc`) — previously only `cc` did. The Z- and X-searches advance one
   weight level at a time so both lower bounds rise together; a side stalling on a hard level
@@ -244,3 +298,70 @@ linear codes, with GPU acceleration.
 
 ### Packaging
 - `pip`-installable via scikit-build-core (CMake + C++17; CUDA auto-detected).
+
+---
+
+# Prior `codeaut` changelog (pre-merge)
+
+The history below is the standalone `codeaut` project's changelog as of the merge. Paths and
+import references in these older entries reflect the pre-merge standalone layout
+(`bench/compare_*.py` is now `bench/codeaut/`; `codeaut.permgroup` is now
+`qubitserf.codeaut.permgroup`; the `codeaut` CLI is unchanged).
+
+## codeaut — Unreleased (pre-merge)
+
+- **Exact invariant portfolio.** Added `invariant_automorphism_group(G, method=...)` with forced
+  LCD-projector, projective-geometry, twin-compressed incidence, binary-matroid component/wreath,
+  fingerprint-cover, pair/triple-moment, small-hull, Schur-projector, Ward residue-span, modular
+  section, puncture/shorten minor, bounded circuit/cocircuit, and combined routes. Compact
+  relations are treated as overgroups and accepted only when every generator preserves `C`;
+  otherwise a guarded Schreier orbit computes the exact rowspace stabilizer, with an exact
+  fallback when the orbit cap is exceeded. Added a common labelled-relation/hypergraph
+  encoder and `bench/codeaut/compare_invariant_portfolio.py`, whose corpus validates exact order
+  and mutual generator containment for every route.
+
+- **Exact component and parallel-column engines.** Added the row-representation-independent
+  binary-matroid decomposition, guarded projective local stabilizers, component equivalence
+  transporters, parallel-fiber symmetric kernels, and equivalent-component wreath products.
+
+- **Boundary correctness guards.** Leon now rejects dimensions `>=63`, which its uint64 Gray
+  counter cannot represent; Python validates all int32 ABI bounds; Ward moduli require actual
+  integers; the dreadnaut bridge fails closed on nonzero exits, missing summaries, and parsed-order
+  mismatches instead of treating empty/unparseable output as the trivial group.
+
+- **Power-of-two modular-weight automorphisms.** Added `ward_form(G, modulus=2**t)` using
+  Ward inclusion--exclusion truncated at degree `t`, symbolic residue-span certificates, and
+  `ward_automorphism_group`: a guarded exact route that counts fibers with a reduced decision
+  diagram, materializes a low-cost complete spanning residue cover, and solves its colored
+  incidence with nauty. Added `bench/codeaut/compare_ward.py`.
+
+- **Leon selectors.** Classical calls accept `spanning_set="congruence"|"auto"` with
+  `max_modulus` (arbitrary-modulus complete spanning weight-residue class), and
+  `spanning_set="minimal"` (Python alias `"cocircuit"`, support-minimal/cocircuit filtering).
+
+- **CLI.** Surfaces why a result is only a lower bound on stderr; CSS codes are given as Pauli
+  stabiliser strings from a file or stdin (dropped `--hx`/`--hz`); `--json` carries the `method`
+  diagnostic; explicit engine selection via `--method {auto,leon,bz,partial}` (wall-clock
+  `timeout` removed).
+
+- **Result objects.** `AutResult.group()` / `AutResult.n`; `CSSAutResult.order` is a decimal
+  string; `backend` + `max_threads` on `css_automorphisms` / `css_automorphism_group`; the five
+  high-level convenience entry points (`classical_automorphisms`, `css_automorphisms`,
+  `css_tanner_graph_automorphisms`, `classical_tanner_automorphisms`, `group_intersection`).
+
+## codeaut — 0.1.0
+
+First release. A standalone (`numpy` + `ctypes`) package for automorphism groups of binary
+linear and CSS quantum codes, extracted from the Quirky automorphism-harvest effort.
+
+- **Leon engine** (`code_automorphism_group`): exact `Aut(C)` of a binary linear code via an
+  optimized bit-packed C++ partition-backtracking engine (two-pass, low memory).
+- **CSS method ladder** (`css_automorphism_group`): `Aut(Hx) ∩ Aut(Hz)` via Leon + dual-code
+  trick, joint Brouwer–Zimmermann + nauty/Traces incidence, single-side rescue, cyclic/affine
+  subgroup, and a Tanner-graph subgroup floor.
+- **Brouwer–Zimmermann low-weight enumeration** (`low_weight_classes`) with a bit-packed C++
+  CPU kernel and **CUDA + Metal** GPU backends (CMake-guarded, with CPU fallback).
+- **Vendored permutation-group layer** (`codeaut.permgroup`): deterministic Schreier–Sims for
+  exact order/membership/enumeration and an exact group intersection.
+- **nauty/Traces** colored-graph solves via the system `dreadnaut` (documented dependency).
+- Builtin codes, a `codeaut` CLI, a test suite, and benchmarks.

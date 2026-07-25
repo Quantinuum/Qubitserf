@@ -5,14 +5,16 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "qubitserf"
 version = "0.1.0"
-description = "Fast GPU + CPU exact distance finding for quantum and classical codes"
+description = "Quantum & classical code toolkit: exact code distance (distfind) + automorphism groups (codeaut), with C++/CUDA/Metal backends."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "Serban Cercelescu" }]
 keywords = [
     "quantum error correction", "code distance", "minimum distance",
-    "Brouwer-Zimmermann", "connected cluster", "CSS codes", "LDPC", "GPU", "Metal", "CUDA",
+    "Brouwer-Zimmermann", "connected cluster", "CSS codes", "LDPC",
+    "automorphism-group", "Leon", "nauty", "Traces", "coding-theory",
+    "GPU", "Metal", "CUDA",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -32,17 +34,32 @@ classifiers = [
 dependencies = ["numpy>=1.20"]
 
 [project.optional-dependencies]
+# codeaut uses `sympy` as an OPTIONAL accelerator for large-group backtracking intersection
+# (the Leon dual-trick path); it still works without it.
+fast = ["sympy>=1.9"]
 bench = ["codedistance"]
 docs = ["mkdocs", "mkdocs-material"]
-dev = ["pytest>=7", "scipy"]
+dev = ["pytest>=7", "scipy", "sympy>=1.9"]
 
 [project.urls]
 Homepage = "https://github.com/quantinuum/qubitserf"
 Repository = "https://github.com/quantinuum/qubitserf"
 
+# Two independent command-line interfaces, one per part of the package.
 [project.scripts]
-qubitserf = "qubitserf.cli:main"
+distfind = "qubitserf.distfind.cli:main"
+codeaut = "qubitserf.codeaut.cli:main"
 
+# ---------------------------------------------------------------------------------------
+# Native backends: CMake builds TWO shared libraries over a flat extern "C" ABI, each loaded
+# from its Python subpackage via ctypes (no pybind11 / Cython):
+#   * libdistfind -> qubitserf/distfind/_lib   (distance finding; capi = include/distfind/capi.h)
+#   * libcodeaut  -> qubitserf/codeaut/_lib     (automorphisms;    capi = include/codeaut/capi.h)
+#
+# codeaut's CSS / classical colored-graph solves additionally use the system nauty/Traces
+# (`dreadnaut`); install with `brew install nauty` / `apt install nauty` / conda-forge. The
+# distance engines and the Leon/BZ engines need no system dependency.
+# ---------------------------------------------------------------------------------------
 [tool.scikit-build]
 minimum-version = "0.8"
 wheel.packages = ["python/qubitserf"]
@@ -50,8 +67,12 @@ cmake.version = ">=3.20"
 sdist.include = ["src", "include", "CMakeLists.txt", "LICENSE", "README.md"]
 
 [tool.scikit-build.cmake.define]
-QUBITSERF_TESTS = "OFF"
-QUBITSERF_CLI = "OFF"
+DISTFIND_TESTS = "OFF"
+DISTFIND_CLI = "OFF"
+DISTFIND_METAL = "ON"
+DISTFIND_CUDA = "ON"
+CODEAUT_METAL = "ON"
+CODEAUT_CUDA = "ON"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

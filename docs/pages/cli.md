@@ -4,15 +4,15 @@
     This page documents the **intended** command-line interface. The CLI is being built
     alongside the library; the underlying engine (the Python API in [api.md](api.md)) is
     stable, and the CLI is a thin front end over it. Flag names below describe the
-    interface shape — consult `qubitserf --help` for the exact, current spelling on your
+    interface shape — consult `distfind --help` for the exact, current spelling on your
     build.
 
-`qubitserf` ships a command-line front end so you can find distances without writing Python.
+`distfind` ships a command-line front end so you can find distances without writing Python.
 Two equivalent entry points:
 
 ```bash
-qubitserf ...            # the installed console script
-python -m qubitserf ...  # the module form (identical behaviour)
+distfind ...            # the installed console script
+python -m qubitserf.distfind ...  # the module form (identical behaviour)
 ```
 
 ## Giving it a code
@@ -20,20 +20,20 @@ python -m qubitserf ...  # the module form (identical behaviour)
 The CLI accepts a code in one of three ways:
 
 1. **Pauli strings on stdin** — a list of stabilizer generators as Pauli strings (the input
-   format inherited from the original qubitserf), one generator per line. This is convenient for piping from
+   format inherited from the original distfind), one generator per line. This is convenient for piping from
    other tools. A code that is all pure-`X`/pure-`Z` rows is CSS; a code containing a `Y`
    or a row that mixes `X` and `Z` is **non-CSS** and is automatically routed to the
    symplectic solver (a single distance number).
 
     ```bash
-    cat my_code.txt | qubitserf --method cc
+    cat my_code.txt | distfind --method cc
     ```
 
 2. **Parity-check matrix files** — pass `--hx` and `--hz` pointing at the X- and Z-check
    matrices (for a CSS code), or a single check matrix for a classical code.
 
     ```bash
-    qubitserf --hx hx.txt --hz hz.txt --method bz
+    distfind --hx hx.txt --hz hz.txt --method bz
     ```
 
 3. **Symplectic stabilizer matrix** — pass `--symplectic` pointing at a 0/1 matrix with
@@ -41,8 +41,8 @@ The CLI accepts a code in one of three ways:
    X-support in the last `n`), for a general non-CSS code.
 
     ```bash
-    qubitserf --symplectic S.txt              # non-CSS distance
-    qubitserf --symplectic G.txt --subsystem  # non-CSS dressed (gauge) distance
+    distfind --symplectic S.txt              # non-CSS distance
+    distfind --symplectic G.txt --subsystem  # non-CSS dressed (gauge) distance
     ```
 
 ## Options
@@ -67,7 +67,7 @@ apply unchanged.
 Print both CSS components from Pauli-string stdin:
 
 ```console
-$ qubitserf --zx
+$ distfind --zx
 XXXX
 ZZZZ
 <Ctrl-D>
@@ -77,13 +77,13 @@ ZZZZ
 Find the Z-distance of a CSS code from parity-check files on the GPU:
 
 ```bash
-qubitserf --hx hx.txt --hz hz.txt --method bz --backend gpu --which z
+distfind --hx hx.txt --hz hz.txt --method bz --backend gpu --which z
 ```
 
 Pipe Pauli-string stabilizers in and read a plain-text summary:
 
 ```bash
-cat stabilizers.txt | qubitserf --method cc
+cat stabilizers.txt | distfind --method cc
 ```
 
 When Brouwer–Zimmermann can only bracket a hard code, the output reflects that: `proven`
@@ -101,12 +101,12 @@ default output is `max(z_weight, x_weight)`; `--zx` prints `z_weight x_weight`. 
 logical `Z` has Z-weight 3 and X-weight 0:
 
 ```console
-$ printf 'IIIXXXX\nIXXIIXX\nXIXIXIX\nIIIZZZZ\nIZZIIZZ\nZIZIZIZ\n' | qubitserf -o ZZZZZZZ --zx
+$ printf 'IIIXXXX\nIXXIIXX\nXIXIXIX\nIIIZZZZ\nIZZIIZZ\nZIZIZIZ\n' | distfind -o ZZZZZZZ --zx
 3 0
 ```
 
 A stabilizer fed as the operator returns weight 0, even on codes whose stabilizers are not
-self-orthogonal (where the original qubitserf returns a nonzero weight — see
+self-orthogonal (where the original distfind returns a nonzero weight — see
 [the correctness note](algorithms.md#operator-weight)). Add `--subsystem` to take operator
 weight modulo the **gauge** group instead.
 
@@ -118,6 +118,6 @@ It composes with `--which`, `--method`, and the other flags. For the distance-3 
 code:
 
 ```console
-$ qubitserf --subsystem bacon_shor_d3_gauge.txt
+$ distfind --subsystem bacon_shor_d3_gauge.txt
 3
 ```

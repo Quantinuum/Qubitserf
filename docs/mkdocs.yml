@@ -1,4 +1,4 @@
-site_name: qubitserf
+site_name: distfind
 site_description: >-
   Fast GPU and multicore-CPU code-distance finding for quantum and
   classical codes.

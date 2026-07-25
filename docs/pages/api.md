@@ -1,11 +1,11 @@
 # Python API reference
 
-The public surface is small. Everything is importable from the top-level `qubitserf`
+The public surface is small. Everything is importable from the top-level `distfind`
 package:
 
 ```python
-import qubitserf as df
-from qubitserf import codes
+from qubitserf import distfind as df
+from qubitserf.distfind import codes
 
 df.css_distance                   # exact CSS-code distance
 df.classical_distance             # exact classical linear-code distance
@@ -111,7 +111,7 @@ code (operator weight modulo the gauge group).
 Operator weight reduces to the core [`DistProblem`](algorithms.md#operator-weight) (append
 the operator as an extra generator; a single detector row separates the two cosets), so it is
 solved by the same BZ / MITM engines as code distance. This carries over the operator-weight
-feature of the original qubitserf, but computed correctly for codes whose stabilizers are not
+feature of the original distfind, but computed correctly for codes whose stabilizers are not
 self-orthogonal — see [the correctness note](algorithms.md#operator-weight).
 
 ```python
@@ -329,7 +329,7 @@ symplectic-weight coset leader.
 
 ---
 
-## `qubitserf.codes` — code generators
+## `qubitserf.distfind.codes` — code generators
 
 Generators for classical parity-check matrices and CSS check-matrix pairs. Classical
 generators return a single `H`; CSS generators return a `(Hx, Hz)` tuple. All matrices are
