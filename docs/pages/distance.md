@@ -9,11 +9,11 @@ from qubitserf.distfind import codes
 
 | Function | Computes |
 |---|---|
-| [`css_distance`](#css_distance) | exact CSS-code distance |
-| [`classical_distance`](#classical_distance) | exact classical linear-code distance |
+| [`css_distance`](#css_distance) | CSS-code distance |
+| [`classical_distance`](#classical_distance) | classical linear-code distance |
 | [`operator_weight`](#operator_weight) | min weight of a Pauli modulo a CSS group |
 | [`subsystem_css_distance`](#subsystem_css_distance) | dressed distance of a CSS subsystem (gauge) code |
-| [`stabilizer_distance`](#general-non-css-codes) | exact general (non-CSS) stabilizer-code distance |
+| [`stabilizer_distance`](#general-non-css-codes) | general (non-CSS) stabilizer-code distance |
 | [`subsystem_stabilizer_distance`](#general-non-css-codes) | dressed distance of a non-CSS subsystem code |
 | [`pauli_operator_weight`](#general-non-css-codes) | min symplectic weight of a Pauli modulo a non-CSS group |
 | `available_backends` / `version` | environment introspection |
@@ -33,9 +33,9 @@ and return a `Result` with:
 
 | Field | Meaning |
 |---|---|
-| `distance` | best distance found; exact when `proven` is true |
+| `distance` | best distance found; the minimum distance when `proven` is true |
 | `lower_bound` | certified lower bound (`== distance` when proven) |
-| `proven` | whether the answer is certified exact |
+| `proven` | whether the search ran to completion, rather than being capped and leaving a `[lower_bound, distance]` bracket |
 | `seconds` | wall-clock runtime |
 | `backend` | backend actually used |
 
@@ -191,7 +191,7 @@ There is no fixed qubit-count limit: codewords are bit-packed into `ceil(n/64)` 
 every host routine is sized dynamically, so the CPU backend handles arbitrary `n`. The
 GPU runs its native Brouwer–Zimmermann kernel for codes up to 1024 physical qubits and
 transparently falls back to the CPU outside that (or when dispatch latency would
-dominate) for the same exact result.
+dominate) for the same result.
 
 ```python
 print(df.available_backends())                          # ['cpu', 'gpu']

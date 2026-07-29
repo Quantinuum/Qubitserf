@@ -20,7 +20,7 @@ algorithms. Its goal is to be fast, very fast.
 - **Operator weight** — the minimum weight of a Pauli operator modulo the stabilizer or gauge
   group, i.e. the minimum-weight coset leader.
 - **Automorphism groups** — `Aut(C)` of a classical binary linear code or of a quantum CSS code with a full permutation-group toolkit (order, membership, enumeration, intersection).
-- **Scales to real codes** — connected-cluster certifies distances of qLDPC codes with up to hundreds of qubits and distances up to 20. Similarly, automorphism groups of sparse codes with hundreds of bits/qubits can be computed exactly with the Brouwer-Zimmerman+nauty method.
+- **Scales to real codes** — connected-cluster certifies distances of qLDPC codes with up to hundreds of qubits and distances up to 20. Similarly, automorphism groups of sparse codes with hundreds of bits/qubits can be computed with the Brouwer-Zimmerman+nauty method.
 
 ## Installation
 
@@ -64,9 +64,9 @@ a = codeaut.css_automorphisms(acodes.gross())
 print(a.order())                                      # 144
 ```
 
-Every function below is exact: `distfind` results say so via `.proven`; the `codeaut`
-functions return the certified full group or raise — never an approximation. Pass `verbose=True` to any of them to stream progress to stderr. Standard code
-families ship with both modules (`qubitserf.distfind.codes` and `qubitserf.codeaut.codes` —
+A `distfind` result reports via `.proven` whether the search ran to completion or was capped;
+the `codeaut` functions return the full group or raise. Pass `verbose=True` to any of them to
+stream progress to stderr. Standard code families ship with both modules (`qubitserf.distfind.codes` and `qubitserf.codeaut.codes` —
 `steane`, `shor`, `toric(L)`, `surface(L)`, `gross`, `bacon_shor(d)`, Reed–Muller, Hamming, …),
 so every example below runs without external data.
 
@@ -192,7 +192,7 @@ print(codeaut.classical_automorphisms(G, method="bz").order)     # 168 (BZ + nau
 
 `method="auto"` (the default) runs Leon's algorithm when the effective dimension
 `min(dim, n − dim)` is small and the Brouwer-Zimmermann + nauty incidence route (best for
-LDPC-like codes, exact at any dimension) otherwise. 
+LDPC-like codes, usable at any dimension) otherwise.
 
 ## CSS codes — `css_automorphisms`
 
@@ -209,9 +209,7 @@ print(codeaut.css_automorphisms(codes.gross(), method="bz").order())   # 144
 
 It accepts a `CSSCode`, an `(Hx, Hz)` pair, two matrices, or any object exposing `.Hx`/`.Hz`.
 The same `method="auto"|"leon"|"bz"` choice applies: `leon` for small effective dimension, `bz`
-(joint Brouwer-Zimmermann + nauty/Traces incidence) for LDPC codes. Like the classical
-function, it either certifies the **exact** full group or raises a `RuntimeError` explaining
-which engines were tried and what to do — never a partial answer:
+(joint Brouwer-Zimmermann + nauty/Traces incidence) for LDPC codes.
 
 ```python
 codeaut.css_automorphisms(codes.gross(), method="leon")
@@ -221,13 +219,13 @@ codeaut.css_automorphisms(codes.gross(), method="leon")
 
 ## Working with the group
 
-The returned `Group` (classical results expose the same via `.group()`) has exact order,
+The returned `Group` (classical results expose the same via `.group()`) supports order,
 membership, and enumeration:
 
 ```python
 grp = codeaut.css_automorphisms(codes.steane())
 
-print(grp.order())                              # 168 — an exact int, any size
+print(grp.order())                              # 168 — a Python int, any size
 print(grp.reduced_generators())                 # a minimal generating set
 print(grp.contains([0, 1, 2, 3, 4, 5, 6]))      # True (the identity)
 print(sum(1 for _ in grp))                      # 168 — a Group is directly iterable

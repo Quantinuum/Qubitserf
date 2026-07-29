@@ -15,10 +15,6 @@ from qubitserf.algebra import permgroup as pg
 | [`css_automorphisms`](#css_automorphisms) | `Aut(Hx) ∩ Aut(Hz)` of a CSS quantum code |
 | [`group_intersection`](#group_intersection) | the intersection of two permutation groups |
 
-Both automorphism functions are **exact-or-raise**: they return the certified full group,
-or raise a `RuntimeError` explaining which engines were tried and what to try instead.
-They never return a partial or unverified answer.
-
 > [!IMPORTANT]
 > The colored-graph solves need system `nauty` 2.7+ (`dreadnaut`) on your `PATH`
 > (`brew install nauty`, `apt install nauty`, or `conda install -c conda-forge nauty`).
@@ -43,7 +39,7 @@ G = np.array([[0, 0, 0, 1, 1, 1, 1],
               [1, 0, 1, 0, 1, 0, 1]], dtype=np.uint8)
 
 r = codeaut.classical_automorphisms(G)
-print(r.order)          # 168 — an exact int
+print(r.order)          # 168
 print(r.generators)     # 0-indexed image lists, a strong generating set
 ```
 
@@ -52,8 +48,8 @@ print(r.generators)     # 0-indexed image lists, a strong generating set
 | method | what it does | when |
 |---|---|---|
 | `"auto"` (default) | Leon when the effective dimension `min(dim, n − dim)` is ≤ 20, the `bz` route otherwise; falls through to the other engine on failure | almost always |
-| `"leon"` | Leon's partition-backtracking algorithm on the cheaper of `C` / `C⊥` (the dual-code trick: `Aut(C) = Aut(C⊥)`, enumeration costs `2**eff_dim`) | small effective dimension |
-| `"bz"` | certified-complete Brouwer–Zimmermann low-weight classes + nauty/Traces incidence; exact at any dimension | **LDPC-like codes** |
+| `"leon"` | Leon's partition-backtracking algorithm on the cheaper of `C` and `C⊥` (the dual-code trick: `Aut(C) = Aut(C⊥)`) | small effective dimension |
+| `"bz"` | certified-complete Brouwer–Zimmermann low-weight classes + nauty/Traces incidence | **LDPC-like codes** |
 
 ```python
 print(codeaut.classical_automorphisms(G, method="bz").order)     # 168, same group
@@ -86,7 +82,7 @@ The same `method` choice applies: `"leon"` runs Leon per side and intersects, `"
 the joint Brouwer–Zimmermann + nauty/Traces graph incidence (best for LDPC codes), and
 `"auto"` tries the engines cheapest-first, stopping as soon as one certifies the full
 group. Every generator is re-verified over GF(2) to preserve both rowspaces before the
-group is returned. If no engine can certify the exact group, a `RuntimeError` lists each
+group is returned. If no engine can certify the group, a `RuntimeError` lists each
 stage tried, why it failed, and what to try:
 
 ```python
@@ -106,7 +102,7 @@ and enumeration:
 ```python
 grp = codeaut.css_automorphisms(codes.steane())
 
-print(grp.order())                              # 168 — an exact int, any size
+print(grp.order())                              # 168 — a Python int, any size
 print(grp.reduced_generators())                 # a minimal generating set
 print(grp.contains([0, 1, 2, 3, 4, 5, 6]))      # True (the identity)
 print(sum(1 for _ in grp))                      # 168 — a Group is directly iterable

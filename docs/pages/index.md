@@ -1,11 +1,11 @@
 # qubitserf
 
-**Fast exact code distance and automorphism groups for quantum and classical codes,
+**Fast code distance and automorphism groups for quantum and classical codes,
 on CPU and GPU.** A self-contained C++ core with a Python (`ctypes`) front end.
 
 Qubitserf bundles two engines built on one shared native library, `libqubitserf`:
 
-- **`qubitserf.distfind`** computes the *exact* minimum distance of CSS quantum codes,
+- **`qubitserf.distfind`** computes the minimum distance of CSS quantum codes,
   general (non-CSS) stabilizer codes, dressed subsystem codes, and classical linear codes
   — plus the minimum weight of a Pauli operator modulo the stabilizer or gauge group —
   using **deterministic** algorithms (Brouwer–Zimmermann, connected cluster,
@@ -14,12 +14,12 @@ Qubitserf bundles two engines built on one shared native library, `libqubitserf`
 - **`qubitserf.codeaut`** computes the automorphism group `Aut(C)` of a binary linear
   code (Leon's algorithm, or Brouwer–Zimmermann + nauty incidence) and the
   qubit-permutation group `Aut(Hx) ∩ Aut(Hz)` of a CSS quantum code, with a full
-  permutation-group toolkit (exact order, membership, enumeration, intersection) in
+  permutation-group toolkit (order, membership, enumeration, intersection) in
   `qubitserf.algebra`.
 
-Everything is exact: a distance result says so via `.proven`; the automorphism functions
-return the certified full group or raise. No Monte-Carlo estimates, and never a silently
-unverified group.
+A distance result reports via `.proven` whether the search ran to completion or was
+capped; the automorphism functions return the full group or raise. No Monte-Carlo
+estimates, and never a silently unverified group.
 
 ## The headline results
 
@@ -30,7 +30,7 @@ unverified group.
 - **Brouwer–Zimmermann on the GPU is up to ~500× faster** than the default reference BZ
   on the codes where the reference finishes at all.
 - The automorphism engines compute the full automorphism group of sparse codes with
-  hundreds of bits/qubits exactly, via the same certified low-weight enumeration.
+  hundreds of bits/qubits, via the same certified low-weight enumeration.
 
 The distance numbers come from the committed benchmark outputs — see
 [Benchmarks](benchmarks.md); they are measurements, not estimates.
