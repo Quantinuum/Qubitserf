@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 import qubitserf.distfind as df
-from qubitserf.distfind import codes, io
+from qubitserf.distfind import codes, io, _native
 
 import _reference as ref
 
@@ -28,17 +28,26 @@ def _oracle(Gx, Gz, z_vec, x_vec):
             ref.coset_min_weight_bruteforce(Gx, x_vec))
 
 
+def _split(Gx, Gz, z_vec, x_vec, *, method="bz"):
+    """The native ``(z_weight, x_weight)`` pair.
+
+    ``df.operator_weight`` returns only ``max(z, x)``; the raw layer still reports
+    the two coset leaders separately, and the oracle cross-checks below need both
+    (``max`` alone cannot tell (3, 0) from (0, 3)).
+    """
+    r = _native.operator_weight_raw(Gx, Gz, z_vec, x_vec, method, "cpu", 0, False)
+    return int(r.z_weight), int(r.x_weight)
+
+
 def _check(Gx, Gz, z_vec, x_vec, *, method="bz"):
-    """Assert native operator_weight((z,x)) matches the oracle, return the result."""
-    r = df.operator_weight(Gx, Gz, (z_vec, x_vec), method=method, backend="cpu")
+    """Assert native operator weight matches the oracle; return ``(z, x)``."""
     z_ref, x_ref = _oracle(Gx, Gz, z_vec, x_vec)
-    assert r.z_weight == z_ref, (
-        f"z_weight native={r.z_weight} oracle={z_ref} (method={method})")
-    assert r.x_weight == x_ref, (
-        f"x_weight native={r.x_weight} oracle={x_ref} (method={method})")
-    assert r.weight == max(z_ref, x_ref)
-    assert r.proven
-    return r
+    z_got, x_got = _split(Gx, Gz, z_vec, x_vec, method=method)
+    assert z_got == z_ref, f"z_weight native={z_got} oracle={z_ref} (method={method})"
+    assert x_got == x_ref, f"x_weight native={x_got} oracle={x_ref} (method={method})"
+    w = df.operator_weight(Gx, Gz, (z_vec, x_vec), method=method, backend="cpu")
+    assert w == max(z_ref, x_ref), f"weight native={w} oracle={max(z_ref, x_ref)}"
+    return z_got, x_got
 
 
 # --------------------------------------------------------------------------- #
@@ -48,13 +57,11 @@ def test_steane_logical_and_stabilizer():
     Hx, Hz = codes.steane()
     n = 7
     # logical Z (all-ones Z) -> z_weight 3, x_weight 0.
-    _check(Hx, Hz, np.ones(n, np.uint8), np.zeros(n, np.uint8))
-    r = df.operator_weight(Hx, Hz, "ZZZZZZZ", backend="cpu")
-    assert (r.z_weight, r.x_weight, r.weight) == (3, 0, 3)
+    assert _check(Hx, Hz, np.ones(n, np.uint8), np.zeros(n, np.uint8)) == (3, 0)
+    assert df.operator_weight(Hx, Hz, "ZZZZZZZ", backend="cpu") == 3
     # a single stabilizer row -> weight 0.
-    _check(Hx, Hz, Hz[0], np.zeros(n, np.uint8))
-    r0 = df.operator_weight(Hx, Hz, (Hz[0], np.zeros(n, np.uint8)), backend="cpu")
-    assert r0.z_weight == 0
+    assert _check(Hx, Hz, Hz[0], np.zeros(n, np.uint8)) == (0, 0)
+    assert df.operator_weight(Hx, Hz, (Hz[0], np.zeros(n, np.uint8)), backend="cpu") == 0
 
 
 def test_steane_y_operator():
@@ -62,8 +69,7 @@ def test_steane_y_operator():
     n = 7
     z, x = io.parse_operator("YYYYYYY", n)
     assert np.all(z == 1) and np.all(x == 1)
-    r = _check(Hx, Hz, z, x)
-    assert r.z_weight == 3 and r.x_weight == 3  # logical in both parts
+    assert _check(Hx, Hz, z, x) == (3, 3)      # logical in both parts
     # mixed Pauli string with a couple of Ys
     z2, x2 = io.parse_operator("YXZIYXZ", n)
     _check(Hx, Hz, z2, x2)
@@ -78,12 +84,12 @@ def test_surface3_stabilizer_is_weight_zero():
     Hx, Hz = ref.surface_3()
     n = 13
     for row in Hz:
-        r = df.operator_weight(Hx, Hz, (row, np.zeros(n, np.uint8)), backend="cpu")
-        assert r.z_weight == 0, f"stabilizer row should reduce to 0, got {r.z_weight}"
+        z_got, _ = _split(Hx, Hz, row, np.zeros(n, np.uint8))
+        assert z_got == 0, f"stabilizer row should reduce to 0, got {z_got}"
         assert ref.coset_min_weight_bruteforce(Hz, row) == 0
     for row in Hx:
-        r = df.operator_weight(Hx, Hz, (np.zeros(n, np.uint8), row), backend="cpu")
-        assert r.x_weight == 0
+        _, x_got = _split(Hx, Hz, np.zeros(n, np.uint8), row)
+        assert x_got == 0
 
 
 def test_surface3_inflated_logical_is_distance():
@@ -95,8 +101,7 @@ def test_surface3_inflated_logical_is_distance():
     inflated = logz.copy()
     inflated ^= Hz[0]
     inflated ^= Hz[2]
-    r = _check(Hx, Hz, inflated, np.zeros(n, np.uint8))
-    assert r.z_weight == 3
+    assert _check(Hx, Hz, inflated, np.zeros(n, np.uint8)) == (3, 0)
 
 
 # --------------------------------------------------------------------------- #
@@ -132,11 +137,12 @@ def test_bz_and_mitm_agree():
         n = Gx.shape[1]
         z = rng.integers(0, 2, size=n).astype(np.uint8)
         x = rng.integers(0, 2, size=n).astype(np.uint8)
-        rbz = df.operator_weight(Gx, Gz, (z, x), method="bz", backend="cpu")
-        rmitm = df.operator_weight(Gx, Gz, (z, x), method="mitm", backend="cpu")
-        assert (rbz.z_weight, rbz.x_weight) == (rmitm.z_weight, rmitm.x_weight)
+        rbz = _split(Gx, Gz, z, x, method="bz")
+        rmitm = _split(Gx, Gz, z, x, method="mitm")
+        assert rbz == rmitm
         # and both equal the oracle
-        assert (rbz.z_weight, rbz.x_weight) == _oracle(Gx, Gz, z, x)
+        assert rbz == _oracle(Gx, Gz, z, x)
+        assert df.operator_weight(Gx, Gz, (z, x), backend="cpu") == max(rbz)
 
 
 # --------------------------------------------------------------------------- #
@@ -150,5 +156,4 @@ def test_operator_encodings_equivalent():
     from_tuple = df.operator_weight(Hx, Hz, (z, x), backend="cpu")
     sympl = np.concatenate([z, x])
     from_sympl = df.operator_weight(Hx, Hz, sympl, backend="cpu")
-    for r in (from_tuple, from_sympl):
-        assert (r.z_weight, r.x_weight) == (from_str.z_weight, from_str.x_weight)
+    assert from_tuple == from_str and from_sympl == from_str

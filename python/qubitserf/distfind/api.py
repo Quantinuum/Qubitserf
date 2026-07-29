@@ -1,76 +1,16 @@
-"""High-level distance-finding API."""
+"""High-level distance-finding API.
+
+Every entry point returns a plain ``int``. A distance is ``-1`` when it is not
+defined for the input -- an empty code, or a code with no logical qubits, which
+has no non-trivial operator to measure.
+"""
 from __future__ import annotations
-from dataclasses import dataclass
 
 import numpy as np
 
 from . import _native
 from . import io
 from ._interop import as_css
-
-
-@dataclass
-class Result:
-    distance: int           # best upper bound found (the distance, when proven)
-    lower_bound: int        # proven lower bound (== distance when proven)
-    proven: bool
-    levels: int
-    seconds: float
-    backend: str
-
-    @classmethod
-    def _from(cls, r):
-        backend = r.backend.decode()
-        if backend in ("metal", "cuda"):
-            backend = "gpu"
-        return cls(
-            distance=r.distance,
-            lower_bound=r.lower_bound,
-            proven=bool(r.proven),
-            levels=r.levels,
-            seconds=r.seconds,
-            backend=backend,
-        )
-
-
-@dataclass
-class OpResult:
-    z_weight: int           # min weight of the Z-part modulo rowspace(Gz)
-    x_weight: int           # min weight of the X-part modulo rowspace(Gx)
-    weight: int             # max(z_weight, x_weight): the operator's reduced weight
-    proven: bool
-    seconds: float
-    backend: str
-
-    @classmethod
-    def _from(cls, r):
-        backend = r.backend.decode()
-        if backend in ("metal", "cuda"):
-            backend = "gpu"
-        return cls(
-            z_weight=r.z_weight,
-            x_weight=r.x_weight,
-            weight=max(r.z_weight, r.x_weight),
-            proven=bool(r.proven),
-            seconds=r.seconds,
-            backend=backend,
-        )
-
-
-@dataclass
-class PauliOpResult:
-    weight: int             # min symplectic weight over the coset op + rowspace(G)
-    proven: bool
-    seconds: float
-    backend: str
-
-    @classmethod
-    def _from(cls, r):
-        backend = r.backend.decode()
-        if backend in ("metal", "cuda"):
-            backend = "gpu"
-        return cls(weight=r.distance, proven=bool(r.proven),
-                   seconds=r.seconds, backend=backend)
 
 
 _WHICH = {"min": "M", "m": "M", "z": "Z", "x": "X"}
@@ -133,8 +73,8 @@ def _normalize_backend(backend) -> str:
 
 
 def css_distance(Hx, Hz=None, *, method="bz", which="min", backend="auto",
-                 threads=0, max_weight=0, verbose=False) -> Result:
-    """Exact distance of a CSS code given X- and Z-check matrices.
+                 threads=0, verbose=False) -> int:
+    """Distance of a CSS code given X- and Z-check matrices.
 
     The code may be given as two matrices ``css_distance(Hx, Hz)`` or as a single
     CSS-code-like object ``css_distance(code)`` -- anything accepted by
@@ -152,12 +92,12 @@ def css_distance(Hx, Hz=None, *, method="bz", which="min", backend="auto",
     if w is None:
         raise ValueError("which must be one of min/z/x")
     backend = _normalize_backend(backend)
-    r = _native.css_distance_raw(Hx, Hz, method, w, backend, threads, max_weight, verbose)
-    return Result._from(r)
+    r = _native.css_distance_raw(Hx, Hz, method, w, backend, threads, verbose)
+    return int(r.distance)
 
 
 def subsystem_css_distance(Gx, Gz=None, *, method="bz", which="min", backend="auto",
-                           threads=0, max_weight=0, verbose=False) -> Result:
+                           threads=0, verbose=False) -> int:
     """Dressed distance of a CSS *subsystem* code given its gauge generators.
 
     ``Gx`` (X-type) and ``Gz`` (Z-type) are the **gauge** generators (not the
@@ -178,19 +118,19 @@ def subsystem_css_distance(Gx, Gz=None, *, method="bz", which="min", backend="au
         raise ValueError("which must be one of min/z/x")
     backend = _normalize_backend(backend)
     r = _native.subsystem_distance_raw(Gx, Gz, method, w, backend,
-                                       threads, max_weight, verbose)
-    return Result._from(r)
+                                       threads, verbose)
+    return int(r.distance)
 
 
 def operator_weight(Gx, Gz, operator, *, method="bz", backend="auto",
-                    threads=0, max_weight=0, verbose=False) -> OpResult:
+                    threads=0, verbose=False) -> int:
     """Minimum weight of a Pauli ``operator`` modulo the group ``<Gx, Gz>``.
 
     ``Gx`` (X-type) and ``Gz`` (Z-type) are the generators of the multipliable
     group: the stabilizer generators for a stabilizer code, or the gauge
-    generators for a subsystem code. The returned weights are the minimum-weight
-    coset leaders of the operator's Z-part modulo rowspace(Gz) and its X-part
-    modulo rowspace(Gx) -- the two parts are independent.
+    generators for a subsystem code. The Z-part is minimized over its coset
+    modulo rowspace(Gz) and the X-part over rowspace(Gx) independently; the
+    returned weight is the larger of the two coset leaders.
 
     ``operator`` may be a Pauli string (length n; chars I/X/Y/Z/._ , a Y sets
     both the Z and X support), a 2-tuple ``(z_vec, x_vec)`` of 0/1 arrays, or a
@@ -205,13 +145,13 @@ def operator_weight(Gx, Gz, operator, *, method="bz", backend="auto",
     z_vec, x_vec = _parse_operator(operator, n)
     backend = _normalize_backend(backend)
     r = _native.operator_weight_raw(Gx, Gz, z_vec, x_vec, method, backend,
-                                    threads, max_weight, verbose)
-    return OpResult._from(r)
+                                    threads, verbose)
+    return max(int(r.z_weight), int(r.x_weight))
 
 
 def stabilizer_distance(S, *, method="bz", which="min", backend="auto",
-                        threads=0, max_weight=0, verbose=False) -> Result:
-    """Exact distance of a general (possibly non-CSS) stabilizer code.
+                        threads=0, verbose=False) -> int:
+    """Distance of a general (possibly non-CSS) stabilizer code.
 
     ``S`` is a symplectic stabilizer matrix of shape ``(m, 2n)`` in ``[z | x]`` column
     order: row r is the Pauli with Z-support ``S[r, :n]`` and X-support ``S[r, n:]``.
@@ -238,12 +178,12 @@ def stabilizer_distance(S, *, method="bz", which="min", backend="auto",
     if w is None:
         raise ValueError("which must be one of min/z/x")
     backend = _normalize_backend(backend)
-    r = _native.stabilizer_distance_raw(S, method, w, backend, threads, max_weight, verbose)
-    return Result._from(r)
+    r = _native.stabilizer_distance_raw(S, method, w, backend, threads, verbose)
+    return int(r.distance)
 
 
 def subsystem_stabilizer_distance(G, *, method="bz", which="min", backend="auto",
-                                  threads=0, max_weight=0, verbose=False) -> Result:
+                                  threads=0, verbose=False) -> int:
     """Dressed distance of a general (possibly non-CSS) subsystem code.
 
     ``G`` is the symplectic **gauge** matrix ``(m, 2n)`` in ``[z | x]`` order (the gauge
@@ -261,12 +201,12 @@ def subsystem_stabilizer_distance(G, *, method="bz", which="min", backend="auto"
         raise ValueError("which must be one of min/z/x")
     backend = _normalize_backend(backend)
     r = _native.subsystem_stabilizer_distance_raw(G, method, w, backend,
-                                                  threads, max_weight, verbose)
-    return Result._from(r)
+                                                  threads, verbose)
+    return int(r.distance)
 
 
 def pauli_operator_weight(G, operator, *, method="bz", backend="auto",
-                          threads=0, max_weight=0, verbose=False) -> PauliOpResult:
+                          threads=0, verbose=False) -> int:
     """Minimum symplectic weight of a general Pauli ``operator`` modulo the group ``<G>``.
 
     ``G`` is a symplectic ``(m, 2n)`` ``[z | x]`` matrix (stabilizer generators for a
@@ -287,16 +227,16 @@ def pauli_operator_weight(G, operator, *, method="bz", backend="auto",
     op = _parse_symplectic_operator(operator, n)
     backend = _normalize_backend(backend)
     r = _native.stabilizer_operator_weight_raw(G, op, method, backend,
-                                               threads, max_weight, verbose)
-    return PauliOpResult._from(r)
+                                               threads, verbose)
+    return int(r.distance)
 
 
 def classical_distance(H, *, method="bz", backend="auto",
-                       threads=0, max_weight=0, verbose=False) -> Result:
+                       threads=0, verbose=False) -> int:
     """Minimum distance of a classical linear code from its parity-check matrix H."""
     backend = _normalize_backend(backend)
-    r = _native.classical_distance_raw(H, method, backend, threads, max_weight, verbose)
-    return Result._from(r)
+    r = _native.classical_distance_raw(H, method, backend, threads, verbose)
+    return int(r.distance)
 
 
 def available_backends():

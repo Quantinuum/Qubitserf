@@ -4,9 +4,6 @@ Deterministic algorithms (Brouwer-Zimmermann, meet-in-the-middle) accelerated on
 GPU via combinatorial-number-system work splitting.
 """
 from .api import (
-    Result,
-    OpResult,
-    PauliOpResult,
     css_distance,
     subsystem_css_distance,
     operator_weight,
@@ -21,9 +18,6 @@ from ._interop import as_css
 from . import codes
 
 __all__ = [
-    "Result",
-    "OpResult",
-    "PauliOpResult",
     "css_distance",
     "subsystem_css_distance",
     "operator_weight",

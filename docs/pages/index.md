@@ -17,8 +17,8 @@ Qubitserf bundles two engines built on one shared native library, `libqubitserf`
   permutation-group toolkit (order, membership, enumeration, intersection) in
   `qubitserf.algebra`.
 
-A distance result reports via `.proven` whether the search ran to completion or was
-capped; the automorphism functions return the full group or raise. No Monte-Carlo
+Every distance entry point returns a plain `int` (`-1` when the distance is not defined
+for the input); the automorphism functions return the full group or raise. No Monte-Carlo
 estimates, and never a silently unverified group.
 
 ## The headline results

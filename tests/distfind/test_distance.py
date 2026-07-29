@@ -22,7 +22,7 @@ import numpy as np
 import pytest
 
 import qubitserf.distfind as df
-from qubitserf.distfind import codes
+from qubitserf.distfind import codes, _native
 
 from conftest import HAS_GPU, requires_gpu
 
@@ -48,10 +48,11 @@ CSS_CASES = _css_cases()
 @pytest.mark.parametrize("name,HxHz,expected", CSS_CASES, ids=[c[0] for c in CSS_CASES])
 def test_css_distance_cpu(name, HxHz, expected):
     Hx, Hz = HxHz
-    r = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu")
-    assert r.distance == expected, f"{name}: cpu d={r.distance}, expected {expected}"
-    assert r.proven, f"{name}: cpu result not marked proven"
-    assert r.backend == "cpu"
+    d = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu")
+    assert d == expected, f"{name}: cpu d={d}, expected {expected}"
+    # the raw layer still reports which backend actually ran
+    raw = _native.css_distance_raw(Hx, Hz, "bz", "M", "cpu", 0, False)
+    assert raw.backend.decode() == "cpu"
 
 
 # --------------------------------------------------------------------------- #
@@ -60,9 +61,9 @@ def test_css_distance_cpu(name, HxHz, expected):
 @pytest.mark.parametrize("name,HxHz,expected", CSS_CASES, ids=[c[0] for c in CSS_CASES])
 def test_css_distance_z_and_x_consistent(name, HxHz, expected):
     Hx, Hz = HxHz
-    dz = df.css_distance(Hx, Hz, which="z", backend="cpu").distance
-    dx = df.css_distance(Hx, Hz, which="x", backend="cpu").distance
-    dmin = df.css_distance(Hx, Hz, which="min", backend="cpu").distance
+    dz = df.css_distance(Hx, Hz, which="z", backend="cpu")
+    dx = df.css_distance(Hx, Hz, which="x", backend="cpu")
+    dmin = df.css_distance(Hx, Hz, which="min", backend="cpu")
     assert dmin == min(dz, dx), f"{name}: min({dz},{dx}) != reported {dmin}"
     assert dmin == expected
 
@@ -73,7 +74,7 @@ def test_css_distance_z_and_x_consistent(name, HxHz, expected):
 @pytest.mark.parametrize("name,HxHz,expected", CSS_CASES, ids=[c[0] for c in CSS_CASES])
 def test_css_distance_cpu_deterministic(name, HxHz, expected):
     Hx, Hz = HxHz
-    vals = {df.css_distance(Hx, Hz, backend="cpu").distance for _ in range(4)}
+    vals = {df.css_distance(Hx, Hz, backend="cpu") for _ in range(4)}
     assert vals == {expected}, f"{name}: cpu non-deterministic, saw {vals}"
 
 
@@ -83,29 +84,29 @@ def test_css_distance_cpu_deterministic(name, HxHz, expected):
 @pytest.mark.parametrize("name,HxHz,expected", CSS_CASES, ids=[c[0] for c in CSS_CASES])
 def test_mitm_matches_bz_cpu(name, HxHz, expected):
     Hx, Hz = HxHz
-    bz = df.css_distance(Hx, Hz, method="bz", backend="cpu").distance
-    mitm = df.css_distance(Hx, Hz, method="mitm", backend="cpu").distance
+    bz = df.css_distance(Hx, Hz, method="bz", backend="cpu")
+    mitm = df.css_distance(Hx, Hz, method="mitm", backend="cpu")
     assert mitm == bz == expected, f"{name}: mitm={mitm}, bz={bz}, expected {expected}"
 
 
 @pytest.mark.parametrize("name,HxHz,expected", CSS_CASES, ids=[c[0] for c in CSS_CASES])
 def test_cc_matches_bz(name, HxHz, expected):
     Hx, Hz = HxHz
-    bz = df.css_distance(Hx, Hz, method="bz", backend="cpu").distance
-    cc = df.css_distance(Hx, Hz, method="cc").distance
+    bz = df.css_distance(Hx, Hz, method="bz", backend="cpu")
+    cc = df.css_distance(Hx, Hz, method="cc")
     assert cc == bz == expected, f"{name}: cc={cc}, bz={bz}, expected {expected}"
 
 
 def test_cc_certifies_bivariate_bicycle():
     """Connected cluster certifies sparse BB codes where BZ's bound is too weak."""
     Hx, Hz = codes.gross_code()
-    r = df.css_distance(Hx, Hz, method="cc")
-    assert r.distance == 12 and r.proven, f"gross code: cc d={r.distance}, expected 12"
+    d = df.css_distance(Hx, Hz, method="cc")
+    assert d == 12, f"gross code: cc d={d}, expected 12"
     # a smaller BB code [[72,12,6]]
     Hx, Hz = codes.bivariate_bicycle(6, 6, [("x", 3), ("y", 1), ("y", 2)],
                                      [("y", 3), ("x", 1), ("x", 2)])
-    r = df.css_distance(Hx, Hz, method="cc")
-    assert r.distance == 6 and r.proven, f"bb[[72,12,6]]: cc d={r.distance}, expected 6"
+    d = df.css_distance(Hx, Hz, method="cc")
+    assert d == 6, f"bb[[72,12,6]]: cc d={d}, expected 6"
 
 
 # --------------------------------------------------------------------------- #
@@ -113,15 +114,13 @@ def test_cc_certifies_bivariate_bicycle():
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("n", range(3, 9))
 def test_classical_repetition_cpu(n):
-    r = df.classical_distance(codes.repetition_parity(n), method="bz", backend="cpu")
-    assert r.distance == n, f"repetition({n}): d={r.distance}, expected {n}"
-    assert r.proven
+    d = df.classical_distance(codes.repetition_parity(n), method="bz", backend="cpu")
+    assert d == n, f"repetition({n}): d={d}, expected {n}"
 
 
 def test_classical_hamming_cpu():
-    r = df.classical_distance(codes.hamming_parity(3), method="bz", backend="cpu")
-    assert r.distance == 3, f"hamming(3): d={r.distance}, expected 3"
-    assert r.proven
+    d = df.classical_distance(codes.hamming_parity(3), method="bz", backend="cpu")
+    assert d == 3, f"hamming(3): d={d}, expected 3"
 
 
 # --------------------------------------------------------------------------- #
@@ -131,8 +130,8 @@ def test_classical_hamming_cpu():
 @pytest.mark.parametrize("name,HxHz,expected", CSS_CASES, ids=[c[0] for c in CSS_CASES])
 def test_gpu_matches_cpu(name, HxHz, expected):
     Hx, Hz = HxHz
-    cpu = df.css_distance(Hx, Hz, backend="cpu").distance
-    gpu_vals = {df.css_distance(Hx, Hz, backend="gpu").distance for _ in range(6)}
+    cpu = df.css_distance(Hx, Hz, backend="cpu")
+    gpu_vals = {df.css_distance(Hx, Hz, backend="gpu") for _ in range(6)}
     assert gpu_vals == {cpu} == {expected}, (
         f"{name}: cpu={cpu}, gpu saw {gpu_vals}, expected {expected}"
     )
@@ -146,8 +145,8 @@ def test_gpu_deterministic_under_zx_alternation():
     for L in (5, 6):
         Hx, Hz = codes.toric(L)
         for _ in range(12):
-            z = df.css_distance(Hx, Hz, which="z", backend="gpu").distance
-            x = df.css_distance(Hx, Hz, which="x", backend="gpu").distance
+            z = df.css_distance(Hx, Hz, which="z", backend="gpu")
+            x = df.css_distance(Hx, Hz, which="x", backend="gpu")
             assert z == L and x == L, f"toric{L}: gpu z={z} x={x}, expected {L}"
 
 
@@ -157,8 +156,8 @@ def test_gpu_random_sweep_agrees_with_cpu():
     for fam in ("toric", "surface"):
         for L in (3, 4, 5):
             Hx, Hz = getattr(codes, fam)(L)
-            cpu = df.css_distance(Hx, Hz, backend="cpu").distance
-            gpu = {df.css_distance(Hx, Hz, backend="gpu").distance for _ in range(4)}
+            cpu = df.css_distance(Hx, Hz, backend="cpu")
+            gpu = {df.css_distance(Hx, Hz, backend="gpu") for _ in range(4)}
             if gpu != {cpu}:
                 failures.append((f"{fam}{L}", cpu, gpu))
     assert not failures, f"gpu/cpu disagreements: {failures}"
@@ -174,8 +173,8 @@ def test_gpu_random_sweep_agrees_with_cpu():
 @pytest.mark.parametrize("fam,L,expected", [("surface", 7, 7), ("toric", 7, 7)])
 def test_gpu_variant_deep_path_matches_cpu(fam, L, expected):
     Hx, Hz = getattr(codes, fam)(L)
-    cpu = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu").distance
-    gpu = {df.css_distance(Hx, Hz, method="bz", which="min", backend="gpu").distance
+    cpu = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu")
+    gpu = {df.css_distance(Hx, Hz, method="bz", which="min", backend="gpu")
            for _ in range(3)}
     assert gpu == {cpu} == {expected}, f"{fam}{L}: cpu={cpu}, gpu saw {gpu}"
 
@@ -192,16 +191,16 @@ def test_gpu_variant_deep_path_matches_cpu(fam, L, expected):
 def test_bz_large_n_cpu(m, n):
     Hx, Hz = codes.quantum_reed_muller(1, m)
     assert Hx.shape[1] == n
-    r = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu")
-    assert r.distance == 4 and r.proven, f"qrm(1,{m}) n={n}: {r.distance} proven={r.proven}"
+    d = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu")
+    assert d == 4, f"qrm(1,{m}) n={n}: got {d}"
 
 
 @requires_gpu
 @pytest.mark.parametrize("m,n", [(9, 512), (10, 1024)])
 def test_bz_large_n_gpu_matches_cpu(m, n):
     Hx, Hz = codes.quantum_reed_muller(1, m)
-    cpu = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu").distance
-    gpu = df.css_distance(Hx, Hz, method="bz", which="min", backend="gpu").distance
+    cpu = df.css_distance(Hx, Hz, method="bz", which="min", backend="cpu")
+    gpu = df.css_distance(Hx, Hz, method="bz", which="min", backend="gpu")
     assert gpu == cpu == 4, f"qrm(1,{m}) n={n}: cpu={cpu}, gpu={gpu}"
 
 

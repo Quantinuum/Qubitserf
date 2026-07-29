@@ -2,6 +2,31 @@
 
 All notable changes to **qubitserf** are documented here.
 
+## [Unreleased] — 2026-07-29
+
+### distfind returns plain ints (breaking)
+- **`max_weight` is gone** from every distfind entry point, from the `distfind_*` C ABI,
+  from `BZOptions`, and from the native CLI's `--max-weight` flag. It capped different
+  quantities per method — the BZ information-set enumeration level (bounded by the code
+  dimension `K`), but the codeword weight for `cc`/`mitm` — and only `bz` returned a usable
+  `[lower, upper]` bracket when the cap bit; `cc` and `mitm` returned `-1`.
+- **`Result`, `OpResult` and `PauliOpResult` are deleted.** All seven entry points
+  (`css_distance`, `classical_distance`, `subsystem_css_distance`, `stabilizer_distance`,
+  `subsystem_stabilizer_distance`, `operator_weight`, `pauli_operator_weight`) now return a
+  plain `int`. A distance of **`-1`** means undefined for the input (empty code, or no
+  logical qubits) — the case that used to surface as `proven=False`.
+- The dropped fields were carrying little: with no cap, every code tried across all three
+  methods came back proven, so `proven` reduced to `distance != -1`. `lower_bound` was the
+  raw BZ `outer` bound and could *exceed* the distance after an early stop (the `[8,1,8]`
+  repetition code reported `distance=8, lower_bound=16`), so it was not the "certified
+  lower bound (== distance when proven)" it was documented to be.
+- `operator_weight` returns `max(z_weight, x_weight)`; the separate Z/X coset leaders are no
+  longer public. `_native.operator_weight_raw` still reports them, and the operator-weight
+  tests use it to keep cross-checking both against the brute-force oracle.
+- Benchmarks under `bench/distfind/` no longer cap hard codes; they fall back to the
+  existing per-method timeout budget. The committed results files predate this and are
+  unchanged.
+
 ## [0.1.0-dev] — 2026-07-27
 
 ### Unified native core — one library, one enumeration kernel

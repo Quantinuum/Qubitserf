@@ -53,11 +53,10 @@ def timeit(kind, payload, backend):
     for _ in range(REPEAT):
         t0 = time.perf_counter()
         if kind == "css":
-            r = df.css_distance(*payload, method="bz", which=WHICH, backend=backend)
+            dist = df.css_distance(*payload, method="bz", which=WHICH, backend=backend)
         else:
-            r = df.classical_distance(payload, method="bz", backend=backend)
+            dist = df.classical_distance(payload, method="bz", backend=backend)
         best = min(best, time.perf_counter() - t0)
-        dist = r.distance
     return dist, best
 
 

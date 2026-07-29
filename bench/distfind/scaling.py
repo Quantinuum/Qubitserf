@@ -34,8 +34,8 @@ def fmt(t):
 
 def time_backend(Hx, Hz, backend):
     t0 = time.perf_counter()
-    r = df.css_distance(Hx, Hz, backend=backend)
-    return r.distance, time.perf_counter() - t0
+    d = df.css_distance(Hx, Hz, backend=backend)
+    return d, time.perf_counter() - t0
 
 
 def main():

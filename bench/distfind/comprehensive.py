@@ -3,18 +3,17 @@
 Compares, per code:
 
   * qubitserf ``cc``           (connected cluster, always certifies, sub-second)
-  * qubitserf ``bz`` (cpu)     (Brouwer-Zimmermann; capped on hard codes)
+  * qubitserf ``bz`` (cpu)     (Brouwer-Zimmermann)
   * qubitserf ``bz`` (gpu)   (same, on the GPU backend if present)
   * qubitserf ``mitm``         (meet-in-the-middle; small codes only -- slow)
   * reference ``BZDistMW``         (codeDistance package, subprocess + timeout)
   * reference ``connectedClusterMW`` (codeDistance package, subprocess + timeout)
 
-For every measurement we record (distance, lower_bound, proven, seconds) and
-wrap it in try/except + a per-call wall-clock budget, so the run always
-finishes.  Methods that exceed their per-size budget are skipped for larger
-sizes in the same family.  Hard codes (sparse, weak BZ lower bound) run BZ with
-a ``max_weight`` cap and are reported as a rigorous ``[lower, upper]`` bracket
-so BZ cannot hang.
+For every measurement we record (distance, seconds) and wrap it in try/except +
+a per-call wall-clock budget, so the run always finishes.  Methods that exceed
+their per-size budget are reported as ``timeout`` and skipped for larger sizes
+in the same family -- which is what happens to BZ on the hard codes (sparse,
+weak BZ lower bound), where it cannot certify in tractable time.
 
 After collecting, the script CROSS-CHECKS that every *certifying* method that
 finished agrees on the distance, and flags any mismatch.  It writes a grouped
@@ -56,19 +55,24 @@ DF_BUDGET = float(os.environ.get("DF_BUDGET", "30"))      # in-process qubitserf
 MITM_MAX_N = int(os.environ.get("MITM_MAX_N", "62"))      # mitm only for n <= this
 # BZ is only *attempted* up to this n.  The in-process budget runs the native
 # solver on a daemon thread that cannot be cancelled, so a BZ call that exceeds
-# the budget keeps burning a CPU core in the background.  Codes above BZ_MAX_N
-# that appear in HARD_CSS_NAMES are protected by a max_weight cap (bounded work);
-# uncapped BZ on large sparse codes (d >> 1, weak lower bound) is the orphan risk.
+# the budget keeps burning a CPU core in the background until it finishes (see
+# DRAIN_BUDGET below).  BZ on large sparse codes (d >> 1, weak lower bound) is
+# the orphan risk; those codes are recorded as a timeout and BZ is then skipped
+# for the larger sizes of the same family.
 # All codes above BZ_MAX_N have cc/reference still attempted.
 #
 # 1024 is the native BZ ceiling on the GPU backends (codeword stride <= MAX_WORDS
 # = 16 u64 words = 1024 bits; above that the GPU path auto-falls-back to the
 # dynamic CPU solver).  The CPU backend itself is unbounded.  This covers every
 # code in the benchmark; the large sparse QLDPC codes within the window
-# (toric/surface L>=9, bb288) are in HARD_CSS_NAMES so they run a bounded cap.
+# (toric/surface L>=9, bb288) are the ones BZ is expected to time out on.
 BZ_MAX_N = int(os.environ.get("BZ_MAX_N", "1024"))
 REF_TIMEOUT = float(os.environ.get("REF_TIMEOUT", "30"))  # timeout of the CACHED reference run
-BZ_CAP = int(os.environ.get("BZ_CAP", "6"))               # max_weight on hard codes
+# How long we wait for an over-budget native solve to drain before abandoning its
+# thread (it stays alive as a daemon and dies with the process).  Draining keeps a
+# finished-just-late solver from inflating the NEXT timing, but an unbounded wait
+# would stall the whole run on a code BZ cannot finish at all.
+DRAIN_BUDGET = float(os.environ.get("DRAIN_BUDGET", "60"))
 
 # Frozen reference numbers from a prior run (bench/ref_cache.json), keyed by the
 # stripped code name -> {"ref_bz": rec, "ref_cc": rec}.  We reuse these rather than
@@ -101,19 +105,15 @@ HAS_GPU = "gpu" in BACKENDS
 # The native solver runs to completion regardless (no cooperative cancellation),
 # but we run it on a worker thread and *give up waiting* after `budget` seconds.
 # A method that blows its budget is recorded as timed_out and skipped for larger
-# sizes of the same family.  We always pass a max_weight cap to BZ on hard codes,
-# which bounds its work tightly so the thread does finish promptly anyway.
+# sizes of the same family.
 # --------------------------------------------------------------------------- #
 @dataclass
 class Meas:
     ok: bool = False
     distance: object = None
-    lower_bound: object = None
-    proven: object = None
     seconds: float = float("nan")
     timed_out: bool = False
     error: str = ""
-    capped: bool = False     # BZ run with a max_weight cap (bracket, maybe unproven)
 
 
 def _run_df_once(fn, budget: float) -> Meas:
@@ -134,19 +134,18 @@ def _run_df_once(fn, budget: float) -> Meas:
     th.join(budget)
     if th.is_alive():
         # We give up *reporting* after `budget`, but the native solver cannot be
-        # cancelled cooperatively.  Draining it (join with no timeout) before we
-        # return keeps it from holding a CPU core / the GPU busy and inflating the
-        # NEXT code's timing.  Every solver here terminates (BZ/MITM are complete
-        # enumerations; cc is only launched until the first family timeout), so the
-        # drain is bounded by the run's natural finish time.
-        th.join()
+        # cancelled cooperatively.  Draining it before we return keeps a
+        # just-too-slow solver from holding a CPU core / the GPU busy and inflating
+        # the NEXT code's timing.  The drain is bounded (DRAIN_BUDGET): BZ on a
+        # sparse code with a weak lower bound can run for hours, and waiting that
+        # out would stall the whole benchmark.  An abandoned thread is a daemon and
+        # dies with the process.
+        th.join(DRAIN_BUDGET)
         return Meas(ok=False, timed_out=True, seconds=budget,
                     error=f">{budget:.0f}s (budget)")
     if "err" in box:
         return Meas(ok=False, seconds=box.get("secs", float("nan")), error=box["err"])
-    r = box["r"]
-    return Meas(ok=True, distance=r.distance, lower_bound=r.lower_bound,
-                proven=bool(r.proven), seconds=box["secs"])
+    return Meas(ok=True, distance=int(box["r"]), seconds=box["secs"])
 
 
 def _run_df(fn, budget: float) -> Meas:
@@ -163,20 +162,15 @@ def _run_df(fn, budget: float) -> Meas:
     return m
 
 
-def df_css(Hx, Hz, method, backend="auto", max_weight=0, budget=DF_BUDGET) -> Meas:
-    m = _run_df(lambda: df.css_distance(Hx, Hz, method=method, which="min",
-                                        backend=backend, max_weight=max_weight),
-                budget)
-    m.capped = max_weight > 0
-    return m
+def df_css(Hx, Hz, method, backend="auto", budget=DF_BUDGET) -> Meas:
+    return _run_df(lambda: df.css_distance(Hx, Hz, method=method, which="min",
+                                           backend=backend),
+                   budget)
 
 
-def df_classical(H, method, backend="auto", max_weight=0, budget=DF_BUDGET) -> Meas:
-    m = _run_df(lambda: df.classical_distance(H, method=method, backend=backend,
-                                              max_weight=max_weight),
-                budget)
-    m.capped = max_weight > 0
-    return m
+def df_classical(H, method, backend="auto", budget=DF_BUDGET) -> Meas:
+    return _run_df(lambda: df.classical_distance(H, method=method, backend=backend),
+                   budget)
 
 
 # --------------------------------------------------------------------------- #
@@ -197,9 +191,7 @@ def cached_ref(name, key) -> Meas:
         return Meas(timed_out=True, seconds=secs, error=f">{REF_TIMEOUT:.0f}s (timeout)")
     if not rec.get("ok"):
         return Meas(error="reference unavailable")
-    d = rec["distance"]
-    return Meas(ok=True, distance=d, lower_bound=d, proven=True,
-                seconds=rec["seconds"])
+    return Meas(ok=True, distance=rec["distance"], seconds=rec["seconds"])
 
 
 # --------------------------------------------------------------------------- #
@@ -214,7 +206,7 @@ METHOD_LABEL = {
     "ref_bz": "ref BZDistMW",
     "ref_cc": "ref connClusterMW",
 }
-# Methods that, when ok and proven, give a certified exact distance to cross-check.
+# Methods that, when they finish, give a distance to cross-check.
 CERTIFYING = ["cc", "bz_cpu", "bz_gpu", "mitm", "ref_bz", "ref_cc"]
 QUBITSERF_METHODS = ["cc", "bz_cpu", "bz_gpu", "mitm"]
 REF_METHODS = ["ref_bz", "ref_cc"]
@@ -236,7 +228,7 @@ class Row:
 
 
 def cell(m: Meas) -> str:
-    """Render a Meas as a markdown table cell: distance(+bracket) and time."""
+    """Render a Meas as a markdown table cell: distance and time."""
     if m.timed_out:
         return f"timeout {fmt_t(m.seconds)}"
     if not m.ok:
@@ -247,8 +239,6 @@ def cell(m: Meas) -> str:
         if "unavailable" in m.error:
             return "n/a"
         return "err"
-    if m.capped and not m.proven:
-        return f"[{m.lower_bound},{m.distance}] {fmt_t(m.seconds)}"
     return f"{m.distance} {fmt_t(m.seconds)}"
 
 
@@ -264,7 +254,7 @@ def t_cell(m: Meas) -> str:
 # Cross-check
 # --------------------------------------------------------------------------- #
 def reconcile(row: Row):
-    """Collect every certified exact distance and classify any disagreement.
+    """Collect every reported distance and classify any disagreement.
 
     We separate a *qubitserf* disagreement (qubitserf methods or the known textbook
     distance disagree among themselves -- a real bug we must not pass silently)
@@ -275,7 +265,7 @@ def reconcile(row: Row):
     certified = []
     for m in CERTIFYING:
         meas = row.get(m)
-        if meas.ok and meas.proven and isinstance(meas.distance, int):
+        if meas.ok and isinstance(meas.distance, int):
             certified.append((m, meas.distance))
     # Also fold in the known textbook distance, if any.
     if isinstance(row.known_d, int):
@@ -323,28 +313,24 @@ def sweep_css_family(fam_name, entries, ref_ok, tmpdir, mismatches, log):
             if m.timed_out:
                 stop["cc"] = True
 
-        # ---- qubitserf bz cpu (capped on hard codes; only attempted n<=BZ_MAX_N) ----
+        # ---- qubitserf bz cpu (only attempted n<=BZ_MAX_N) ----
         if n > BZ_MAX_N:
             row.meas["bz_cpu"] = Meas(error=f"skip n>{BZ_MAX_N}")
         elif not stop["bz_cpu"]:
-            mw = BZ_CAP if hard else 0
-            m = df_css(Hx, Hz, "bz", backend="cpu", max_weight=mw)
+            m = df_css(Hx, Hz, "bz", backend="cpu")
             row.meas["bz_cpu"] = m
             log(f"    bz cpu    {cell(m)}")
-            # Only a *full* (uncapped) run that blows its budget should disable
-            # larger sizes; capped runs are bounded by construction.
-            if m.timed_out and not m.capped:
+            if m.timed_out:
                 stop["bz_cpu"] = True
 
         # ---- qubitserf bz gpu (only attempted n<=BZ_MAX_N) ----
         if n > BZ_MAX_N:
             row.meas["bz_gpu"] = Meas(error=f"skip n>{BZ_MAX_N}")
         elif HAS_GPU and not stop["bz_gpu"]:
-            mw = BZ_CAP if hard else 0
-            m = df_css(Hx, Hz, "bz", backend="gpu", max_weight=mw)
+            m = df_css(Hx, Hz, "bz", backend="gpu")
             row.meas["bz_gpu"] = m
             log(f"    bz gpu  {cell(m)}")
-            if m.timed_out and not m.capped:
+            if m.timed_out:
                 stop["bz_gpu"] = True
 
         # ---- qubitserf mitm (small codes only) ----
@@ -457,8 +443,7 @@ def render_summary(all_rows, mismatches) -> str:
     out.append(f"- Backends available: `{BACKENDS}`.")
     out.append(f"- Per-code qubitserf budget: {DF_BUDGET:.0f}s; bz only for "
                f"n <= {BZ_MAX_N}; mitm only for n <= {MITM_MAX_N}; reference numbers "
-               f"reused from a prior {REF_TIMEOUT:.0f}s run (not re-executed); BZ "
-               f"max_weight cap on hard codes: {BZ_CAP}.")
+               f"reused from a prior {REF_TIMEOUT:.0f}s run (not re-executed).")
 
     # Speedups: reference (whichever method) vs qubitserf cc, gathered over rows
     # where both finished.
@@ -504,26 +489,25 @@ def render_summary(all_rows, mismatches) -> str:
                             sorted(wins.items(), key=lambda kv: -kv[1]))
         out.append(f"- Fastest-finished method per code: {win_str}.")
 
-    # Codes only CC could certify (no other certifying method finished+proven).
+    # Codes only CC could certify (no other certifying method finished).
     cc_only = []
     for r in all_rows:
         cc = r.get("cc")
-        if not (cc.ok and cc.proven):
+        if not cc.ok:
             continue
         others = False
         for mth in CERTIFYING:
             if mth == "cc":
                 continue
-            m = r.get(mth)
-            if m.ok and m.proven:
+            if r.get(mth).ok:
                 others = True
                 break
         if not others:
             cc_only.append(r.name)
     if cc_only:
-        out.append(f"- **Only qubitserf cc certified the exact distance** on: "
-                   f"{', '.join(cc_only)} (every other method either timed out, "
-                   "was capped without proving, or was skipped).")
+        out.append(f"- **Only qubitserf cc certified the distance** on: "
+                   f"{', '.join(cc_only)} (every other method either timed out "
+                   "or was skipped).")
 
     # Where the reference timed out but qubitserf finished.
     ref_to = [r.name for r in all_rows
@@ -629,8 +613,8 @@ def main():
     ref_ok = bool(REF_CACHE)
     log(f"reference: reusing {len(REF_CACHE)} cached codeDistance measurements from a "
         f"prior {REF_TIMEOUT:.0f}s run (external package NOT re-executed)")
-    log(f"budgets: df={DF_BUDGET:.0f}s mitm_max_n={MITM_MAX_N} "
-        f"ref_timeout(cached)={REF_TIMEOUT:.0f}s bz_cap={BZ_CAP}")
+    log(f"budgets: df={DF_BUDGET:.0f}s drain={DRAIN_BUDGET:.0f}s "
+        f"mitm_max_n={MITM_MAX_N} ref_timeout(cached)={REF_TIMEOUT:.0f}s")
 
     mismatches = []
     css_family_rows: dict[str, list] = {}
@@ -662,12 +646,10 @@ def main():
     with open(OUT_MD, "w") as f:
         f.write("# qubitserf comprehensive benchmark results\n\n")
         f.write("Generated by `bench/comprehensive.py`. Each cell shows the "
-                "reported distance and wall-clock time. A `[lower,upper]` cell is "
-                "a BZ run capped at a max_weight (rigorous bracket, distance not "
-                "certified there). `timeout` means the per-method budget was "
-                "exceeded.\n\n")
+                "reported distance and wall-clock time. `timeout` means the "
+                "per-method budget was exceeded.\n\n")
         f.write("Methods: **qubitserf cc** (connected cluster), **qubitserf bz** on "
-                "cpu and gpu (Brouwer-Zimmermann, capped on hard sparse codes), "
+                "cpu and gpu (Brouwer-Zimmermann), "
                 "**qubitserf mitm** (meet-in-the-middle, small n only), and the "
                 "reference `codeDistance` package's **BZDistMW** and "
                 "**connectedClusterMW**.\n\n")

@@ -13,8 +13,8 @@ from qubitserf.distfind import codes
 
 
 def _components(Hx, Hz):
-    dz = df.css_distance(Hx, Hz, which="z", method="bz", backend="cpu").distance
-    dx = df.css_distance(Hx, Hz, which="x", method="bz", backend="cpu").distance
+    dz = df.css_distance(Hx, Hz, which="z", method="bz", backend="cpu")
+    dx = df.css_distance(Hx, Hz, which="x", method="bz", backend="cpu")
     return dz, dx
 
 
@@ -38,9 +38,8 @@ def test_interleaved_min_matches_components(name, HxHz, method):
     Hx, Hz = HxHz
     dz, dx = _components(Hx, Hz)
     want = min(dz, dx)
-    r = df.css_distance(Hx, Hz, which="min", method=method, backend="cpu")
-    assert r.distance == want, f"{name} {method}: got {r.distance}, want min({dz},{dx})={want}"
-    assert r.proven, f"{name} {method}: min not proven"
+    d = df.css_distance(Hx, Hz, which="min", method=method, backend="cpu")
+    assert d == want, f"{name} {method}: got {d}, want min({dz},{dx})={want}"
 
 
 @pytest.mark.parametrize("name,HxHz", ASYMMETRIC)

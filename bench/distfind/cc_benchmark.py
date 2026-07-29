@@ -13,6 +13,7 @@ Writes bench/cc_results.md.
 from __future__ import annotations
 import os
 import tempfile
+import threading
 import time
 
 import qubitserf.distfind as df
@@ -22,7 +23,10 @@ from benchmark import run_reference, reference_available, _save_npy, fmt_t
 HERE = os.path.dirname(os.path.abspath(__file__))
 CC_MD = os.path.join(HERE, "cc_results.md")
 REF_TIMEOUT = float(os.environ.get("REF_TIMEOUT", "30"))
-BZ_CAP = int(os.environ.get("BZ_CAP", "6"))   # cap BZ on hard codes so it can't hang
+# Wall-clock budget for one qubitserf solve.  BZ on the hard (sparse, weak lower
+# bound) codes cannot certify in tractable time, so it is stopped here and shown
+# as a timeout.
+DF_BUDGET = float(os.environ.get("DF_BUDGET", "30"))
 
 
 def bb(l, m):
@@ -43,10 +47,31 @@ CASES = [
 ]
 
 
-def time_df(Hx, Hz, method, max_weight=0):
-    t0 = time.perf_counter()
-    r = df.css_distance(Hx, Hz, method=method, max_weight=max_weight)
-    return r, time.perf_counter() - t0
+def time_df(Hx, Hz, method, budget=DF_BUDGET):
+    """Run one solve on a worker thread; return (distance, seconds).
+
+    The native solver has no cooperative cancellation, so on timeout we stop
+    *waiting* and return ``(None, budget)``; the abandoned thread is a daemon and
+    dies with the process.
+    """
+    box: dict = {}
+
+    def worker():
+        t0 = time.perf_counter()
+        try:
+            box["d"] = df.css_distance(Hx, Hz, method=method)
+        except BaseException as exc:  # noqa: BLE001 -- re-raised on the main thread
+            box["err"] = exc
+        box["secs"] = time.perf_counter() - t0
+
+    th = threading.Thread(target=worker, daemon=True)
+    th.start()
+    th.join(budget)
+    if th.is_alive():
+        return None, budget
+    if "err" in box:
+        raise box["err"]
+    return box["d"], box["secs"]
 
 
 def ref(Hx, Hz, method, ok):
@@ -70,22 +95,21 @@ def ref_cell(res):
 
 def main():
     ref_ok = reference_available()
-    print(f"reference available: {ref_ok}; REF_TIMEOUT={REF_TIMEOUT:.0f}s; BZ_CAP={BZ_CAP}")
+    print(f"reference available: {ref_ok}; REF_TIMEOUT={REF_TIMEOUT:.0f}s; "
+          f"DF_BUDGET={DF_BUDGET:.0f}s")
     rows = []
     print(f"{'code':>24} {'d':>3} {'cc':>14} {'bz(qubitserf)':>20} "
           f"{'ref BZDistMW':>18} {'ref connCluster':>18}")
     for name, (Hx, Hz), want, hard in CASES:
-        rcc, tcc = time_df(Hx, Hz, "cc")
-        cc_cell = f"d={rcc.distance} ({fmt_t(tcc)})"
-        assert rcc.distance == want, f"{name}: cc d={rcc.distance} != {want}"
+        dcc, tcc = time_df(Hx, Hz, "cc")
+        cc_cell = f"d={dcc} ({fmt_t(tcc)})"
+        assert dcc == want, f"{name}: cc d={dcc} != {want}"
 
-        # qubitserf BZ: full where provable, capped (bracket) on hard codes
-        if hard:
-            rbz, tbz = time_df(Hx, Hz, "bz", max_weight=BZ_CAP)
-            bz_cell = f"[{rbz.lower_bound},{rbz.distance}] capped ({fmt_t(tbz)})"
-        else:
-            rbz, tbz = time_df(Hx, Hz, "bz")
-            bz_cell = f"d={rbz.distance} ({fmt_t(tbz)})"
+        # qubitserf BZ: finishes on the easy codes, runs out of budget on the hard
+        # (sparse, weak lower bound) ones.
+        dbz, tbz = time_df(Hx, Hz, "bz")
+        bz_cell = (f">{DF_BUDGET:.0f}s (timeout)" if dbz is None
+                   else f"d={dbz} ({fmt_t(tbz)})")
 
         ref_bz = ref_cell(ref(Hx, Hz, "BZDistMW", ref_ok))
         ref_cc = ref_cell(ref(Hx, Hz, "connectedClusterMW", ref_ok))
@@ -96,8 +120,8 @@ def main():
     with open(CC_MD, "w") as f:
         f.write("# qubitserf connected-cluster benchmark\n\n")
         f.write("`cc` = qubitserf connected cluster; `bz` = qubitserf Brouwer-Zimmermann "
-                "(capped on hard codes, shown as the rigorous `[lower,upper]` bracket); "
-                "reference = `codeDistance` package.\n\n")
+                f"(stopped after a {DF_BUDGET:.0f}s budget on the hard codes, shown as "
+                "`timeout`); reference = `codeDistance` package.\n\n")
         f.write("| code | n | d | qubitserf cc | qubitserf bz | ref BZDistMW | ref connectedClusterMW |\n")
         f.write("|---|---|---|---|---|---|---|\n")
         for name, n, d, cc, bz, rbz, rcc in rows:

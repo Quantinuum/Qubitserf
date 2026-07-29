@@ -1,5 +1,9 @@
 # qubitserf connected-cluster benchmark
 
+> **Note.** These numbers predate the removal of the `max_weight` cap from the API and have
+> not been re-run. The `[lower,upper]` cells come from that now-removed feature (a BZ run
+> stopped at a capped weight); BZ on those codes is now simply reported as a `timeout`.
+
 `cc` = qubitserf connected cluster; `bz` = qubitserf Brouwer-Zimmermann (capped on hard codes, shown as the rigorous `[lower,upper]` bracket); reference = `codeDistance` package.
 
 | code | n | d | qubitserf cc | qubitserf bz | ref BZDistMW | ref connectedClusterMW |

@@ -20,19 +20,19 @@ typedef struct {
 
 // method: "bz" or "mitm". which: 'Z', 'X', or 'M' for min(Z,X).
 // backend: "auto","cpu","gpu". threads: 0 => hardware concurrency.
-// max_weight: 0 => no cap. Returns 0 on success, nonzero on error.
+// Returns 0 on success, nonzero on error.
 int distfind_css_distance(
     const uint8_t* Hx, int hx_rows, int hx_cols,
     const uint8_t* Hz, int hz_rows, int hz_cols,
     const char* method, char which, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out);
 
 // Minimum distance of a classical linear code with parity-check matrix H.
 int distfind_classical_distance(
     const uint8_t* H, int rows, int cols,
     const char* method, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out);
 
 // Result returned by the operator-weight entry point.
@@ -54,7 +54,7 @@ int distfind_operator_weight(
     const uint8_t* Gz, int gz_rows, int gz_cols,
     const uint8_t* z_op, const uint8_t* x_op, int n,
     const char* method, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindOpResult* out);
 
 // Subsystem CSS dressed distance from gauge generators Gx (X-type), Gz (Z-type).
@@ -64,7 +64,7 @@ int distfind_subsystem_distance(
     const uint8_t* Gx, int gx_rows, int gx_cols,
     const uint8_t* Gz, int gz_rows, int gz_cols,
     const char* method, char which, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out);
 
 // ---- general (non-CSS) stabilizer codes, symplectic [z|x] representation --------------
@@ -81,7 +81,7 @@ int distfind_subsystem_distance(
 int distfind_stabilizer_distance(
     const uint8_t* S, int rows, int cols,
     const char* method, char which, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out);
 
 // Dressed distance of a general (non-CSS) subsystem code from its gauge generators G
@@ -91,7 +91,7 @@ int distfind_stabilizer_distance(
 int distfind_subsystem_stabilizer_distance(
     const uint8_t* G, int rows, int cols,
     const char* method, char which, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out);
 
 // Operator weight of a general Pauli modulo the group <G> (rows x 2n, [z|x] order):
@@ -104,7 +104,7 @@ int distfind_stabilizer_operator_weight(
     const uint8_t* G, int rows, int cols,
     const uint8_t* op, int op_len,
     const char* method, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out);
 
 int         distfind_backend_available(const char* name); // 1 if usable

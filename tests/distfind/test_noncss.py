@@ -101,16 +101,14 @@ def test_fixed_noncss_distance(strings, expected):
     # mitm = symplectic search; bz = weight-doubling isometry. (cc is rejected on non-CSS
     # codes -- see test_cc_rejected_on_noncss -- so it is not exercised here.)
     for method in ("mitm", "bz"):
-        r = df.stabilizer_distance(S, method=method)
-        assert r.distance == expected
-        assert r.proven
+        assert df.stabilizer_distance(S, method=method) == expected
 
 
 @pytest.mark.parametrize("strings,expected", [(FIVE_QUBIT, 3), (NON_CSS_8, 3)])
 def test_fixed_noncss_vs_qubitserf(strings, expected):
     assert qubitserf_distance(strings) == expected
     S = ref.paulis_to_symplectic(strings)
-    assert df.stabilizer_distance(S).distance == qubitserf_distance(strings)
+    assert df.stabilizer_distance(S) == qubitserf_distance(strings)
 
 
 def test_five_qubit_helper():
@@ -130,7 +128,7 @@ def test_random_noncss_stabilizer_distance():
         if S.shape[0] == 0:
             continue
         oracle = ref.stabilizer_distance_bruteforce(S)
-        native = df.stabilizer_distance(S).distance
+        native = df.stabilizer_distance(S)
         assert native == oracle, (n, m, native, oracle)
         checked += 1
     assert checked >= 30
@@ -151,13 +149,12 @@ def test_noncss_bz_isometry_matches_mitm_and_oracle():
         oracle = ref.stabilizer_distance_bruteforce(S)
         rb = df.stabilizer_distance(S, method="bz")
         rm = df.stabilizer_distance(S, method="mitm")
-        assert rb.distance == oracle == rm.distance, (n, m, rb.distance, rm.distance, oracle)
-        assert rb.proven
+        assert rb == oracle == rm, (n, m, rb, rm, oracle)
         # operator weight: bz == mitm == oracle over the coset op + rowspace(S)
         op = rng.integers(0, 2, size=2 * n).astype(np.uint8)
         ow_oracle = ref.symplectic_coset_min_weight_bruteforce(S, op)
-        wb = df.pauli_operator_weight(S, op, method="bz").weight
-        wm = df.pauli_operator_weight(S, op, method="mitm").weight
+        wb = df.pauli_operator_weight(S, op, method="bz")
+        wm = df.pauli_operator_weight(S, op, method="mitm")
         assert wb == ow_oracle == wm, (n, m, wb, wm, ow_oracle)
         checked += 1
     assert checked >= 30
@@ -176,7 +173,7 @@ def test_random_noncss_vs_qubitserf():
             continue
         if ref.rank(ref.centralizer(S)) <= ref.rank(S):
             continue  # no logicals; qubitserf would assert-fail
-        native = df.stabilizer_distance(S).distance
+        native = df.stabilizer_distance(S)
         qs = qubitserf_distance(symplectic_to_paulis(S))
         assert native == qs, (n, m, native, qs)
         checked += 1
@@ -196,7 +193,7 @@ def test_random_noncss_subsystem_distance():
         if G.shape[0] == 0:
             continue
         oracle = ref.dressed_stabilizer_distance_bruteforce(G)
-        native = df.subsystem_stabilizer_distance(G).distance
+        native = df.subsystem_stabilizer_distance(G)
         assert native == oracle, (n, m, native, oracle)
         checked += 1
     assert checked >= 40
@@ -205,8 +202,8 @@ def test_random_noncss_subsystem_distance():
 def test_abelian_subsystem_equals_bare():
     # An abelian gauge group is its own center: dressed distance == bare distance.
     S = ref.five_qubit_code()
-    assert df.subsystem_stabilizer_distance(S).distance == 3
-    assert df.stabilizer_distance(S).distance == 3
+    assert df.subsystem_stabilizer_distance(S) == 3
+    assert df.stabilizer_distance(S) == 3
 
 
 def test_symplectic_center_invariants():
@@ -239,7 +236,7 @@ def test_random_operator_weight():
             continue
         op = rng.integers(0, 2, size=2 * n).astype(np.uint8)
         oracle = ref.symplectic_coset_min_weight_bruteforce(G, op)
-        native = df.pauli_operator_weight(G, op).weight
+        native = df.pauli_operator_weight(G, op)
         assert native == oracle, (n, native, oracle)
         checked += 1
     assert checked >= 30
@@ -248,17 +245,17 @@ def test_random_operator_weight():
 def test_operator_weight_stabilizer_is_zero():
     S = ref.five_qubit_code()
     for row in S:
-        assert df.pauli_operator_weight(S, row).weight == 0
+        assert df.pauli_operator_weight(S, row) == 0
 
 
 def test_operator_weight_logical_reduced():
     # Logical X = X on every qubit; modulo the 5-qubit stabilizers it reduces to weight 3.
     S = ref.five_qubit_code()
     logX = np.concatenate([np.zeros(5, np.uint8), np.ones(5, np.uint8)])
-    assert df.pauli_operator_weight(S, logX).weight == 3
+    assert df.pauli_operator_weight(S, logX) == 3
     # accepts Pauli-string and (z, x) forms too
-    assert df.pauli_operator_weight(S, "XXXXX").weight == 3
-    assert df.pauli_operator_weight(S, (np.zeros(5), np.ones(5))).weight == 3
+    assert df.pauli_operator_weight(S, "XXXXX") == 3
+    assert df.pauli_operator_weight(S, (np.zeros(5), np.ones(5))) == 3
 
 
 # --------------------------------------------------------------------------- #
@@ -272,9 +269,9 @@ def test_css_fast_path_matches_css_distance():
     rows = [np.concatenate([np.zeros(n, np.uint8), r]) for r in H]   # X-type
     rows += [np.concatenate([r, np.zeros(n, np.uint8)]) for r in H]  # Z-type
     S = np.array(rows, np.uint8)
-    css = df.css_distance(H, H).distance
+    css = df.css_distance(H, H)
     for method in ("bz", "cc", "mitm"):
-        assert df.stabilizer_distance(S, method=method).distance == css == 3
+        assert df.stabilizer_distance(S, method=method) == css == 3
 
 
 # --------------------------------------------------------------------------- #
@@ -288,5 +285,5 @@ def test_cc_rejected_on_noncss():
     with _pytest.raises(ValueError, match="cc"):
         df.subsystem_stabilizer_distance(S, method="cc")
     # bz and mitm still work on the same non-CSS code.
-    assert df.stabilizer_distance(S, method="bz").distance == 3
-    assert df.stabilizer_distance(S, method="mitm").distance == 3
+    assert df.stabilizer_distance(S, method="bz") == 3
+    assert df.stabilizer_distance(S, method="mitm") == 3

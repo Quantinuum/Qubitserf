@@ -4,11 +4,15 @@
 # which is the quantity the GPU kernel work optimizes. d=8 (~2s) is the fast iteration
 # proxy; d=9 (~18s) the confirmation proxy; d=10 is the level that actually proves d=12.
 #
-# Usage:  bench/level_bench.sh [MAXW]   (default MAXW=8)
+# The run is stopped on a wall-clock budget rather than a weight cap: the profiler prints
+# one line per level as it finishes, so the levels reached within the budget are the report.
+# BZ cannot prove this code in any practical time -- letting it run to the end is not the point.
+#
+# Usage:  bench/level_bench.sh [SECONDS]   (default 120)
 set -euo pipefail
 cd "$(dirname "$0")/.."
-MAXW="${1:-8}"
-BIN="${BIN:-./build/qubitserf}"
+BUDGET="${1:-120}"
+BIN="${BIN:-./build/distfind}"
 BACKEND="${BACKEND:---gpu}"   # BACKEND=--cpu for the CPU kernel
 DATA="${DATA:-bench/.cache}"
 
@@ -31,7 +35,19 @@ np.savetxt(sys.argv[1] + '/gross_Hz.txt', np.hstack([B.T, A.T]), fmt='%d')
 PY
 fi
 
-QUBITSERF_PROFILE=1 "$BIN" --hx "$DATA/gross_Hx.txt" --hz "$DATA/gross_Hz.txt" \
-    --bz "$BACKEND" --z --max-weight "$MAXW" -v 2>&1 \
+# Run under a watchdog: the profiler streams a line per completed level, so whatever
+# levels finish inside BUDGET seconds are what gets reported.
+run_profiled() {
+    QUBITSERF_PROFILE=1 "$BIN" --hx "$DATA/gross_Hx.txt" --hz "$DATA/gross_Hz.txt" \
+        --bz "$BACKEND" --z -v 2>&1 &
+    local pid=$!
+    ( sleep "$BUDGET"; kill -TERM "$pid" 2>/dev/null ) &
+    local watchdog=$!
+    wait "$pid" 2>/dev/null || true          # killed by the watchdog => nonzero, expected
+    kill "$watchdog" 2>/dev/null || true
+}
+
+echo "profiling up to ${BUDGET}s on $BACKEND (levels that finish in time are shown)"
+run_profiled \
   | grep -E '^\[prof' \
   | sed -E 's/.*d=([0-9]+).*work=([0-9]+) -> ([0-9.]+) ms/d=\1  work=\2  \3 ms/'

@@ -131,7 +131,7 @@ BZResult cc_one(const GF2Mat& H, const GF2Mat& L, const BZOptions& opt, const ch
     BZResult res; res.backend = "cc";
     CCData D = build_cc(H, L);
     int nthreads = opt.threads > 0 ? opt.threads : (int)std::thread::hardware_concurrency();
-    int maxw = opt.max_weight > 0 ? std::min(opt.max_weight, D.n) : D.n;
+    int maxw = D.n;
     int d = cc_search(D, maxw, nthreads, opt.verbose, tag);
     res.distance = (d >= WEIGHT_NONE) ? -1 : d;
     res.lower_bound = res.distance;          // exact when found
@@ -157,9 +157,7 @@ BZResult cc_css_min(const GF2Mat& Hx, const GF2Mat& Hz, const BZOptions& opt) {
     int nthreads = opt.threads > 0 ? opt.threads : (int)std::thread::hardware_concurrency();
     int TZ = std::max(1, std::min(nthreads, DZ.n));
     int TX = std::max(1, std::min(nthreads, DX.n));
-    int maxw = opt.max_weight > 0
-                   ? std::min(opt.max_weight, std::max(DZ.n, DX.n))
-                   : std::max(DZ.n, DX.n);
+    int maxw = std::max(DZ.n, DX.n);
 
     bool zno = (DZ.kl == 0), xno = (DX.kl == 0);  // a side with no logicals has no distance
     int dz = 0, dx = 0;                           // found distance (0 = not yet found)

@@ -51,14 +51,14 @@ def lib():
         u8p, ctypes.c_int, ctypes.c_int,
         u8p, ctypes.c_int, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
-        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, ctypes.c_int,
         rp,
     ]
     _lib.distfind_classical_distance.restype = ctypes.c_int
     _lib.distfind_classical_distance.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char_p,
-        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, ctypes.c_int,
         rp,
     ]
     _lib.distfind_operator_weight.restype = ctypes.c_int
@@ -67,7 +67,7 @@ def lib():
         u8p, ctypes.c_int, ctypes.c_int,
         u8p, u8p, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char_p,
-        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, ctypes.c_int,
         orp,
     ]
     _lib.distfind_subsystem_distance.restype = ctypes.c_int
@@ -75,21 +75,21 @@ def lib():
         u8p, ctypes.c_int, ctypes.c_int,
         u8p, ctypes.c_int, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
-        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, ctypes.c_int,
         rp,
     ]
     _lib.distfind_stabilizer_distance.restype = ctypes.c_int
     _lib.distfind_stabilizer_distance.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
-        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, ctypes.c_int,
         rp,
     ]
     _lib.distfind_subsystem_stabilizer_distance.restype = ctypes.c_int
     _lib.distfind_subsystem_stabilizer_distance.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char, ctypes.c_char_p,
-        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, ctypes.c_int,
         rp,
     ]
     _lib.distfind_stabilizer_operator_weight.restype = ctypes.c_int
@@ -97,7 +97,7 @@ def lib():
         u8p, ctypes.c_int, ctypes.c_int,
         u8p, ctypes.c_int,
         ctypes.c_char_p, ctypes.c_char_p,
-        ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, ctypes.c_int,
         rp,
     ]
     _lib.distfind_backend_available.restype = ctypes.c_int
@@ -118,7 +118,7 @@ def _ptr(a: np.ndarray):
     return a.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
 
 
-def css_distance_raw(Hx, Hz, method, which, backend, threads, max_weight, verbose):
+def css_distance_raw(Hx, Hz, method, which, backend, threads, verbose):
     L = lib()
     ax, az = _as_u8(Hx), _as_u8(Hz)
     out = DistfindResult()
@@ -126,7 +126,7 @@ def css_distance_raw(Hx, Hz, method, which, backend, threads, max_weight, verbos
         _ptr(ax), ax.shape[0], ax.shape[1],
         _ptr(az), az.shape[0], az.shape[1],
         method.encode(), which.encode()[:1] or b"M", backend.encode(),
-        int(threads), int(max_weight), 1 if verbose else 0,
+        int(threads), 1 if verbose else 0,
         ctypes.byref(out),
     )
     if rc != 0:
@@ -134,14 +134,14 @@ def css_distance_raw(Hx, Hz, method, which, backend, threads, max_weight, verbos
     return out
 
 
-def classical_distance_raw(H, method, backend, threads, max_weight, verbose):
+def classical_distance_raw(H, method, backend, threads, verbose):
     L = lib()
     a = _as_u8(H)
     out = DistfindResult()
     rc = L.distfind_classical_distance(
         _ptr(a), a.shape[0], a.shape[1],
         method.encode(), backend.encode(),
-        int(threads), int(max_weight), 1 if verbose else 0,
+        int(threads), 1 if verbose else 0,
         ctypes.byref(out),
     )
     if rc != 0:
@@ -154,7 +154,7 @@ def _as_u8_vec(vec) -> np.ndarray:
     return a
 
 
-def operator_weight_raw(Gx, Gz, z_op, x_op, method, backend, threads, max_weight, verbose):
+def operator_weight_raw(Gx, Gz, z_op, x_op, method, backend, threads, verbose):
     L = lib()
     ax, az = _as_u8(Gx), _as_u8(Gz)
     z = _as_u8_vec(z_op)
@@ -170,7 +170,7 @@ def operator_weight_raw(Gx, Gz, z_op, x_op, method, backend, threads, max_weight
         _ptr(az), az.shape[0], az.shape[1],
         _ptr(z), _ptr(x), n,
         method.encode(), backend.encode(),
-        int(threads), int(max_weight), 1 if verbose else 0,
+        int(threads), 1 if verbose else 0,
         ctypes.byref(out),
     )
     if rc != 0:
@@ -178,7 +178,7 @@ def operator_weight_raw(Gx, Gz, z_op, x_op, method, backend, threads, max_weight
     return out
 
 
-def subsystem_distance_raw(Gx, Gz, method, which, backend, threads, max_weight, verbose):
+def subsystem_distance_raw(Gx, Gz, method, which, backend, threads, verbose):
     L = lib()
     ax, az = _as_u8(Gx), _as_u8(Gz)
     out = DistfindResult()
@@ -186,7 +186,7 @@ def subsystem_distance_raw(Gx, Gz, method, which, backend, threads, max_weight, 
         _ptr(ax), ax.shape[0], ax.shape[1],
         _ptr(az), az.shape[0], az.shape[1],
         method.encode(), which.encode()[:1] or b"M", backend.encode(),
-        int(threads), int(max_weight), 1 if verbose else 0,
+        int(threads), 1 if verbose else 0,
         ctypes.byref(out),
     )
     if rc == 3:
@@ -197,7 +197,7 @@ def subsystem_distance_raw(Gx, Gz, method, which, backend, threads, max_weight, 
     return out
 
 
-def stabilizer_distance_raw(S, method, which, backend, threads, max_weight, verbose):
+def stabilizer_distance_raw(S, method, which, backend, threads, verbose):
     L = lib()
     a = _as_u8(S)
     if a.shape[1] % 2 != 0:
@@ -206,7 +206,7 @@ def stabilizer_distance_raw(S, method, which, backend, threads, max_weight, verb
     rc = L.distfind_stabilizer_distance(
         _ptr(a), a.shape[0], a.shape[1],
         method.encode(), which.encode()[:1] or b"M", backend.encode(),
-        int(threads), int(max_weight), 1 if verbose else 0,
+        int(threads), 1 if verbose else 0,
         ctypes.byref(out),
     )
     if rc == 3:
@@ -217,7 +217,7 @@ def stabilizer_distance_raw(S, method, which, backend, threads, max_weight, verb
     return out
 
 
-def subsystem_stabilizer_distance_raw(G, method, which, backend, threads, max_weight, verbose):
+def subsystem_stabilizer_distance_raw(G, method, which, backend, threads, verbose):
     L = lib()
     a = _as_u8(G)
     if a.shape[1] % 2 != 0:
@@ -226,7 +226,7 @@ def subsystem_stabilizer_distance_raw(G, method, which, backend, threads, max_we
     rc = L.distfind_subsystem_stabilizer_distance(
         _ptr(a), a.shape[0], a.shape[1],
         method.encode(), which.encode()[:1] or b"M", backend.encode(),
-        int(threads), int(max_weight), 1 if verbose else 0,
+        int(threads), 1 if verbose else 0,
         ctypes.byref(out),
     )
     if rc == 3:
@@ -237,7 +237,7 @@ def subsystem_stabilizer_distance_raw(G, method, which, backend, threads, max_we
     return out
 
 
-def stabilizer_operator_weight_raw(G, op, method, backend, threads, max_weight, verbose):
+def stabilizer_operator_weight_raw(G, op, method, backend, threads, verbose):
     L = lib()
     a = _as_u8(G)
     o = _as_u8_vec(op)
@@ -250,7 +250,7 @@ def stabilizer_operator_weight_raw(G, op, method, backend, threads, max_weight, 
         _ptr(a), a.shape[0], a.shape[1],
         _ptr(o), o.shape[0],
         method.encode(), backend.encode(),
-        int(threads), int(max_weight), 1 if verbose else 0,
+        int(threads), 1 if verbose else 0,
         ctypes.byref(out),
     )
     if rc != 0:

@@ -118,9 +118,9 @@ def time_css(Hx, Hz, backend: str, tries: int = 1):
     vals, secs = [], []
     for _ in range(tries):
         t0 = time.perf_counter()
-        r = df.css_distance(Hx, Hz, method="bz", which="min", backend=backend)
+        d = df.css_distance(Hx, Hz, method="bz", which="min", backend=backend)
         secs.append(time.perf_counter() - t0)
-        vals.append(r.distance)
+        vals.append(d)
     stable = len(set(vals)) == 1
     return vals[0], max(vals), min(secs), stable, vals
 
@@ -129,9 +129,9 @@ def time_classical(H, backend: str, tries: int = 1):
     vals, secs = [], []
     for _ in range(tries):
         t0 = time.perf_counter()
-        r = df.classical_distance(H, method="bz", backend=backend)
+        d = df.classical_distance(H, method="bz", backend=backend)
         secs.append(time.perf_counter() - t0)
-        vals.append(r.distance)
+        vals.append(d)
     stable = len(set(vals)) == 1
     return vals[0], max(vals), min(secs), stable, vals
 

@@ -8,8 +8,8 @@ benchmark-friendly signature:
     CSS       generator -> (name, Hx, Hz, known_d_or_None)
     classical generator -> (name, H,  known_d_or_None)
 
-The "hard?" / size policy (which methods to cap) lives in ``comprehensive.py``;
-this module is purely about *what* codes exist.
+The "hard?" / size policy (which methods get which budget) lives in
+``comprehensive.py``; this module is purely about *what* codes exist.
 """
 from __future__ import annotations
 from math import comb
@@ -47,8 +47,8 @@ def bb_gross_144_12_12():
 def bb_288():
     """A larger [[288,12,12]] bivariate-bicycle code (l=m=12, same A/B family).
 
-    Distance is left unknown (qubitserf is ground truth) so a capped BZ bracket
-    never trips a spurious mismatch.
+    Distance is left unknown (qubitserf is ground truth) so nothing here can trip a
+    spurious mismatch.
     """
     Hx, Hz = bb(12, 12)
     return ("bb [[288,12,12]]", Hx, Hz, None)
@@ -121,8 +121,8 @@ def css_families():
     """Ordered dict {family_name: [(name, Hx, Hz, known_d)]}.
 
     Sizes are kept so qubitserf finishes fast; the comprehensive driver applies
-    per-method time budgets and caps BZ on the hard (sparse, weak-BZ-bound)
-    codes so nothing hangs.
+    per-method time budgets, so a method that cannot finish a code (BZ on the
+    hard, sparse, weak-BZ-bound ones) is recorded as a timeout instead of hanging.
     """
     fams: dict[str, list] = {}
 
@@ -200,16 +200,17 @@ def classical_families():
     ]
 
 
-# Which families/codes are "hard" for BZ (sparse QLDPC, weak lower bound): BZ should
-# be capped with a max_weight bracket rather than run to certification.  This set
-# grows with BZ_MAX_N: whenever a sparse code with d >> BZ_CAP enters the BZ window,
-# add it here so uncapped BZ cannot hang and leave an orphan thread.
+# Which families/codes are "hard" for BZ (sparse QLDPC, weak lower bound): BZ is not
+# expected to finish these inside the per-run budget, and comprehensive.py reports
+# them as a timeout (and then skips BZ for the larger sizes of the same family).
+# The set is informational — it only labels the log line — so a code that turns out
+# to be tractable costs nothing but a mislabel.
 #
-# NOTE: the toric/surface families are intentionally NOT capped.  BZ certifies them
-# well past where they were previously skipped (e.g. GPU BZ does toric L=8 in ~76ms),
-# so we let uncapped BZ run and rely on the per-run 30s budget + drain-on-timeout in
-# comprehensive.py to stop it once it genuinely no longer fits — the honest picture
-# of how far BZ scales on these codes, rather than an arbitrary early cap.
+# NOTE: the toric/surface families are deliberately absent.  BZ certifies them well
+# past where they were previously skipped (e.g. GPU BZ does toric L=8 in ~76ms), so
+# we let BZ run and rely on the per-run 30s budget in comprehensive.py to stop it
+# once it genuinely no longer fits — the honest picture of how far BZ scales on
+# these codes.
 HARD_CSS_NAMES = {
     "bb [[72,12,6]]",
     "gross [[144,12,12]]",

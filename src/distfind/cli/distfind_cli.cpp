@@ -22,7 +22,6 @@
 //                   modulo that group (default max(z,x); --zx prints "<z> <x>"). With
 //                   --subsystem the generators are the gauge group.
 //   --threads N     CPU worker threads (0 => hardware concurrency)
-//   --max-weight N  safety cap on the enumeration weight (0 => none)
 //   --hx FILE --hz FILE   read Hx and Hz from 0/1 text matrices instead of stdin
 //   -v, --verbose   verbose diagnostics on stderr
 //   -h, --help      this help
@@ -71,7 +70,7 @@ const char* kUsage =
     "Operator:  -o/--operator PAULI  operator weight of the Pauli string PAULI (may have Y),\n"
     "           given on the command line; generators come from stdin (default max(z,x);\n"
     "           --zx = \"<z> <x>\")\n"
-    "Other:    --threads N  --max-weight N  --hx FILE  --hz FILE  -v/--verbose  -h/--help\n";
+    "Other:    --threads N  --hx FILE  --hz FILE  -v/--verbose  -h/--help\n";
 
 struct Options {
     std::string method = "bz";       // bz | cc | mitm
@@ -82,7 +81,6 @@ struct Options {
     bool operator_mode = false;      // operator-weight mode (-o/--operator PAULI)
     std::string operator_str;        // the operator Pauli string (a command-line argument)
     int threads = 0;
-    int max_weight = 0;
     bool verbose = false;
     std::string hx_path;
     std::string hz_path;
@@ -269,7 +267,6 @@ BZOptions make_opt(const Options& o) {
     BZOptions opt;
     opt.backend = o.backend;
     opt.threads = o.threads;
-    opt.max_weight = o.max_weight;
     opt.verbose = o.verbose;
     return opt;
 }
@@ -364,8 +361,6 @@ int main(int argc, char** argv) {
             o.operator_str = need_val(a);   // the operator Pauli is a command-line argument
         } else if (a == "--threads") {
             o.threads = parse_positive_int(a, need_val(a));
-        } else if (a == "--max-weight") {
-            o.max_weight = parse_positive_int(a, need_val(a));
         } else if (a == "-v" || a == "--verbose") {
             o.verbose = true;
         } else if (a == "--hx") {

@@ -30,7 +30,7 @@ int distfind_css_distance(
     const uint8_t* Hx, int hx_rows, int hx_cols,
     const uint8_t* Hz, int hz_rows, int hz_cols,
     const char* method, char which, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out) {
     if (!out || !Hx || !Hz) return 1;
     GF2Mat mHx = from_dense(Hx, hx_rows, hx_cols);
@@ -39,7 +39,7 @@ int distfind_css_distance(
 
     BZOptions opt;
     opt.backend = backend ? backend : "auto";
-    opt.threads = threads; opt.max_weight = max_weight; opt.verbose = verbose != 0;
+    opt.threads = threads; opt.verbose = verbose != 0;
     std::string m = method ? method : "bz";
 
     // Connected cluster needs the original sparse Hx/Hz and handles Z/X/min itself.
@@ -66,14 +66,14 @@ int distfind_css_distance(
 int distfind_classical_distance(
     const uint8_t* H, int rows, int cols,
     const char* method, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out) {
     if (!out || !H) return 1;
     GF2Mat mH = from_dense(H, rows, cols);
     set_cpu_threads(threads);
     BZOptions opt;
     opt.backend = backend ? backend : "auto";
-    opt.threads = threads; opt.max_weight = max_weight; opt.verbose = verbose != 0;
+    opt.threads = threads; opt.verbose = verbose != 0;
     std::string m = method ? method : "bz";
     DistProblem prob = classical_problem(mH);
     BZResult r = (m == "mitm") ? mitm_distance(prob, opt) : bz_distance(prob, opt);
@@ -86,7 +86,7 @@ int distfind_operator_weight(
     const uint8_t* Gz, int gz_rows, int gz_cols,
     const uint8_t* z_op, const uint8_t* x_op, int n,
     const char* method, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindOpResult* out) {
     if (!out || !Gx || !Gz || !z_op || !x_op) return 1;
     GF2Mat mGx = from_dense(Gx, gx_rows, gx_cols);
@@ -95,7 +95,7 @@ int distfind_operator_weight(
 
     BZOptions opt;
     opt.backend = backend ? backend : "auto";
-    opt.threads = threads; opt.max_weight = max_weight; opt.verbose = verbose != 0;
+    opt.threads = threads; opt.verbose = verbose != 0;
     std::string m = method ? method : "bz";
 
     OpWeight w = css_operator_weight(mGx, mGz, z_op, x_op, n, m, opt);
@@ -112,7 +112,7 @@ int distfind_subsystem_distance(
     const uint8_t* Gx, int gx_rows, int gx_cols,
     const uint8_t* Gz, int gz_rows, int gz_cols,
     const char* method, char which, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out) {
     if (!out || !Gx || !Gz) return 1;
     GF2Mat mGx = from_dense(Gx, gx_rows, gx_cols);
@@ -121,7 +121,7 @@ int distfind_subsystem_distance(
 
     BZOptions opt;
     opt.backend = backend ? backend : "auto";
-    opt.threads = threads; opt.max_weight = max_weight; opt.verbose = verbose != 0;
+    opt.threads = threads; opt.verbose = verbose != 0;
     std::string m = method ? method : "bz";
 
     // Connected cluster keeps the sparse stabilizer center as its parity-check.
@@ -225,28 +225,28 @@ int symplectic_distance_driver(const GF2Mat& gauge, bool subsystem,
 int distfind_stabilizer_distance(
     const uint8_t* S, int rows, int cols,
     const char* method, char which, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out) {
     if (!out || !S) return 1;
     GF2Mat mS = from_dense(S, rows, cols);
     set_cpu_threads(threads);
     BZOptions opt;
     opt.backend = backend ? backend : "auto";
-    opt.threads = threads; opt.max_weight = max_weight; opt.verbose = verbose != 0;
+    opt.threads = threads; opt.verbose = verbose != 0;
     return symplectic_distance_driver(mS, /*subsystem=*/false, method, which, opt, out);
 }
 
 int distfind_subsystem_stabilizer_distance(
     const uint8_t* G, int rows, int cols,
     const char* method, char which, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out) {
     if (!out || !G) return 1;
     GF2Mat mG = from_dense(G, rows, cols);
     set_cpu_threads(threads);
     BZOptions opt;
     opt.backend = backend ? backend : "auto";
-    opt.threads = threads; opt.max_weight = max_weight; opt.verbose = verbose != 0;
+    opt.threads = threads; opt.verbose = verbose != 0;
     return symplectic_distance_driver(mG, /*subsystem=*/true, method, which, opt, out);
 }
 
@@ -254,7 +254,7 @@ int distfind_stabilizer_operator_weight(
     const uint8_t* G, int rows, int cols,
     const uint8_t* op, int op_len,
     const char* method, const char* backend,
-    int threads, int max_weight, int verbose,
+    int threads, int verbose,
     DistfindResult* out) {
     if (!out || !G || !op) return 1;
     if (cols % 2 != 0 || op_len != cols) return 2;
@@ -262,7 +262,7 @@ int distfind_stabilizer_operator_weight(
     set_cpu_threads(threads);
     BZOptions opt;
     opt.backend = backend ? backend : "auto";
-    opt.threads = threads; opt.max_weight = max_weight; opt.verbose = verbose != 0;
+    opt.threads = threads; opt.verbose = verbose != 0;
     std::string m = method ? method : "bz";
 
     BZResult r;

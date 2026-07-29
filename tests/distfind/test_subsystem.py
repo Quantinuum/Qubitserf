@@ -40,18 +40,16 @@ def test_codes_bacon_shor_matches_reference(d):
 # --------------------------------------------------------------------------- #
 def test_bacon_shor_3():
     Gx, Gz = codes.bacon_shor(3)
-    r = df.subsystem_css_distance(Gx, Gz, method="bz", backend="cpu")
-    assert r.distance == 3 and r.proven
+    assert df.subsystem_css_distance(Gx, Gz, method="bz", backend="cpu") == 3
     assert ref.dressed_distance_bruteforce(Gx, Gz) == 3
     # Z and X components are each 3.
-    assert df.subsystem_css_distance(Gx, Gz, which="z", backend="cpu").distance == 3
-    assert df.subsystem_css_distance(Gx, Gz, which="x", backend="cpu").distance == 3
+    assert df.subsystem_css_distance(Gx, Gz, which="z", backend="cpu") == 3
+    assert df.subsystem_css_distance(Gx, Gz, which="x", backend="cpu") == 3
 
 
 def test_bacon_shor_5():
     Gx, Gz = codes.bacon_shor(5)
-    r = df.subsystem_css_distance(Gx, Gz, method="bz", backend="cpu")
-    assert r.distance == 5 and r.proven
+    assert df.subsystem_css_distance(Gx, Gz, method="bz", backend="cpu") == 5
 
 
 # --------------------------------------------------------------------------- #
@@ -67,8 +65,8 @@ def test_stabilizer_code_as_subsystem_equals_css(name, HxHz, expected):
     Hx, Hz = HxHz
     sub = df.subsystem_css_distance(Hx, Hz, method="bz", backend="cpu")
     css = df.css_distance(Hx, Hz, method="bz", backend="cpu")
-    assert sub.distance == css.distance == expected, (
-        f"{name}: subsystem={sub.distance} css={css.distance} expected {expected}")
+    assert sub == css == expected, (
+        f"{name}: subsystem={sub} css={css} expected {expected}")
     assert ref.dressed_distance_bruteforce(Hx, Hz) == expected
 
 
@@ -93,9 +91,9 @@ def test_random_subsystem_codes():
         rz = df.subsystem_css_distance(Gx, Gz, which="z", method="bz", backend="cpu")
         rx = df.subsystem_css_distance(Gx, Gz, which="x", method="bz", backend="cpu")
         rm = df.subsystem_css_distance(Gx, Gz, which="min", method="bz", backend="cpu")
-        assert rz.distance == dZ, f"dZ native={rz.distance} oracle={dZ}\nGx={Gx}\nGz={Gz}"
-        assert rx.distance == dX, f"dX native={rx.distance} oracle={dX}\nGx={Gx}\nGz={Gz}"
-        assert rm.distance == min(dZ, dX)
+        assert rz == dZ, f"dZ native={rz} oracle={dZ}\nGx={Gx}\nGz={Gz}"
+        assert rx == dX, f"dX native={rx} oracle={dX}\nGx={Gx}\nGz={Gz}"
+        assert rm == min(dZ, dX)
         tested += 1
     assert tested >= 20, f"only {tested} random subsystem cases exercised"
 
@@ -122,7 +120,7 @@ def test_methods_agree():
         cases.append((Gx, Gz))
         found += 1
     for Gx, Gz in cases:
-        bz = df.subsystem_css_distance(Gx, Gz, method="bz", backend="cpu").distance
-        cc = df.subsystem_css_distance(Gx, Gz, method="cc", backend="cpu").distance
-        mitm = df.subsystem_css_distance(Gx, Gz, method="mitm", backend="cpu").distance
+        bz = df.subsystem_css_distance(Gx, Gz, method="bz", backend="cpu")
+        cc = df.subsystem_css_distance(Gx, Gz, method="cc", backend="cpu")
+        mitm = df.subsystem_css_distance(Gx, Gz, method="mitm", backend="cpu")
         assert bz == cc == mitm, f"bz={bz} cc={cc} mitm={mitm}"

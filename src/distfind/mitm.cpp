@@ -350,9 +350,8 @@ BZResult mitm_distance(const DistProblem& prob, const BZOptions& opt) {
     for (int j = 0; j < nL; ++j) left.push_back(j);
     for (int j = nL; j < ncoord; ++j) right.push_back(j);
 
-    // Upper bound / cap on the search weight (weight cannot exceed the coordinate count).
-    int cap = ncoord;
-    if (opt.max_weight > 0) cap = std::min(cap, opt.max_weight);
+    // Upper bound on the search weight (weight cannot exceed the coordinate count).
+    const int cap = ncoord;
     int target = (prob.seed_upper > 0) ? std::min(prob.seed_upper, cap) : cap;
 
     int threads = opt.threads > 0 ? opt.threads
@@ -430,8 +429,7 @@ struct MitmSide {
         const int nL = ncoord / 2;
         for (int j = 0; j < nL; ++j) left.push_back(j);
         for (int j = nL; j < ncoord; ++j) right.push_back(j);
-        int cap = ncoord;
-        if (opt.max_weight > 0) cap = std::min(cap, opt.max_weight);
+        const int cap = ncoord;
         seed_upper = prob.seed_upper;
         target = (prob.seed_upper > 0) ? std::min(prob.seed_upper, cap) : cap;
         threads = opt.threads > 0 ? opt.threads
@@ -487,7 +485,7 @@ void mitm_interleave_core(MitmSide& Z, MitmSide& X, const BZOptions& opt, bool c
                     if (opt.verbose)
                         verbose_final(S->found,
                                       std::chrono::duration<double>(clk::now() - t0).count(), S->tag);
-                }                                                    // else: max_weight cap (unproven)
+                }                                                    // else: no hit at all (unproven)
                 S->resolved = true; continue;
             }
             if (cap_to_min && d >= best) {  // can't lower the running min -> cap (dS >= best)

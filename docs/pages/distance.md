@@ -26,38 +26,30 @@ All of them share the same keywords:
 | `which` | `"min"` | `"min"` = `min(dX, dZ)`, `"z"` = Z-distance, `"x"` = X-distance (distance functions only) |
 | `backend` | `"auto"` | `"auto"` / `"cpu"` / `"gpu"`; used by `bz`. `"gpu"` falls back to the CPU for the identical result when no accelerator is present |
 | `threads` | `0` | CPU worker threads; `0` = all hardware cores |
-| `max_weight` | `0` | cap an expensive search and return a certified `[lower, upper]` bracket; `0` = no cap |
 | `verbose` | `False` | stream per-level progress to stderr |
 
-and return a `Result` with:
-
-| Field | Meaning |
-|---|---|
-| `distance` | best distance found; the minimum distance when `proven` is true |
-| `lower_bound` | certified lower bound (`== distance` when proven) |
-| `proven` | whether the search ran to completion, rather than being capped and leaving a `[lower_bound, distance]` bracket |
-| `seconds` | wall-clock runtime |
-| `backend` | backend actually used |
+Each of them returns a plain `int`: the distance (or, for the operator-weight functions, the
+coset weight), with `-1` meaning the value is not defined for the input — an empty code, or a
+code with no logical qubits, which has no non-trivial operator to measure.
 
 ## `css_distance`
 
 ```python
-css_distance(Hx, Hz, *, method="bz", which="min", backend="auto",
-             threads=0, max_weight=0, verbose=False) -> Result
+css_distance(Hx, Hz=None, *, method="bz", which="min", backend="auto",
+             threads=0, verbose=False) -> int
 ```
 
 `Hx` and `Hz` are any 0/1 arrays (coerced to `uint8` and reduced mod 2).
 
 ```python
 Hx, Hz = codes.steane()
-r = df.css_distance(Hx, Hz)
-print(r.distance, r.proven)                                # 3 True
+print(df.css_distance(Hx, Hz))                             # 3
 
 Hx, Hz = codes.toric(10)                                   # [[200, 2, 10]], sparse
-print(df.css_distance(Hx, Hz, method="cc").distance)       # 10, in milliseconds
+print(df.css_distance(Hx, Hz, method="cc"))                # 10, in milliseconds
 
-d_z = df.css_distance(Hx, Hz, which="z", method="cc").distance
-d_x = df.css_distance(Hx, Hz, which="x", method="cc").distance
+d_z = df.css_distance(Hx, Hz, which="z", method="cc")
+d_x = df.css_distance(Hx, Hz, which="x", method="cc")
 print(d_z, d_x)                                            # 10 10
 ```
 
@@ -67,62 +59,57 @@ stabilizers and typically certifies sparse qLDPC codes in milliseconds regardles
 (and the only GPU-accelerated one). On a qLDPC code, `method="cc"` on the CPU beats
 `method="bz"` on the GPU by orders of magnitude — see [Benchmarks](benchmarks.md).
 
-When BZ cannot close the gap in the allotted `max_weight`, the result is a rigorous
-bracket:
-
-```python
-Hx, Hz = codes.gross_code()                                # [[144, 12, 12]]
-r = df.css_distance(Hx, Hz, method="bz", max_weight=8)
-print(r.distance, r.lower_bound, r.proven)                 # 12 10 False
-print(df.css_distance(Hx, Hz, method="cc").proven)         # True — cc certifies it
-```
-
 ## `classical_distance`
 
 ```python
 classical_distance(H, *, method="bz", backend="auto",
-                   threads=0, max_weight=0, verbose=False) -> Result
+                   threads=0, verbose=False) -> int
 ```
 
 Minimum distance of a classical linear code from its parity-check matrix:
 
 ```python
 H = codes.hamming_parity(3)                     # the [7, 4, 3] Hamming code
-print(df.classical_distance(H).distance)        # 3
+print(df.classical_distance(H))                 # 3
 
-print(df.classical_distance(codes.repetition_parity(8)).distance)  # 8
+print(df.classical_distance(codes.repetition_parity(8)))  # 8
+```
+
+A code of dimension 0 has no non-zero codeword, so its distance is undefined:
+
+```python
+import numpy as np
+print(df.classical_distance(np.eye(6, dtype=np.uint8)))   # -1
 ```
 
 ## `operator_weight`
 
 ```python
 operator_weight(Gx, Gz, operator, *, method="bz", backend="auto",
-                threads=0, max_weight=0, verbose=False) -> OpResult
+                threads=0, verbose=False) -> int
 ```
 
 The minimum weight of a Pauli modulo the group `<Gx, Gz>` — the minimum-weight coset
 leader. The Z-part is minimized over `z + rowspace(Gz)` and the X-part over
-`x + rowspace(Gx)`, independently:
+`x + rowspace(Gx)` independently, and the larger of the two coset weights is returned:
 
 ```python
 Gx, Gz = codes.steane()
-op = df.operator_weight(Gx, Gz, "ZZZZZZZ")            # a logical Z of Steane
-print(op.z_weight, op.x_weight, op.weight)            # 3 0 3
+print(df.operator_weight(Gx, Gz, "ZZZZZZZ"))          # 3 — a logical Z of Steane
 
-print(df.operator_weight(Gx, Gz, "IIIZZZZ").weight)   # 0 — a stabilizer is the identity
+print(df.operator_weight(Gx, Gz, "IIIZZZZ"))          # 0 — a stabilizer is the identity
 ```
 
 The operator may be a Pauli string (`I/X/Y/Z`, where `Y` sets both the Z and X bits), a
-`(z_vec, x_vec)` pair, or a length-`2n` symplectic `[z|x]` array. The `OpResult` carries
-`z_weight`, `x_weight`, `weight` (`= max(z, x)`), `proven`, `seconds`, and `backend`.
+`(z_vec, x_vec)` pair, or a length-`2n` symplectic `[z|x]` array.
 Operator weight reduces to the core distance problem, so it accepts `method="bz"` and
 `method="mitm"` (`"cc"` falls back to `bz`).
 
 ## `subsystem_css_distance`
 
 ```python
-subsystem_css_distance(Gx, Gz, *, method="bz", which="min", backend="auto",
-                       threads=0, max_weight=0, verbose=False) -> Result
+subsystem_css_distance(Gx, Gz=None, *, method="bz", which="min", backend="auto",
+                       threads=0, verbose=False) -> int
 ```
 
 Takes the **gauge generators** of a CSS subsystem code and returns its **dressed**
@@ -133,7 +120,7 @@ topological subsystem codes.
 
 ```python
 Gx, Gz = codes.bacon_shor(3)                            # gauge generators, n = 9
-print(df.subsystem_css_distance(Gx, Gz, method="cc").distance)   # 3
+print(df.subsystem_css_distance(Gx, Gz, method="cc"))   # 3
 ```
 
 A stabilizer code is the special case `gauge = stabilizers`, where the dressed distance
@@ -162,10 +149,10 @@ def paulis(strings):                    # 'XZZXI' ... -> a [z | x] matrix
     return np.array(rows, np.uint8)
 
 S = paulis(["XZZXI", "IXZZX", "XIXZZ", "ZXIXZ"])        # the [[5,1,3]] perfect code
-print(df.stabilizer_distance(S).distance)               # 3
+print(df.stabilizer_distance(S))                        # 3
 
-print(df.pauli_operator_weight(S, S[0]).weight)         # 0 — a stabilizer
-print(df.pauli_operator_weight(S, "XXXXX").weight)      # 3 — a logical X, reduced
+print(df.pauli_operator_weight(S, S[0]))                # 0 — a stabilizer
+print(df.pauli_operator_weight(S, "XXXXX"))             # 3 — a logical X, reduced
 ```
 
 `subsystem_stabilizer_distance(G)` is the non-CSS dressed distance from possibly

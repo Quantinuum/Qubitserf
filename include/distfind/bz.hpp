@@ -21,7 +21,6 @@ struct BZResult {
 struct BZOptions {
     std::string backend = "auto";
     int threads = 0;          // 0 => hardware concurrency (CPU backend)
-    int max_weight = 0;       // 0 => up to K; safety cap on the enumeration weight
     bool verbose = false;
 };
 

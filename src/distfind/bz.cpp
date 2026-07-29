@@ -127,7 +127,7 @@ BZResult bz_distance(const DistProblem& prob, const BZOptions& opt) {
     // Tighten the starting bound with (parallel) random information sets.
     inner = random_is_seed(prob, inner, /*trials=*/256, 0x9e3779b9u);
     int outer = 0;                                 // lower bound
-    const int maxw = opt.max_weight > 0 ? std::min(K, opt.max_weight) : K;
+    const int maxw = K;
 
     static const bool profile = std::getenv("DISTFIND_PROFILE") != nullptr;
 
@@ -214,7 +214,7 @@ struct BzSide {
     BzSide(const BzSide&) = delete;
     BzSide& operator=(const BzSide&) = delete;
 
-    void setup(const DistProblem& prob, Backend* be, const BZOptions& opt, const char* t) {
+    void setup(const DistProblem& prob, Backend* be, const char* t) {
         backend = be; tag = t;
         n = prob.n; K = prob.code_gen.rows; stride = words_for(n);
         even = prob.even;
@@ -250,7 +250,7 @@ struct BzSide {
 
         inner = prob.seed_upper > 0 ? prob.seed_upper : WEIGHT_NONE;
         inner = random_is_seed(prob, inner, /*trials=*/256, 0x9e3779b9u);
-        maxw = opt.max_weight > 0 ? std::min(K, opt.max_weight) : K;
+        maxw = K;
     }
 
     // Enumerate weight level d; update inner (upper) and outer (lower).
@@ -336,8 +336,8 @@ BZResult bz_min_interleaved(const DistProblem& pz, const DistProblem& px,
     auto t0 = clk::now();
     Backend* be = select_backend(opt.backend);
     BzSide Z, X;
-    Z.setup(pz, be, opt, "Z");
-    X.setup(px, be, opt, "X");
+    Z.setup(pz, be, "Z");
+    X.setup(px, be, "X");
     bz_interleave_core(Z, X, opt, /*cap_to_min=*/true, t0);
 
     auto v = [](const BzSide& S) { return S.has_logicals ? S.inner : WEIGHT_NONE; };
@@ -362,8 +362,8 @@ std::pair<BZResult, BZResult> bz_zx_interleaved(const DistProblem& pz, const Dis
     auto t0 = clk::now();
     Backend* be = select_backend(opt.backend);
     BzSide Z, X;
-    Z.setup(pz, be, opt, "Z");
-    X.setup(px, be, opt, "X");
+    Z.setup(pz, be, "Z");
+    X.setup(px, be, "X");
     bz_interleave_core(Z, X, opt, /*cap_to_min=*/false, t0);   // no cross-side cap: both full
     double secs = std::chrono::duration<double>(clk::now() - t0).count();
     return {assemble_bz_side(Z, secs, be->name()), assemble_bz_side(X, secs, be->name())};
