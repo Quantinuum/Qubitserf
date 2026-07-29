@@ -66,7 +66,7 @@ class AutResult:
     def group(self):
         """This result as a :class:`codeaut.permgroup.Group` on the ``n`` coordinates, for
         membership tests and element enumeration."""
-        from . import permgroup
+        from ..algebra import permgroup
         return permgroup.Group(self.generators, self.n)
 
     def __repr__(self):
@@ -135,8 +135,9 @@ def automorphism_group(generator_matrix, *, max_dim: int = 20,
                                  selector_code, max_modulus_code)
     else:
         if selector_code != 0 or max_modulus is not None:
-            raise RuntimeError("loaded codeaut native library predates congruence spanning sets; "
-                               "rebuild it or unset CODEAUT_LIB_PATH")
+            raise RuntimeError("loaded native library predates congruence spanning sets; "
+                               "rebuild it or unset QUBITSERF_LIB (or the legacy "
+                               "CODEAUT_LIB_PATH)")
         h = lib.qaut_leon_run(Gp, m, n, max_dim_code, 1 if use_invariant else 0)
     if not h:
         raise RuntimeError("qaut_leon_run returned NULL")

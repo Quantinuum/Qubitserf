@@ -31,3 +31,8 @@ site/
 # Bench cache
 bench/distfind/.cache/
 bench/codeaut/.cache/
+
+# Experimental engines (local-only)
+python/qubitserf/codeaut/experimental/
+bench/codeaut/experimental/
+tests/codeaut/experimental/

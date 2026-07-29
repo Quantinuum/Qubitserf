@@ -1,70 +1,47 @@
-# distfind
+# qubitserf
 
-**Fast GPU and multicore-CPU code-distance finding for quantum and
-classical codes.** A self-contained C++ core with a Python (`ctypes`) front end.
+**Fast exact code distance and automorphism groups for quantum and classical codes,
+on CPU and GPU.** A self-contained C++ core with a Python (`ctypes`) front end.
 
-`distfind` computes the *exact* minimum distance of CSS quantum stabilizer codes and
-classical linear codes using **deterministic** algorithms — Brouwer–Zimmermann (BZ),
-connected cluster (CC), and meet-in-the-middle (MITM) — with the exponential enumeration
-offloaded to the GPU where it pays off.
+Qubitserf bundles two engines built on one shared native library, `libqubitserf`:
 
-It is the **successor** to the original Quantinuum
-[Qubitserf](https://github.com/Quantinuum/Qubitserf) C++ tool, which it supersedes — a
-from-scratch C++/GPU core (developed under the working name *qminweight*) that keeps CLI
-compatibility with the original and adds general (non-CSS) stabilizer distance, operator
-weight, and subsystem distance. Its algorithms also draw on Mark Webster *et al.*,
-[*Distance-Finding Algorithms for Quantum Codes and Circuits*](https://arxiv.org/abs/2603.22532)
-(the [`codeDistance`](https://github.com/m-webster/codeDistancePYPI) package) and the
-Brouwer–Zimmermann improvements of Hernando, Quintana-Ortí & Grassl,
-[arXiv:2408.10743](https://arxiv.org/abs/2408.10743).
+- **`qubitserf.distfind`** computes the *exact* minimum distance of CSS quantum codes,
+  general (non-CSS) stabilizer codes, dressed subsystem codes, and classical linear codes
+  — plus the minimum weight of a Pauli operator modulo the stabilizer or gauge group —
+  using **deterministic** algorithms (Brouwer–Zimmermann, connected cluster,
+  meet-in-the-middle), with the exponential enumeration offloaded to the GPU where it
+  pays off.
+- **`qubitserf.codeaut`** computes the automorphism group `Aut(C)` of a binary linear
+  code (Leon's algorithm, or Brouwer–Zimmermann + nauty incidence) and the
+  qubit-permutation group `Aut(Hx) ∩ Aut(Hz)` of a CSS quantum code, with a full
+  permutation-group toolkit (exact order, membership, enumeration, intersection) in
+  `qubitserf.algebra`.
 
-## The headline result
+Everything is exact: a distance result says so via `.proven`; the automorphism functions
+return the certified full group or raise. No Monte-Carlo estimates, and never a silently
+unverified group.
 
-The two algorithms cover two complementary regimes:
+## The headline results
 
-- **Connected cluster certifies the IBM gross code `[[144, 12, 12]]` in ~0.3 s** (377 ms
-  measured) by exploiting its sparsity, where both distfind's own Brouwer–Zimmermann and
+- **Connected cluster certifies the IBM gross code `[[144, 12, 12]]` in well under a
+  second** by exploiting its sparsity, where both qubitserf's own Brouwer–Zimmermann and
   the reference `codeDistance` package time out (>30 s), and where Magma-style BZ would
   need on the order of tens of hours.
-- **Brouwer–Zimmermann on the GPU is up to ~500× faster** than the default
-  reference BZ on the codes where the reference finishes at all. On larger codes the
-  reference times out (>30 s) where distfind solves them in well under a second.
+- **Brouwer–Zimmermann on the GPU is up to ~500× faster** than the default reference BZ
+  on the codes where the reference finishes at all.
+- The automorphism engines compute the full automorphism group of sparse codes with
+  hundreds of bits/qubits exactly, via the same certified low-weight enumeration.
 
-These numbers come from [`bench/distfind/results.md`](benchmarks.md) and
-[`bench/distfind/cc_results.md`](benchmarks.md); they are not invented for the docs.
-
-## Features
-
-- **Exact, deterministic distance** for CSS quantum codes and classical linear codes — no
-  Monte-Carlo estimates.
-- **Three algorithms**, each exact, that cross-validate one another:
-    - **Brouwer–Zimmermann** (`bz`) — enumeration-based, accelerated on **CPU and GPU**;
-      best for dense / random codes. Reports a rigorous `[lower, upper]` bracket
-      when its information-set lower bound is too weak to close.
-    - **Connected cluster** (`cc`) — a Tanner-graph frontier search; best for
-      sparse / LDPC / topological / bivariate-bicycle codes. CPU, parallel over seeds.
-    - **Meet-in-the-middle** (`mitm`) — a CPU memory-for-time cross-check, validated
-      against BZ by a differential fuzzer.
-- **GPU acceleration where it matters**: BZ's inner enumeration is split across GPU threads
-  with the combinatorial number system (no inter-thread coordination), running on
-  bit-packed GF(2) words with hardware popcount. A hybrid dispatcher keeps small weight
-  levels on the CPU so the GPU is never a slowdown.
-- **A clean Python API** (`css_distance`, `classical_distance`, `available_backends`,
-  `version`) plus a library of code generators in `qubitserf.distfind.codes` (toric, surface,
-  hypergraph product, bivariate bicycle / gross code, Hamming, repetition, random LDPC).
-- **A command-line interface** for piping in Pauli strings or parity-check matrices.
+The distance numbers come from the committed benchmark outputs — see
+[Benchmarks](benchmarks.md); they are measurements, not estimates.
 
 ## Where to next
 
 | Page | What's there |
 |---|---|
-| [Installation](installation.md) | Building the native library and `pip install` |
-| [Quickstart](quickstart.md) | Minimal Python and CLI examples |
-| [Python API](api.md) | `css_distance`, `classical_distance`, `Result`, `qubitserf.distfind.codes` |
-| [Command line](cli.md) | The `distfind` / `python -m qubitserf.distfind` CLI |
-| [Algorithms](algorithms.md) | BZ, CC, MITM — how they work and when to use each |
+| [Code distance](distance.md) | `css_distance`, `classical_distance`, `operator_weight`, subsystem and non-CSS codes |
+| [Automorphism groups](automorphisms.md) | `classical_automorphisms`, `css_automorphisms`, working with permutation groups |
 | [Benchmarks](benchmarks.md) | Measured numbers vs the reference, and how to reproduce |
-| [Contributing](contributing.md) | Repo layout, building, running the tests |
 
 ## License
 

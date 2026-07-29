@@ -1,11 +1,15 @@
-"""ctypes binding to the compiled libdistfind shared library."""
+"""ctypes binding to the ``distfind_*`` ABI of the shared libqubitserf library.
+
+The library itself is located/loaded (once, shared with codeaut) by
+:mod:`qubitserf._native`; this module attaches the distfind signatures and wraps the
+raw calls.
+"""
 from __future__ import annotations
 import ctypes
-import os
-import sys
-import glob
 
 import numpy as np
+
+from .._native import load as _load_shared
 
 
 class DistfindResult(ctypes.Structure):
@@ -29,28 +33,6 @@ class DistfindOpResult(ctypes.Structure):
     ]
 
 
-def _find_library() -> str:
-    override = os.environ.get("DISTFIND_LIB")
-    if override:
-        if not os.path.exists(override):
-            raise FileNotFoundError("DISTFIND_LIB=%s does not exist" % override)
-        return override
-    here = os.path.dirname(os.path.abspath(__file__))
-    libdir = os.path.join(here, "_lib")
-    names = ["libdistfind.dylib", "libdistfind.so", "distfind.dll"]
-    for n in names:
-        p = os.path.join(libdir, n)
-        if os.path.exists(p):
-            return p
-    # also accept anything matching in _lib
-    for p in glob.glob(os.path.join(libdir, "*distfind*")):
-        if p.endswith((".dylib", ".so", ".dll")):
-            return p
-    raise FileNotFoundError(
-        "libdistfind not found in {}. Build it first: run ./build.sh".format(libdir)
-    )
-
-
 _lib = None
 
 
@@ -58,7 +40,7 @@ def lib():
     global _lib
     if _lib is not None:
         return _lib
-    _lib = ctypes.CDLL(_find_library())
+    _lib = _load_shared()
 
     u8p = ctypes.POINTER(ctypes.c_uint8)
     rp = ctypes.POINTER(DistfindResult)

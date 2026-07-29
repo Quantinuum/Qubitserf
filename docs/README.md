@@ -1,8 +1,8 @@
-# distfind documentation
+# qubitserf documentation
 
-This directory is the documentation site for **distfind**. The pages are plain Markdown, so
-they render directly on GitHub and PyPI; the `mkdocs.yml` here additionally wires them into
-a browsable site with [MkDocs](https://www.mkdocs.org/) and the
+This directory is the documentation site for **qubitserf**. The pages are plain Markdown,
+so they render directly on GitHub and PyPI; the `mkdocs.yml` here additionally wires them
+into a browsable site with [MkDocs](https://www.mkdocs.org/) and the
 [Material](https://squidfunk.github.io/mkdocs-material/) theme.
 
 The Markdown pages live in `pages/` (the MkDocs `docs_dir`); `mkdocs.yml` and this README
@@ -12,14 +12,10 @@ sit alongside it.
 
 | File | Contents |
 |---|---|
-| `pages/index.md` | What distfind is, the headline results, the feature list |
-| `pages/installation.md` | Building the native library and installing the package |
-| `pages/quickstart.md` | Minimal Python and CLI examples |
-| `pages/api.md` | Python API reference (`css_distance`, `classical_distance`, `Result`, `qubitserf.distfind.codes`) |
-| `pages/cli.md` | The `distfind` / `python -m qubitserf.distfind` command line |
-| `pages/algorithms.md` | BZ, connected cluster, MITM — how they work and when to use each |
+| `pages/index.md` | What qubitserf is, the headline results |
+| `pages/distance.md` | The distance interface: `css_distance`, `classical_distance`, `operator_weight`, subsystem and non-CSS codes |
+| `pages/automorphisms.md` | The automorphism interface: `classical_automorphisms`, `css_automorphisms`, `group_intersection`, the permutation-group toolkit |
 | `pages/benchmarks.md` | Measured numbers vs the reference, and how to reproduce |
-| `pages/contributing.md` | Repo layout, building, running the tests, conventions |
 
 ## Building the site locally
 

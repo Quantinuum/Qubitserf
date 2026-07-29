@@ -25,7 +25,7 @@ from typing import Optional
 import numpy as np
 
 from . import gf2
-from . import permgroup
+from ..algebra import permgroup
 
 
 # --------------------------------------------------------------------------- dreadnaut driver

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Configure + build BOTH native libraries (libdistfind and libcodeaut) and drop each into its
-# Python subpackage's _lib/ so they import without an install.  Use for local development /
+# Configure + build the single native library (libqubitserf, both engines' ABIs over the
+# shared core) and drop it into python/qubitserf/_lib so it imports without an install.  Use for local development /
 # running the tests in-tree (PYTHONPATH=python).  For an installed wheel, `pip install .` runs
 # the same CMake build via scikit-build-core.
 #
@@ -23,9 +23,7 @@ JOBS="${JOBS:-$(sysctl -n hw.ncpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/de
 cmake --build "$BUILD_DIR" -j"$JOBS"
 
 echo
-echo "Built. Shared libraries:"
-for d in distfind codeaut; do
-  for f in python/qubitserf/"$d"/_lib/*; do
-    [ -e "$f" ] && echo "  $d/_lib/$(basename "$f")"
-  done
+echo "Built. Shared library:"
+for f in python/qubitserf/_lib/*; do
+  [ -e "$f" ] && echo "  _lib/$(basename "$f")"
 done

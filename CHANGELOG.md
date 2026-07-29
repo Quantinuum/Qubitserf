@@ -2,7 +2,63 @@
 
 All notable changes to **qubitserf** are documented here.
 
+## [0.1.0-dev] — 2026-07-27
+
+### Unified native core — one library, one enumeration kernel
+- **Single native shared library.** The two per-engine libraries (`libdistfind` →
+  `qubitserf/distfind/_lib`, `libcodeaut` → `qubitserf/codeaut/_lib`) are merged into one
+  **`libqubitserf`** in `python/qubitserf/_lib/`, exposing both flat C ABIs unchanged
+  (`distfind_*`, `codeaut_bz_*`, `qaut_leon_*`).
+- **Shared C++ core** — `include/qsf/` (namespace `qsf`: bits, combinatorics, GF(2) dense
+  matrix, `gf2span` basis, `EnumPlan` + a unified `Backend`) and `src/core/` (`gf2.cpp`,
+  `backend_cpu.cpp`, `metal/backend_metal.mm`, `cuda/backend_cuda.cu`). **One two-level
+  enumeration kernel serves both engines** via a sink policy: min-logical-weight mode
+  (distfind `Backend::enumerate`) and low-weight-collect mode (codeaut `Backend::collect`),
+  on CPU / CUDA / Metal alike. `include/distfind/` bits/combinatorics/gf2/backend headers
+  are now thin forwards to `qsf`; `include/codeaut/` keeps only `capi.h`; `gf2span.hpp`
+  moved to `include/qsf/`.
+- **codeaut BZ inherits distfind's optimized kernels.** The codeaut CPU and Metal BZ paths
+  now run the two-level incremental kernel instead of their previous naive enumeration:
+  measured **~7x faster on CPU** on a heavy case (RM(3,8), m=93, p=6), and the Metal
+  collect path is upgraded from the naive kernel. Exact-set parity verified CPU vs Metal
+  and old vs new.
+
+### Build & environment renames (legacy env vars still honoured)
+- CMake options: `DISTFIND_METAL` / `DISTFIND_CUDA` / `CODEAUT_METAL` / `CODEAUT_CUDA` →
+  **`QUBITSERF_METAL`** / **`QUBITSERF_CUDA`**; `DISTFIND_TESTS` → **`QUBITSERF_TESTS`**;
+  `DISTFIND_CLI` → **`QUBITSERF_CLI`**.
+- Library-path override: **`QUBITSERF_LIB`** (the legacy `DISTFIND_LIB` and
+  `CODEAUT_LIB_PATH` are still honoured).
+- The no-CMake dev fallback build now compiles `src/{core,distfind,codeaut}/*.cpp` into
+  `python/qubitserf/_lib/libqubitserf.{dylib,so}` — both engines get the fallback
+  (distfind previously had none).
+- GPU tuning knobs unchanged: `DISTFIND_GPU_MIN_WORK` (min mode), `CODEAUT_GPU_MIN_WORK` +
+  `CODEAUT_GPU_CAPACITY` (collect mode), `DISTFIND_TPT`.
+
+### Python deduplication (no public API changes)
+- Shared `qubitserf/_native.py` (library locate / load / self-build), `qubitserf/_interop.py`
+  (the single CSS interop shim; the per-engine `_interop.py` are re-export shims), and
+  `qubitserf/_constructions.py` (shared raw-matrix code constructions; the per-engine
+  `codes.py` delegate to it). Where constructions genuinely differ — surface HGP vs
+  rotated, toric HGP vs lattice — both variants are kept under distinct names.
+- All public APIs unchanged; the full pytest suite passes (143 passed, 3 skipped).
+
 ## [Unreleased]
+
+### Added — classical `method="bz"` engine
+- **`classical_automorphisms` now takes the same `method="auto"|"leon"|"bz"` choice as
+  `css_automorphisms`.** `"bz"` is a new classical engine (`codeaut.classical_bz`): certified
+  Brouwer–Zimmermann low-weight classes of **both** `C` and `C^perp` (`Aut(C) = Aut(C^perp)`;
+  the smaller certified incidence is solved — dimension alone is a bad BZ cost proxy, since an
+  LDPC-style code keeps its low-weight words on the primal side while the low-dimensional dual
+  basis is dense) feed a coloured coordinate↔codeword incidence solved with nauty/Traces, and
+  every generator is
+  GF(2)-re-verified to preserve `rowspace(genmat)` — exact at any `dim(C)` (Leon needs
+  `2**dim`). Returns a new `codeaut.ClassicalAutResult` (`.order` int, `.generators`,
+  `.group()`, `.dim`, `.weight_classes`, `.dualized`, `.method`, `.seconds`). `"auto"` runs
+  Leon when `dim(C) ≤ max_dim`, else `bz`, falling through to the other engine on failure; all
+  routes are exact and raise rather than approximate. New knobs: `budget`, `backend`,
+  `max_threads`, `nauty_timeout`, `traces_timeout`.
 
 ### Removed — inexact automorphism entry points (breaking)
 - **The `"partial"` CSS method is gone.** `css_automorphisms(..., method="partial")` (and its

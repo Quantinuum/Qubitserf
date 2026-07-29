@@ -4,11 +4,10 @@
 Samples CSS codes from the live qumba database (stratified by effective dimension), runs
 ``codeaut`` on each, and compares to the orchestration's RECORDED result:
 
-  * **correctness** -- if codeaut returns an exact (complete) group, its order MUST equal the
-    recorded ``aut_order_exact`` (a different complete order is a hard bug).  If codeaut returns
-    a verified subgroup, its order must be a divisor-consistent lower bound (we flag a
-    "downgrade" if it is smaller than the recorded exact order -- a coverage regression, not an
-    incorrectness).
+  * **correctness** -- ``codeaut.css_automorphism_group`` is exact-or-raise: when it returns a
+    group, its order MUST equal the recorded ``aut_order_exact`` (a different order is a hard
+    bug).  When it raises RuntimeError on a code the orchestration solved, that is a coverage
+    regression ("downgrade"), not an incorrectness.
   * **speed** -- codeaut's wall time vs the recorded ``aut_meta.seconds``.
 
 Run (from the repo root, with the qecdb SSH tunnel up)::
@@ -70,30 +69,28 @@ def main():
         eff = doc.get("aut_meta", {}).get("eff_dim", "?")
         t0 = time.time()
         try:
-            # per_timeout <= 0 -> inline (no hard-cutoff fork overhead): the fair apples-to-apples
-            # vs the orchestration's recorded in-worker compute time.
-            tmo = None if per_timeout <= 0 else per_timeout
-            r = codeaut.css_automorphism_group(code, max_dim=24, timeout=tmo)
+            # exact-or-raise: a RuntimeError on a code the orchestration solved is a coverage
+            # regression (a "downgrade"), counted separately from hard errors.
+            grp = codeaut.css_automorphism_group(code)
+        except RuntimeError:
+            ca_s = time.time() - t0
+            n_downgrade += 1
+            print(f"[[{doc['n']},{doc['k']},{doc.get('d')}]]".ljust(16) +
+                  f" {str(eff):>4s} {rec_order:>22s} {'RAISED (no exact)':>22s} "
+                  f"{rec_s:>8.3f} {ca_s:>8.3f}  DOWNGRADE")
+            continue
         except Exception as e:
             n_err += 1
             print(f"[[{doc['n']},{doc['k']},{doc.get('d')}]]".ljust(16) +
                   f" {str(eff):>4s} {rec_order:>22s} {'ERROR: '+type(e).__name__:>22s}")
             continue
         ca_s = time.time() - t0
-        ca_order = r.order
+        ca_order = str(grp.order())
 
-        if r.complete:
-            if ca_order == rec_order:
-                status, n_ok = "MATCH", n_ok + 1
-            else:
-                status, n_bug = "BUG(order!=)", n_bug + 1
+        if ca_order == rec_order:
+            status, n_ok = "MATCH", n_ok + 1
         else:
-            if int(ca_order) == int(rec_order):
-                status, n_ok = "match(sub=exact)", n_ok + 1
-            elif int(ca_order) < int(rec_order):
-                status, n_downgrade = "DOWNGRADE", n_downgrade + 1
-            else:
-                status, n_bug = "BUG(sub>exact)", n_bug + 1
+            status, n_bug = "BUG(order!=)", n_bug + 1
 
         if rec_s == rec_s:
             ratios.append(ca_s / rec_s if rec_s > 0 else 1.0)
@@ -103,8 +100,8 @@ def main():
               f" {str(eff):>4s} {rec_order:>22s} {ca_order:>22s} {rec_s:>8.3f} {ca_s:>8.3f}  {status}")
 
     print("-" * 110)
-    print(f"\nCORRECTNESS: {n_ok} match, {n_downgrade} downgrade (smaller verified subgroup), "
-          f"{n_bug} BUG (wrong order), {n_err} errors")
+    print(f"\nCORRECTNESS: {n_ok} match, {n_downgrade} downgrade (raised where the recorded "
+          f"run was exact), {n_bug} BUG (wrong order), {n_err} errors")
     if ratios:
         ratios.sort()
         med = ratios[len(ratios) // 2]

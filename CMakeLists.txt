@@ -2,17 +2,21 @@ cmake_minimum_required(VERSION 3.20)
 project(qubitserf LANGUAGES CXX)
 
 # ---------------------------------------------------------------------------------------
-# qubitserf builds TWO independent native shared libraries, each exposing a flat extern "C"
-# ABI loaded from its Python subpackage via ctypes (no pybind11 / Cython):
+# qubitserf builds ONE native shared library, libqubitserf, exposing both flat extern "C"
+# ABIs loaded from Python via ctypes (no pybind11 / Cython):
 #
-#   * libdistfind  (src/distfind, include/distfind)  -> qubitserf/distfind/_lib
+#   * distfind_*              (src/distfind, include/distfind)
 #       exact code distance: Brouwer-Zimmermann, connected-cluster, meet-in-the-middle.
-#   * libcodeaut   (src/codeaut,  include/codeaut)   -> qubitserf/codeaut/_lib
+#   * codeaut_bz_* / qaut_*   (src/codeaut, include/codeaut)
 #       automorphism groups: Leon + Brouwer-Zimmermann low-weight enumeration.
 #
-# Each library optionally carries CUDA / Metal GPU backends.  For a dev build (build.sh) the
-# libraries drop straight into their Python subpackage's _lib/ so they import without an
-# install; for a wheel build (scikit-build-core sets SKBUILD) they are installed there instead.
+# Both engines run on the SHARED core in src/core + include/qsf (bit-packed GF(2),
+# combinatorics, the two-level enumeration kernel, and the CPU/CUDA/Metal backends --
+# one Backend serving the min-weight mode for distfind and the collect mode for codeaut).
+#
+# For a dev build (build.sh) the library drops into python/qubitserf/_lib so it imports
+# without an install; for a wheel build (scikit-build-core sets SKBUILD) it is installed
+# there instead.
 # ---------------------------------------------------------------------------------------
 
 set(CMAKE_CXX_STANDARD 17)
@@ -25,16 +29,14 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 find_package(Threads REQUIRED)
 
-option(DISTFIND_METAL "Build the Metal GPU backend for distfind (Apple only)"   ON)
-option(DISTFIND_CUDA  "Build the CUDA GPU backend for distfind if found"        ON)
-option(DISTFIND_TESTS "Build distfind C++ test executables"                     ON)
-option(DISTFIND_CLI   "Build the native distfind command-line tool"             ON)
-option(CODEAUT_METAL  "Build the Metal BZ backend for codeaut (Apple only)"     ON)
-option(CODEAUT_CUDA   "Build the CUDA BZ backend for codeaut if found"          ON)
+option(QUBITSERF_METAL "Build the Metal GPU backend (Apple only)"        ON)
+option(QUBITSERF_CUDA  "Build the CUDA GPU backend if a toolkit is found" ON)
+option(QUBITSERF_TESTS "Build the C++ test executables"                  ON)
+option(QUBITSERF_CLI   "Build the native distfind command-line tool"     ON)
 
-# ---- Detect optional languages once, shared by both libraries --------------------------
+# ---- Detect optional languages --------------------------------------------------------
 set(_HAVE_CUDA OFF)
-if(DISTFIND_CUDA OR CODEAUT_CUDA)
+if(QUBITSERF_CUDA)
   include(CheckLanguage)
   check_language(CUDA)
   if(CMAKE_CUDA_COMPILER)
@@ -43,111 +45,79 @@ if(DISTFIND_CUDA OR CODEAUT_CUDA)
     set(_HAVE_CUDA ON)
     message(STATUS "qubitserf: CUDA toolkit found (${CMAKE_CUDA_COMPILER})")
   else()
-    message(STATUS "qubitserf: no CUDA toolkit; CUDA backends disabled")
+    message(STATUS "qubitserf: no CUDA toolkit; CUDA backend disabled")
   endif()
 endif()
 
 set(_HAVE_OBJCXX OFF)
-if(APPLE AND (DISTFIND_METAL OR CODEAUT_METAL))
+if(APPLE AND QUBITSERF_METAL)
   enable_language(OBJCXX)
   set(_HAVE_OBJCXX ON)
 endif()
 
-# =======================================================================================
-# distfind
-# =======================================================================================
-set(DISTFIND_CORE_SOURCES
-  src/distfind/gf2.cpp
+# ---- the one library ------------------------------------------------------------------
+set(QUBITSERF_SOURCES
+  # shared core
+  src/core/gf2.cpp
+  src/core/backend_cpu.cpp
+  # distfind engine (min-weight mode)
   src/distfind/css.cpp
   src/distfind/stab.cpp
   src/distfind/bz.cpp
   src/distfind/mitm.cpp
   src/distfind/cc.cpp
   src/distfind/op_weight.cpp
-  src/distfind/backend_cpu.cpp
-  src/distfind/capi.cpp)
-set(DISTFIND_GPU_SOURCES "")
-set(DISTFIND_DEFS "")
-set(DISTFIND_GPU_LIBS "")
+  src/distfind/capi.cpp
+  # codeaut engine (collect mode + Leon)
+  src/codeaut/leon.cpp
+  src/codeaut/bz.cpp
+  src/codeaut/capi.cpp)
+set(QUBITSERF_DEFS "")
+set(QUBITSERF_GPU_LIBS "")
 
-if(_HAVE_OBJCXX AND DISTFIND_METAL)
-  list(APPEND DISTFIND_GPU_SOURCES src/distfind/metal/backend_metal.mm)
-  list(APPEND DISTFIND_DEFS DISTFIND_METAL=1)
-  set_source_files_properties(src/distfind/metal/backend_metal.mm PROPERTIES
+if(_HAVE_OBJCXX)
+  list(APPEND QUBITSERF_SOURCES src/core/metal/backend_metal.mm)
+  list(APPEND QUBITSERF_DEFS QSF_METAL=1)
+  set_source_files_properties(src/core/metal/backend_metal.mm PROPERTIES
     COMPILE_OPTIONS "-fobjc-arc")
-  list(APPEND DISTFIND_GPU_LIBS "-framework Metal" "-framework Foundation")
-  message(STATUS "distfind: Metal backend enabled")
+  list(APPEND QUBITSERF_GPU_LIBS "-framework Metal" "-framework Foundation")
+  message(STATUS "qubitserf: Metal backend enabled")
 endif()
-if(_HAVE_CUDA AND DISTFIND_CUDA)
-  list(APPEND DISTFIND_GPU_SOURCES src/distfind/cuda/backend_cuda.cu)
-  list(APPEND DISTFIND_DEFS DISTFIND_CUDA=1)
-  message(STATUS "distfind: CUDA backend enabled")
+if(_HAVE_CUDA)
+  list(APPEND QUBITSERF_SOURCES src/core/cuda/backend_cuda.cu)
+  list(APPEND QUBITSERF_DEFS QSF_CUDA=1)
+  message(STATUS "qubitserf: CUDA backend enabled")
 endif()
 
-add_library(distfind SHARED ${DISTFIND_CORE_SOURCES} ${DISTFIND_GPU_SOURCES})
-target_include_directories(distfind PUBLIC include)
-target_compile_definitions(distfind PRIVATE ${DISTFIND_DEFS})
-target_link_libraries(distfind PRIVATE ${DISTFIND_GPU_LIBS} Threads::Threads)
+add_library(qubitserf SHARED ${QUBITSERF_SOURCES})
+target_include_directories(qubitserf PUBLIC include)
+# codeaut sources include their own headers unqualified ("capi.h").
+target_include_directories(qubitserf PRIVATE include/codeaut)
+target_compile_definitions(qubitserf PRIVATE ${QUBITSERF_DEFS})
+target_link_libraries(qubitserf PRIVATE ${QUBITSERF_GPU_LIBS} Threads::Threads)
 
 if(NOT SKBUILD)
-  set_target_properties(distfind PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/qubitserf/distfind/_lib
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/qubitserf/distfind/_lib)
+  set_target_properties(qubitserf PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/qubitserf/_lib
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/qubitserf/_lib)
 endif()
-install(TARGETS distfind
-  LIBRARY DESTINATION qubitserf/distfind/_lib
-  RUNTIME DESTINATION qubitserf/distfind/_lib)
+install(TARGETS qubitserf
+  LIBRARY DESTINATION qubitserf/_lib
+  RUNTIME DESTINATION qubitserf/_lib)
 
-if(DISTFIND_TESTS)
+if(QUBITSERF_TESTS)
   add_executable(distfind_smoke        src/distfind/tests/smoke.cpp)
   add_executable(distfind_compare      src/distfind/tests/backend_compare.cpp)
   add_executable(distfind_op_smoke     src/distfind/tests/op_smoke.cpp)
   add_executable(distfind_cpu_enum_ref src/distfind/tests/cpu_enum_ref.cpp)
   foreach(t distfind_smoke distfind_compare distfind_op_smoke distfind_cpu_enum_ref)
-    target_link_libraries(${t} PRIVATE distfind)
+    target_link_libraries(${t} PRIVATE qubitserf)
   endforeach()
 endif()
 
 # Native distfind CLI (not built for the wheel; there the `distfind` console script is the CLI).
-if(DISTFIND_CLI)
+if(QUBITSERF_CLI)
   add_executable(distfind_cli src/distfind/cli/distfind_cli.cpp)
-  target_link_libraries(distfind_cli PRIVATE distfind)
+  target_link_libraries(distfind_cli PRIVATE qubitserf)
   set_target_properties(distfind_cli PROPERTIES OUTPUT_NAME distfind)
 endif()
-
-# =======================================================================================
-# codeaut
-# =======================================================================================
-file(GLOB CODEAUT_CPU_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/codeaut/*.cpp")
-set(CODEAUT_GPU_SOURCES "")
-set(CODEAUT_DEFS "")
-set(CODEAUT_GPU_LIBS "")
-
-if(_HAVE_CUDA AND CODEAUT_CUDA)
-  list(APPEND CODEAUT_GPU_SOURCES "${CMAKE_SOURCE_DIR}/src/codeaut/cuda/backend_cuda.cu")
-  list(APPEND CODEAUT_DEFS CODEAUT_CUDA=1)
-  message(STATUS "codeaut: CUDA backend enabled")
-endif()
-if(_HAVE_OBJCXX AND CODEAUT_METAL)
-  list(APPEND CODEAUT_GPU_SOURCES "${CMAKE_SOURCE_DIR}/src/codeaut/metal/backend_metal.mm")
-  list(APPEND CODEAUT_DEFS CODEAUT_METAL=1)
-  set_source_files_properties("${CMAKE_SOURCE_DIR}/src/codeaut/metal/backend_metal.mm"
-    PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-  list(APPEND CODEAUT_GPU_LIBS "-framework Metal" "-framework Foundation")
-  message(STATUS "codeaut: Metal backend enabled")
-endif()
-
-add_library(codeaut SHARED ${CODEAUT_CPU_SOURCES} ${CODEAUT_GPU_SOURCES})
-target_include_directories(codeaut PRIVATE include "include/codeaut")
-target_compile_definitions(codeaut PRIVATE ${CODEAUT_DEFS})
-target_link_libraries(codeaut PRIVATE ${CODEAUT_GPU_LIBS} Threads::Threads)
-set_target_properties(codeaut PROPERTIES PREFIX "lib" OUTPUT_NAME "codeaut")
-
-if(NOT SKBUILD)
-  set_target_properties(codeaut PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/qubitserf/codeaut/_lib
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/qubitserf/codeaut/_lib)
-endif()
-install(TARGETS codeaut
-  LIBRARY DESTINATION qubitserf/codeaut/_lib
-  RUNTIME DESTINATION qubitserf/codeaut/_lib)

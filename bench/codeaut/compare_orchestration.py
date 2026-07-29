@@ -102,11 +102,11 @@ def main():
           f"{'orch(s)':>9s} {'speedup':>8s}  ok")
     print("-" * 78)
     for name, code in code_suite():
-        # codeaut full ladder
+        # codeaut full ladder (exact-or-raise: returns a permgroup.Group)
         t0 = time.time()
-        r = codeaut.css_automorphism_group(code, max_dim=24)
+        grp = codeaut.css_automorphism_group(code)
         t_ca = time.time() - t0
-        order_ca = r.order
+        order_ca = str(grp.order())
 
         # known-order check
         if name.split("_")[0] in KNOWN_ORDERS and name in KNOWN_ORDERS:

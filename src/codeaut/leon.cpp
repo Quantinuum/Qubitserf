@@ -40,7 +40,7 @@
 #include <utility>
 #include <vector>
 
-#include "gf2span.hpp"
+#include "qsf/gf2span.hpp"
 
 using gf2::Row;
 using gf2::words_for;

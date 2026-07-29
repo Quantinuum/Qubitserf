@@ -14,28 +14,30 @@ method ladder whose stages can be selected explicitly with ``method``:
     (quasi-cyclic / bivariate-bicycle / toric): it enumerates only the low-weight codeword
     classes instead of ``2**eff_dim``, staying exact and cheap at any ``eff_dim``.
 
-Every rung re-verifies each generator over GF(2); the best verified result wins.  Under
-``"auto"``, when no exact engine certifies the group, the ladder falls back to internal
-structural subgroups so the caller still gets a verified lower bound rather than nothing; such
-a result is always flagged by ``complete=False``.
+The contract is **exact-or-raise**: every stage either certifies the FULL group (each
+generator GF(2)-re-verified to preserve both rowspaces) and the ladder returns it as a
+:class:`qubitserf.algebra.permgroup.Group`, or the stage fails and the ladder moves on.  When
+no stage certifies, :func:`automorphism_group` raises :class:`RuntimeError` listing what was
+tried and why each attempt failed -- it NEVER returns a partial / lower-bound result.  A
+certified trivial group (order 1) is a valid exact answer.
 """
 
 from __future__ import annotations
 
+import sys
 import time
-from dataclasses import dataclass, field
 from typing import Optional
 
-import numpy as np
-
 from . import gf2
-from . import graphaut
 from . import joint
 from . import side as side_mod
-from . import cyclic
-from . import permgroup
+from ..algebra import permgroup
 from ._interop import as_css
 from .leon import automorphism_group as _leon_aut
+
+
+def _log(msg: str) -> None:
+    print(f"[codeaut] {msg}", file=sys.stderr, flush=True)
 
 
 # --------------------------------------------------------------------------------- CSS code
@@ -64,32 +66,6 @@ class CSSCode:
         return self.Hx, self.Hz
 
 
-@dataclass
-class CSSAutResult:
-    """Best-effort qubit-permutation automorphism result for a CSS code.
-
-    * ``complete=True``  -- ``generators`` generate the FULL (exact) group ``Aut(Hx) ∩ Aut(Hz)``.
-    * ``complete=False`` -- ``generators`` generate a *verified subgroup* (a rigorous lower bound).
-
-    Every generator is re-verified over GF(2) to preserve both ``Hx`` and ``Hz`` rowspaces
-    (``verified``).  ``order`` is the exact group order as a **decimal string** (these orders can
-    exceed 64 bits, and JSON has no big-integer type — parse with ``int(result.order)`` when you
-    need an integer).  ``generators`` are 0-indexed image lists (``perm[i]`` = image of qubit ``i``).
-    """
-    order: str
-    generators: list
-    complete: bool
-    verified: bool
-    method: str
-    seconds: float
-    n: int
-    eff: Optional[dict] = field(default=None)
-
-    def group(self) -> "permgroup.Group":
-        """The result as a :class:`codeaut.permgroup.Group` on the ``n`` qubits."""
-        return permgroup.Group(self.generators, self.n)
-
-
 # --------------------------------------------------------------------------------- diagnostics
 
 def effective_dims(Hx, Hz) -> dict:
@@ -106,17 +82,18 @@ def effective_dims(Hx, Hz) -> dict:
 
 # ------------------------------------------------------------------------------- leon + dual
 
-def _leon_dual_exact(Hx, Hz, n, max_dim, eff, t0, intersect_cap: int = 50_000,
-                     allow_sympy: bool = False) -> Optional[dict]:
+def _leon_dual_exact(Hx, Hz, n, max_dim, *, intersect_cap: int = 50_000,
+                     allow_sympy: bool = False):
     """Exact ``Aut(Hx) ∩ Aut(Hz)`` via Leon on the cheaper of each side and its dual, then a
-    permutation-group intersection.  Returns a record, or ``None`` if ``eff_dim > max_dim`` or
-    the intersection would be too costly.
+    permutation-group intersection.  Returns ``(Group, how)`` -- ``how`` a human-readable
+    method string -- or ``None`` when ``eff_dim > max_dim`` (Leon enumerates ``2**eff_dim``).
 
-    The intersection enumerates the smaller of ``Aut(Hx)``, ``Aut(Hz)``; when that side's order
-    exceeds ``intersect_cap`` this path is abandoned (returns ``None``) so the caller falls
-    through to the joint-incidence route -- which computes the same group directly, without any
-    generic group intersection, and is faster when a per-side group is large.  Leon returns the
-    per-side orders, so this decision is made before building anything expensive.
+    The intersection enumerates the smaller of ``Aut(Hx)``, ``Aut(Hz)``; when that is
+    infeasible under ``intersect_cap`` / ``allow_sympy``, :func:`permgroup.intersection`
+    raises and the ladder falls through to the joint-incidence route -- which computes the
+    same group directly, without any generic group intersection, and is faster when a
+    per-side group is large.  Every generator of the intersection is re-verified over GF(2);
+    a verification failure raises (it would indicate an engine bug).
     """
     Bx, _, _, ex = gf2.dual_basis(Hx)
     Bz, _, _, ez = gf2.dual_basis(Hz)
@@ -126,52 +103,17 @@ def _leon_dual_exact(Hx, Hz, n, max_dim, eff, t0, intersect_cap: int = 50_000,
     rz = _leon_aut(Bz, max_dim=max_dim)
     Gx = permgroup.Group(rx.generators, n)
     Gz = permgroup.Group(rz.generators, n)
-    # intersection() enumerates the smaller group when small, else a backtracking subgroup
-    # search (SymPy when available).  If neither is feasible it raises and the ladder falls
-    # through to the joint-incidence route.
     G = permgroup.intersection(Gx, Gz, max_enumerate=intersect_cap, allow_sympy=allow_sympy)
-    order = G.order()
-    gens = G.gens()
-    verified = all(gf2.preserves_rowspace(Hx, gp) and gf2.preserves_rowspace(Hz, gp)
-                   for gp in gens)
+    for gp in G.gens():
+        if not (gf2.preserves_rowspace(Hx, gp) and gf2.preserves_rowspace(Hz, gp)):
+            raise RuntimeError("leon+dual: an intersection generator failed GF(2) "
+                               "re-verification (engine bug)")
     how = "SymPy backtrack" if allow_sympy else "enumerate"
-    return {
-        "order": str(order),
-        "generators": gens,
-        "complete": True,
-        "verified": verified,
-        "method": f"perm_aut(Hx) ∩ perm_aut(Hz) (Leon two-pass + dual trick, eff_dim={max(ex, ez)}, {how} ∩)",
-        "seconds": round(time.time() - t0, 3),
-        "n": int(n),
-        "eff": eff,
-    }
+    return G, (f"perm_aut(Hx) ∩ perm_aut(Hz) (Leon two-pass + dual trick, "
+               f"eff_dim={max(ex, ez)}, {how} ∩)")
 
 
 # ------------------------------------------------------------------------------- the ladder
-
-def _order_int(rec) -> int:
-    return int(rec["order"])
-
-
-def _better(a, b) -> bool:
-    """Is record ``a`` strictly better than ``b``?  Exact beats inexact; then larger order."""
-    if bool(a["complete"]) != bool(b["complete"]):
-        return bool(a["complete"])
-    return _order_int(a) > _order_int(b)
-
-
-def _trivial_record(n, eff, t0, *, note: str = "no verified non-identity automorphism found") -> dict:
-    return {"order": "1", "generators": [], "complete": False,
-            "verified": True, "method": f"trivial group ({note})",
-            "seconds": round(time.time() - t0, 3), "n": int(n), "eff": eff}
-
-
-def _to_result(rec) -> CSSAutResult:
-    return CSSAutResult(order=rec["order"],
-                        generators=rec["generators"], complete=rec["complete"],
-                        verified=rec["verified"], method=rec["method"],
-                        seconds=rec["seconds"], n=rec["n"], eff=rec.get("eff"))
-
 
 # Canonical method names and their accepted aliases.  ``"auto"`` runs the whole ladder;
 # ``"leon"`` / ``"bz"`` restrict it to that single engine (see module docstring).
@@ -192,10 +134,16 @@ def _normalize_method(method: str) -> str:
     return _METHOD_ALIASES[key]
 
 
-def automorphism_group(code, *, Hz=None, method: str = "auto", max_dim: int = 24,
-                       budget: int = 60_000_000, allow_subgroup: bool = True,
-                       backend: str = "auto", max_threads: Optional[int] = None) -> CSSAutResult:
-    """Qubit-permutation automorphism group of a CSS code, via the method ladder.
+# Fixed engine parameter (formerly the max_dim keyword argument): bounds Leon's 2**eff_dim
+# enumeration (the native Gray-code enumerator hard-caps at 62 anyway); the BZ enumeration
+# runs for as long as it needs (kill the process if it takes too long).
+_MAX_DIM = 24
+
+
+def automorphism_group(code, *, Hz=None, method: str = "auto",
+                       backend: str = "auto", max_threads: Optional[int] = None,
+                       verbose: bool = False) -> permgroup.Group:
+    """Exact qubit-permutation automorphism group of a CSS code, via the method ladder.
 
     ``code`` is a :class:`CSSCode`, a ``(Hx, Hz)`` tuple, or any CSS-code-like object accepted by
     :func:`codeaut.as_css` (``lib.CSSCode``, ``qecdb.Code``, ...); or pass ``Hx`` as ``code`` and
@@ -205,16 +153,22 @@ def automorphism_group(code, *, Hz=None, method: str = "auto", max_dim: int = 24
 
       * ``"auto"`` (default) -- the full ladder, cheapest exact route first;
       * ``"leon"`` -- only the exact Leon + dual-code-trick intersection (needs ``eff_dim <=
-        max_dim``);
+        24``, since Leon enumerates ``2**eff_dim``);
       * ``"bz"`` (aliases ``"joint"`` / ``"graph"``) -- only the joint Brouwer--Zimmermann +
         nauty/Traces graph-automorphism combination (and its single-side rescue); best for LDPC
         codes.
 
-    ``max_dim`` bounds the Leon ``2**eff_dim`` enumeration; ``budget`` the Brouwer--Zimmermann
-    combination budget.  ``backend`` (``"auto"`` / ``"cpu"`` / ``"gpu"``) selects the
-    Brouwer--Zimmermann enumeration backend; ``"gpu"`` transparently falls back to the CPU backend
-    when no GPU is detected.  ``max_threads`` caps the CPU backend's worker threads (``None`` =>
-    all hardware cores; only the CPU backend is threaded).  Returns a :class:`CSSAutResult`.
+    ``backend`` (``"auto"`` / ``"cpu"`` / ``"gpu"``) selects the Brouwer--Zimmermann enumeration
+    backend; ``"gpu"`` transparently falls back to the CPU backend when no GPU is detected.
+    ``max_threads`` caps the CPU backend's worker threads (``None`` => all hardware cores; only
+    the CPU backend is threaded).  ``verbose`` prints one-line ``[codeaut]`` ladder-progress
+    messages to **stderr** (never stdout); it never changes the result.
+
+    Returns the exact, certified group ``Aut(Hx) ∩ Aut(Hz)`` as a
+    :class:`qubitserf.algebra.permgroup.Group` (``.order()`` is an exact Python int;
+    ``.gens()`` are 0-indexed image lists).  Raises :class:`RuntimeError` when no engine can
+    certify the full group -- the message lists which stages were tried, why each failed, and
+    what to try instead.  Partial / lower-bound results are never returned.
     """
     method = _normalize_method(method)
     if not (Hz is None and isinstance(code, CSSCode)):
@@ -224,116 +178,126 @@ def automorphism_group(code, *, Hz=None, method: str = "auto", max_dim: int = 24
     eff = effective_dims(Hx, Hz)
     threads = 0 if max_threads is None else int(max_threads)
 
-    best = _run_ladder(Hx, Hz, n, eff, max_dim, budget, allow_subgroup, backend, t0,
-                       method=method, threads=threads)
-    if best is None:
-        if method == "leon" and eff["eff_dim"] > max_dim:
-            note = (f"method='leon' but eff_dim={eff['eff_dim']} > max_dim={max_dim}; "
-                    "raise max_dim, or use method='bz' (best for LDPC codes) / 'auto'")
-        else:
-            note = f"method={method!r} found no verified non-identity automorphism"
-        best = _trivial_record(n, eff, t0, note=note)
-    return _finish(best, t0)
+    G, how, failures = _run_ladder(Hx, Hz, n, eff, _MAX_DIM, backend, method=method,
+                                   threads=threads, verbose=verbose)
+    if G is None:
+        msg = _failure_message(method, n, eff, failures)
+        if verbose:
+            _log(f"all stages failed after {round(time.time() - t0, 3)}s -- raising")
+        raise RuntimeError(msg)
+    if verbose:
+        _log(f"done: order={G.order()}, method={how!r}, "
+             f"seconds={round(time.time() - t0, 3)}")
+    return G
 
 
-def _finish(rec, t0) -> CSSAutResult:
-    rec = dict(rec)
-    rec["seconds"] = round(time.time() - t0, 3)
-    return _to_result(rec)
+def _failure_message(method, n, eff, failures) -> str:
+    lines = [f"css automorphism group: no engine certified the exact Aut(Hx) ∩ Aut(Hz) "
+             f"(method={method!r}, n={n}, eff_dim={eff['eff_dim']}); tried:"]
+    lines += [f"  - {f}" for f in failures] or ["  - (no stage was applicable)"]
+    if method == "leon":
+        lines.append("try method='bz' (joint BZ + nauty/Traces incidence; exact at any "
+                     "eff_dim, best for LDPC codes) or method='auto'")
+    elif method == "bz":
+        hint = ("try method='leon' (Leon + dual-code trick; needs eff_dim <= "
+                f"{_MAX_DIM}) or method='auto'"
+                if eff["eff_dim"] <= _MAX_DIM else
+                "try method='auto'; check that system nauty/dreadnaut is installed "
+                "and that the BZ backend is available")
+        lines.append(hint)
+    else:
+        lines.append("all engines failed; check that system nauty/dreadnaut is installed, "
+                     "or inspect the per-stage reasons above")
+    return "\n".join(lines)
 
 
-# ------------------------------------------------------------------------------- the ladder
+def _run_ladder(Hx, Hz, n, eff, max_dim, backend, *, method="auto", threads=0,
+                verbose=False):
+    """The method ladder.  Returns ``(Group, how, failures)``: the first stage to certify the
+    exact group wins (``Group`` is ``None`` when every stage failed; ``failures`` collects one
+    human-readable reason per failed/skipped stage).  With ``method="auto"`` all stages run
+    cheapest-first; otherwise only the stages belonging to the chosen engine run:
 
-def _run_ladder(Hx, Hz, n, eff, max_dim, budget, allow_subgroup, backend, t0, *,
-                method="auto", threads=0):
-    """The method ladder, returning the best verified record (or ``None``).  With ``method="auto"``
-    all stages run cheapest-first, so the slow last-resort intersection is only reached when nothing
-    else solved the code; otherwise only the stages belonging to the chosen engine run:
-
-      1. Leon + dual, **enumerate** intersection      (``leon``);
-      2. joint BZ + nauty/Traces incidence            (``bz``);
+      1. Leon + dual, **enumerate** intersection       (``leon``);
+      2. joint BZ + nauty/Traces incidence             (``bz``);
       3. Leon + dual, **SymPy-backtrack** intersection (``leon``, general exact path);
-      4. single-side rescue                            (``bz``);
-      5. cyclic/affine structural subgroup             (``auto`` only, lower-bound floor);
-      6. Tanner-graph subgroup                         (``auto`` only, lower-bound floor).
+      4. single-side rescue (exact routes only)        (``bz``).
 
-    Stages 5-6 are internal: they are not selectable engines, they run only under ``"auto"``
-    once the exact routes have failed, and anything they return is flagged ``complete=False``.
+    Every stage is exact: it either certifies the FULL group (GF(2)-re-verified generators)
+    or contributes a failure reason.  ``method`` is one of ``"auto"`` / ``"leon"`` / ``"bz"``
+    (already normalized)."""
+    failures = []
 
-    ``method`` is one of ``"auto"`` / ``"leon"`` / ``"bz"`` (already normalized)."""
-    best = None
+    def log(msg):
+        if verbose:
+            _log(msg)
 
     def want(engine):
         return method in ("auto", engine)
 
-    def consider(rec):
-        nonlocal best
-        if rec is not None and rec.get("verified", False) and (best is None or _better(rec, best)):
-            best = rec
+    def fail(stage, reason):
+        failures.append(f"{stage}: {reason}")
+        log(f"{stage}: {reason}")
 
     small_eff = eff["eff_dim"] <= max_dim
+    if want("leon") and not small_eff:
+        fail("leon+dual (stages 1&3)",
+             f"skipped -- eff_dim={eff['eff_dim']} > {max_dim} "
+             "(Leon enumerates 2**eff_dim)")
 
     # Stage 1 -- Leon + dual, cheap (enumerate) intersection.
     if want("leon") and small_eff:
+        stage = "stage 1 (leon+dual, enumerate ∩)"
         try:
-            rec = _leon_dual_exact(Hx, Hz, n, max_dim, eff, t0, allow_sympy=False)
-            consider(rec)
-            if rec is not None and rec["complete"] and rec["verified"]:
-                return best
-        except Exception:
-            pass
+            log(f"{stage}: starting (eff_dim={eff['eff_dim']} <= {max_dim})")
+            res = _leon_dual_exact(Hx, Hz, n, max_dim, allow_sympy=False)
+            if res is not None:
+                G, how = res
+                log(f"{stage}: certified exact, order={G.order()}")
+                return G, how, failures
+            fail(stage, "not applicable (eff_dim over cap)")
+        except Exception as exc:
+            fail(stage, f"{type(exc).__name__}: {exc}")
 
     # Stage 2 -- joint BZ + nauty/Traces incidence.
-    if want("bz") and (best is None or not best["complete"]):
+    if want("bz"):
+        stage = "stage 2 (joint BZ + nauty/Traces incidence)"
         try:
-            rec = joint.joint_exact(Hx, Hz, max_dim=max_dim, budget=budget,
-                                    allow_subgroup_fallback=allow_subgroup, backend=backend,
+            log(f"{stage}: starting (backend={backend})")
+            rec = joint.joint_exact(Hx, Hz, max_dim=max_dim, backend=backend,
                                     threads=threads)
-            consider(rec)
-            if best is not None and best["complete"]:
-                return best
-        except Exception:
-            pass
+            G = permgroup.Group(rec["generators"], n)
+            log(f"{stage}: certified exact, order={rec['order']}")
+            return G, rec["method"], failures
+        except Exception as exc:
+            fail(stage, f"{type(exc).__name__}: {exc}")
 
     # Stage 3 -- Leon + dual, SymPy-backtrack intersection (general exact path).
-    if want("leon") and (best is None or not best["complete"]) and small_eff:
+    if want("leon") and small_eff:
+        stage = "stage 3 (leon+dual, SymPy-backtrack ∩)"
         try:
-            rec = _leon_dual_exact(Hx, Hz, n, max_dim, eff, t0, intersect_cap=200_000,
+            log(f"{stage}: starting")
+            res = _leon_dual_exact(Hx, Hz, n, max_dim, intersect_cap=200_000,
                                    allow_sympy=True)
-            consider(rec)
-            if rec is not None and rec["complete"] and rec["verified"]:
-                return best
-        except Exception:
-            pass
+            if res is not None:
+                G, how = res
+                log(f"{stage}: certified exact, order={G.order()}")
+                return G, how, failures
+            fail(stage, "not applicable (eff_dim over cap)")
+        except Exception as exc:
+            fail(stage, f"{type(exc).__name__}: {exc}")
 
-    # Stage 4 -- single-side rescue.
-    if want("bz") and (best is None or not best["complete"]):
+    # Stage 4 -- single-side rescue (exact routes only: all-gens-verify or small-overgroup
+    # enumeration filter).
+    if want("bz"):
+        stage = "stage 4 (single-side rescue)"
         try:
-            rec = side_mod.side_aut_subgroup(Hx, Hz, budget=budget, backend=backend,
-                                             threads=threads)
-            consider(rec)
-            if best is not None and best["complete"]:
-                return best
-        except Exception:
-            pass
+            log(f"{stage}: starting")
+            rec = side_mod.side_aut_subgroup(Hx, Hz, backend=backend, threads=threads)
+            G = permgroup.Group(rec["generators"], n)
+            log(f"{stage}: certified exact, order={rec['order']}")
+            return G, rec["method"], failures
+        except Exception as exc:
+            fail(stage, f"{type(exc).__name__}: {exc}")
 
-    # Stage 5 -- cyclic / affine structural subgroup (internal lower-bound floor, "auto" only).
-    if method == "auto" and (best is None or not best["complete"]):
-        try:
-            order, gens = cyclic.affine_automorphism_group(Hx, Hz, n)
-            if gens:
-                consider({"order": str(order), "generators": gens, "complete": False,
-                          "verified": True, "method": "affine/cyclic structural subgroup (verified)",
-                          "seconds": round(time.time() - t0, 3), "n": int(n), "eff": eff})
-        except Exception:
-            pass
-
-    # Stage 6 -- type-preserving Tanner-graph subgroup floor (internal, "auto" only): a pure
-    # last resort, reached only when no earlier stage found anything at all.
-    if method == "auto" and best is None and allow_subgroup \
-            and graphaut.nauty_binary() is not None:
-        try:
-            consider(joint._tanner_subgroup(n, Hx, Hz, eff, t0))
-        except Exception:
-            pass
-    return best
+    return None, None, failures

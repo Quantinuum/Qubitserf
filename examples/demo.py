@@ -12,17 +12,21 @@ print(f"codeaut {codeaut.version()}  |  BZ backends: {codeaut.available_backends
 G = np.array([[0, 0, 0, 1, 1, 1, 1], [0, 1, 1, 0, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1]], np.uint8)
 print("simplex [7,3,4]      Aut(C) order:", codeaut.classical_automorphisms(G).order)
 
-# 2) CSS codes via the method ladder
+# 2) CSS codes via the method ladder (exact-or-raise: returns a permgroup.Group)
+import time
+
 for name in ("steane", "shor", "toric", "surface", "gross"):
     c = codes.toric(3) if name == "toric" else codes.surface(3) if name == "surface" \
         else codes.BUILTIN[name]()
     eff = codeaut.effective_dims(c.Hx, c.Hz)
-    r = codeaut.css_automorphisms(c)
-    print(f"{name:8s} n={c.n:3d} eff_dim={eff['eff_dim']:2d}  |Aut(Hx)∩Aut(Hz)|={r.order:>6}"
-          f"  complete={r.complete}  ({r.seconds:.3f}s)")
+    t0 = time.time()
+    grp = codeaut.css_automorphisms(c)
+    print(f"{name:8s} n={c.n:3d} eff_dim={eff['eff_dim']:2d}  "
+          f"|Aut(Hx)∩Aut(Hz)|={grp.order():>6}  ({time.time() - t0:.3f}s)")
 
 # 3) pick the engine explicitly on the gross [[144,12,12]] code
 for method in ("auto", "bz"):
-    r = codeaut.css_automorphisms(codes.gross(), method=method)
-    print(f"\ngross [[144,12,12]] method={method:10s}: order={r.order} complete={r.complete} "
-          f"verified={r.verified} ({r.seconds:.3f}s)")
+    t0 = time.time()
+    grp = codeaut.css_automorphisms(codes.gross(), method=method)
+    print(f"\ngross [[144,12,12]] method={method:10s}: order={grp.order()} "
+          f"({time.time() - t0:.3f}s)")

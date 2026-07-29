@@ -13,7 +13,7 @@ pure-numpy fallback if the native library is unavailable.
 
 Public API
 ----------
-``low_weight_classes(B, *, want_span=True, max_weight=None, budget=..., backend="auto")
+``low_weight_classes(B, *, want_span=True, max_weight=None, backend="auto")
                      -> (classes, info)``
     ``classes`` is a list of ``(weight, rows)`` ascending, each ``rows`` a ``(count, n)``
     uint8 array of the **complete** weight class (only certified-complete classes returned).
@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import ctypes
 import itertools
-from math import comb
 from typing import Optional
 
 import numpy as np
@@ -52,16 +51,16 @@ _NUMPY_FULL_ENUM_CAP = 18
 # native (or numpy) collection of XOR-of-subset codewords for ONE systematic generator
 # ----------------------------------------------------------------------------------------
 
-def _collect_one_native(G: np.ndarray, p: int, keep_weight: int, budget: int, backend: int,
+def _collect_one_native(G: np.ndarray, p: int, keep_weight: int, backend: int,
                         threads: int = 0):
     """All distinct codewords of weight ``1..keep_weight`` that are an XOR of a size-(1..p)
-    subset of the rows of ``G``, via the native BZ kernel.  Returns ``(rows, combos, overflow)``.
+    subset of the rows of ``G``, via the native BZ kernel.  Returns ``(rows, combos)``.
     """
     lib = _native.load()
     G = np.ascontiguousarray(np.asarray(G, dtype=np.uint8) % 2)
     m, n = G.shape
     h = lib.codeaut_bz_collect(G.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)),
-                               m, n, int(p), int(keep_weight), int(budget), int(backend),
+                               m, n, int(p), int(keep_weight), int(backend),
                                int(threads))
     if not h or not lib.codeaut_bz_ok(h):
         if h:
@@ -70,17 +69,16 @@ def _collect_one_native(G: np.ndarray, p: int, keep_weight: int, budget: int, ba
     try:
         cnt = int(lib.codeaut_bz_count(h))
         combos = int(lib.codeaut_bz_combos(h))
-        overflow = bool(lib.codeaut_bz_overflow(h))
         rows = np.zeros((max(cnt, 1), n), dtype=np.uint8)
         if cnt:
             lib.codeaut_bz_copy_rows(h, rows.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)))
         rows = rows[:cnt]
     finally:
         lib.codeaut_bz_free(h)
-    return rows, combos, overflow
+    return rows, combos
 
 
-def _collect_one_numpy(G: np.ndarray, p: int, keep_weight: int, budget: int, _backend: int,
+def _collect_one_numpy(G: np.ndarray, p: int, keep_weight: int, _backend: int,
                        _threads: int = 0):
     """Pure-numpy fallback for :func:`_collect_one_native` (used only if the native library is
     unavailable).  Same contract (single-threaded; ``_threads`` is ignored)."""
@@ -97,24 +95,20 @@ def _collect_one_numpy(G: np.ndarray, p: int, keep_weight: int, budget: int, _ba
             ai = np.asarray(idx, dtype=np.int64)
             cw = np.bitwise_xor.reduce(G[ai], axis=1)
             combos += cw.shape[0]
-            if budget > 0 and combos > budget:
-                rows = (np.frombuffer(b"".join(sorted(seen)), dtype=np.uint8).reshape(-1, n).copy()
-                        if seen else np.zeros((0, n), np.uint8))
-                return rows, combos, True
             wts = cw.sum(axis=1)
             mask = (wts <= keep_weight) & (wts > 0)
             for row in cw[mask]:
                 seen.add(row.tobytes())
     rows = (np.frombuffer(b"".join(sorted(seen)), dtype=np.uint8).reshape(-1, n).copy()
             if seen else np.zeros((0, n), np.uint8))
-    return rows, combos, False
+    return rows, combos
 
 
-def _collect_one(G, p, keep_weight, budget, backend, threads=0):
+def _collect_one(G, p, keep_weight, backend, threads=0):
     try:
-        return _collect_one_native(G, p, keep_weight, budget, backend, threads)
+        return _collect_one_native(G, p, keep_weight, backend, threads)
     except Exception:
-        return _collect_one_numpy(G, p, keep_weight, budget, backend, threads)
+        return _collect_one_numpy(G, p, keep_weight, backend, threads)
 
 
 # ----------------------------------------------------------------------------------------
@@ -218,22 +212,20 @@ def _full_enumeration(B: np.ndarray):
     return by_weight, k, n
 
 
-def _bz_collect(gens, fresh_counts, p: int, k: int, keep_weight: int, n: int, budget: int,
+def _bz_collect(gens, fresh_counts, p: int, k: int, keep_weight: int, n: int,
                 backend: int, threads: int = 0):
     """Enumerate info-weight ``1..p`` over the **contributing** generators, keeping codewords of
-    weight ``<= keep_weight``.  Returns ``(by_weight, combos_used, overflow)``."""
+    weight ``<= keep_weight``.  Returns ``(by_weight, combos_used)``."""
     seen: dict[int, set] = {}
     combos = 0
     for j in _active_generators(gens, fresh_counts, p, k):
-        rows, c, overflow = _collect_one(gens[j], p, keep_weight, budget, backend, threads)
+        rows, c = _collect_one(gens[j], p, keep_weight, backend, threads)
         combos += c
         if rows.shape[0]:
             wts = rows.sum(axis=1).astype(int)
             for row, ww in zip(rows, wts):
                 seen.setdefault(int(ww), set()).add(row.tobytes())
-        if overflow or (budget > 0 and combos > budget):
-            return _finalize(seen, n), combos, True
-    return _finalize(seen, n), combos, False
+    return _finalize(seen, n), combos
 
 
 def _finalize(seen: dict[int, set], n: int) -> dict[int, np.ndarray]:
@@ -267,7 +259,7 @@ def _spanning_prefix(by_weight: dict[int, np.ndarray], k: int, max_weight_keep: 
 # ----------------------------------------------------------------------------------------
 
 def low_weight_classes(B, *, want_span: bool = True, max_weight: Optional[int] = None,
-                       budget: int = 60_000_000, full_enum_max_dim: int = 20,
+                       full_enum_max_dim: int = 20,
                        max_p: int = 12, max_class_size: int = 200_000, backend: str = "auto",
                        threads: int = 0):
     """Complete ascending low-weight codeword classes of ``C = rowspace(B)``.
@@ -287,7 +279,7 @@ def low_weight_classes(B, *, want_span: bool = True, max_weight: Optional[int] =
 
     info: dict = {
         "dim": int(k), "n": int(n), "method": None, "spans": False,
-        "certified_all": False, "budget_hit": False, "min_weight": None,
+        "certified_all": False, "min_weight": None,
         "p": None, "W_cert": None, "num_infosets": None, "fresh_counts": None,
         "classes": [],
     }
@@ -322,24 +314,13 @@ def low_weight_classes(B, *, want_span: bool = True, max_weight: Optional[int] =
 
     best_classes: list[tuple[int, np.ndarray]] = []
     best_W_cert = -1
-    budget_hit = False
     for p in range(1, max_p + 1):
-        n_active = len(_active_generators(gens, fresh_counts, p, k))
-        cost = n_active * sum(comb(k, i) for i in range(1, p + 1))
-        if cost > budget:
-            budget_hit = True
-            break
         W_cert = _bz_lower_bound(p, k, fresh_counts) - 1
         if W_cert < 1:
             continue
         keep = W_cert if max_weight is None else min(W_cert, max_weight)
-        by_weight, combos, overflow = _bz_collect(gens, fresh_counts, p, k, keep, n, budget, be,
-                                                   threads)
-        if overflow:
-            budget_hit = True
-            break
+        by_weight, combos = _bz_collect(gens, fresh_counts, p, k, keep, n, be, threads)
         if any(r.shape[0] > max_class_size for r in by_weight.values()):
-            budget_hit = True
             break
         best_W_cert = int(keep)
         classes, spans = _spanning_prefix(by_weight, k, keep)
@@ -355,7 +336,6 @@ def low_weight_classes(B, *, want_span: bool = True, max_weight: Optional[int] =
         if not want_span:
             break
 
-    info["budget_hit"] = bool(budget_hit)
     info["certified_all"] = best_W_cert >= 0
     info["classes"] = [{"weight": int(w), "count": int(r.shape[0]), "certified": True}
                        for w, r in best_classes]

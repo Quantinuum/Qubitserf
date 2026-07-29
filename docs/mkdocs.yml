@@ -1,7 +1,7 @@
-site_name: distfind
+site_name: qubitserf
 site_description: >-
-  Fast GPU and multicore-CPU code-distance finding for quantum and
-  classical codes.
+  Fast exact code distance and automorphism groups for quantum and
+  classical codes, on CPU and GPU.
 docs_dir: pages
 site_dir: ../site
 
@@ -39,10 +39,6 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Installation: installation.md
-  - Quickstart: quickstart.md
-  - Python API: api.md
-  - Command line: cli.md
-  - Algorithms: algorithms.md
+  - Code distance: distance.md
+  - Automorphism groups: automorphisms.md
   - Benchmarks: benchmarks.md
-  - Contributing: contributing.md

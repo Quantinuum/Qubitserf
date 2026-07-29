@@ -45,16 +45,10 @@ dev = ["pytest>=7", "scipy", "sympy>=1.9"]
 Homepage = "https://github.com/quantinuum/qubitserf"
 Repository = "https://github.com/quantinuum/qubitserf"
 
-# Two independent command-line interfaces, one per part of the package.
-[project.scripts]
-distfind = "qubitserf.distfind.cli:main"
-codeaut = "qubitserf.codeaut.cli:main"
-
 # ---------------------------------------------------------------------------------------
-# Native backends: CMake builds TWO shared libraries over a flat extern "C" ABI, each loaded
-# from its Python subpackage via ctypes (no pybind11 / Cython):
-#   * libdistfind -> qubitserf/distfind/_lib   (distance finding; capi = include/distfind/capi.h)
-#   * libcodeaut  -> qubitserf/codeaut/_lib     (automorphisms;    capi = include/codeaut/capi.h)
+# Native backends: CMake builds ONE shared library (libqubitserf -> qubitserf/_lib) exposing
+# both flat extern "C" ABIs over a shared enumeration core, loaded via ctypes (no pybind11 /
+# Cython): distfind_* (include/distfind/capi.h) and codeaut_bz_*/qaut_* (include/codeaut/capi.h).
 #
 # codeaut's CSS / classical colored-graph solves additionally use the system nauty/Traces
 # (`dreadnaut`); install with `brew install nauty` / `apt install nauty` / conda-forge. The
@@ -67,12 +61,10 @@ cmake.version = ">=3.20"
 sdist.include = ["src", "include", "CMakeLists.txt", "LICENSE", "README.md"]
 
 [tool.scikit-build.cmake.define]
-DISTFIND_TESTS = "OFF"
-DISTFIND_CLI = "OFF"
-DISTFIND_METAL = "ON"
-DISTFIND_CUDA = "ON"
-CODEAUT_METAL = "ON"
-CODEAUT_CUDA = "ON"
+QUBITSERF_TESTS = "OFF"
+QUBITSERF_CLI = "OFF"
+QUBITSERF_METAL = "ON"
+QUBITSERF_CUDA = "ON"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

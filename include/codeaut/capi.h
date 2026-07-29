@@ -52,14 +52,12 @@ void    qaut_leon_free(void* h);
  * size-(1..p) subset of the rows of the (m x n) systematic generator matrix G, deduped.
  * This is the inner kernel of the BZ complete-low-weight-class certification.
  *   backend: 0 = cpu, 1 = gpu (CUDA/Metal if compiled & available), 2 = auto.
- *   budget : abort (overflow=1) once this many subset-combinations are evaluated (<=0: none).
  *   threads: CPU worker threads (<=0 => hardware concurrency); ignored by the GPU backends.
  * Returns an opaque handle; free with codeaut_bz_free. */
 void*       codeaut_bz_collect(const uint8_t* G, int32_t m, int32_t n,
                                int32_t p, int32_t keep_weight,
-                               int64_t budget, int32_t backend, int32_t threads);
+                               int32_t backend, int32_t threads);
 int32_t     codeaut_bz_ok(void* h);        /* 1 if the run completed (handle valid)          */
-int32_t     codeaut_bz_overflow(void* h);  /* 1 if the combination budget was exceeded       */
 int64_t     codeaut_bz_count(void* h);     /* number of distinct codewords collected         */
 int64_t     codeaut_bz_combos(void* h);    /* number of subset-combinations evaluated        */
 void        codeaut_bz_copy_rows(void* h, uint8_t* buf); /* count x n collected supports      */

@@ -114,14 +114,13 @@ BZResult bz_distance(const DistProblem& prob, const BZOptions& opt) {
 
     BinomTable bt(K, K);
 
-    static std::atomic<u64> solve_counter{0};
     EnumPlan plan;
     plan.n = n; plan.stride = stride; plan.K = K;
     plan.num_gamma = num_gamma; plan.num_gamma_total = num_gamma;
     plan.gamma = gamma.data();
     plan.kcheck = kcheck; plan.check = check.data();
     plan.binom = bt.c.data(); plan.binom_maxN = bt.maxN; plan.binom_maxK = bt.maxK;
-    plan.buffers_key = ++solve_counter;   // unique per solve -> GPU caches stay coherent
+    plan.buffers_key = qsf::next_buffers_key();   // unique per solve -> GPU caches stay coherent
 
     int inner = WEIGHT_NONE;                       // upper bound (best found)
     if (prob.seed_upper > 0) inner = prob.seed_upper;
@@ -242,13 +241,12 @@ struct BzSide {
                 check[(size_t)c * stride + w] = prob.check.row(c)[w];
 
         bt.build(K, K);
-        static std::atomic<u64> solve_counter{0};
         plan.n = n; plan.stride = stride; plan.K = K;
         plan.num_gamma = num_gamma; plan.num_gamma_total = num_gamma;
         plan.gamma = gamma.data();
         plan.kcheck = kcheck; plan.check = check.data();
         plan.binom = bt.c.data(); plan.binom_maxN = bt.maxN; plan.binom_maxK = bt.maxK;
-        plan.buffers_key = ++solve_counter;
+        plan.buffers_key = qsf::next_buffers_key();
 
         inner = prob.seed_upper > 0 ? prob.seed_upper : WEIGHT_NONE;
         inner = random_is_seed(prob, inner, /*trials=*/256, 0x9e3779b9u);

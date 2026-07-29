@@ -3,7 +3,7 @@
 Covers: the Leon single-code engine, the vendored permutation-group layer, the
 Brouwer--Zimmermann low-weight enumerator (native + completeness), the CSS method ladder
 (known orders, leon-dual vs joint-incidence cross-validation), and explicit engine selection
-(``method=``).  Requires ``numpy`` and a built ``libcodeaut`` (auto-built on first import); the
+(``method=``).  Requires ``numpy`` and a built ``libqubitserf`` (auto-built on first import); the
 CSS colored-graph solves need system ``nauty``/``dreadnaut`` on PATH.
 """
 
@@ -17,7 +17,8 @@ from types import SimpleNamespace
 import numpy as np
 
 import qubitserf.codeaut as codeaut
-from qubitserf.codeaut import codes, gf2, graphaut, permgroup as pg, lowweight, leon, ward, invariants
+from qubitserf.codeaut import codes, gf2, graphaut, lowweight, leon
+from qubitserf.algebra import permgroup as pg
 
 
 def test_leon_single_code():
@@ -42,7 +43,7 @@ def test_leon_congruence_spanning_set():
     G = codes.surface(3).Hx
     legacy = leon.automorphism_group(G, spanning_set="minweight")
     modular = leon.automorphism_group(G, spanning_set="congruence")
-    hybrid = codeaut.classical_automorphisms(G, spanning_set="auto")
+    hybrid = leon.automorphism_group(G, spanning_set="auto")
     assert legacy.order == modular.order == hybrid.order == 32
     assert legacy.num_codewords == 7 and legacy.weight_classes == [2, 4]
     assert modular.num_codewords == 5 and modular.weight_classes == [4]
@@ -92,203 +93,46 @@ def test_leon_congruence_spanning_set():
     print("  [leon] congruence selector exact; surface side 7 -> 5 incidence words")
 
 
-def test_ward_power_of_two_residues():
-    # Ward inclusion--exclusion, BDD counts, and fibers agree with brute force.
-    rng = np.random.default_rng(20260714)
-    for modulus in (2, 4, 8, 16):
-        for _ in range(12):
-            G = rng.integers(0, 2, size=(5, 9), dtype=np.uint8)
-            form = ward.ward_form(G, modulus)
-            diagram = ward.WardDecisionDiagram(form)
-            truth = [[] for _ in range(modulus)]
-            for mask in range(1 << form.dim):
-                message = np.array([(mask >> bit) & 1 for bit in range(form.dim)], np.uint8)
-                residue = int(((message @ form.generator) % 2).sum()) % modulus
-                assert form.evaluate(message) == residue
-                truth[residue].append(mask)
-            assert diagram.residue_counts() == [len(items) for items in truth]
-            # Conditioned residue counts drive modular singleton/pair/triple signatures.  Check
-            # two arbitrary message characters against the same brute-force truth table.
-            condition_masks = [sum(int(form.generator[bit, column]) << bit
-                                   for bit in range(form.dim))
-                               for column in range(min(2, form.n))]
-            conditioned = diagram.conditioned_residue_counts(condition_masks)
-            brute_conditioned = [[0] * (1 << len(condition_masks)) for _ in range(modulus)]
-            for current_residue, masks in enumerate(truth):
-                for mask in masks:
-                    state = 0
-                    for index, linear_mask in enumerate(condition_masks):
-                        state |= ((mask & linear_mask).bit_count() & 1) << index
-                    brute_conditioned[current_residue][state] += 1
-            assert conditioned == tuple(tuple(row) for row in brute_conditioned)
-            for residue, masks in enumerate(truth):
-                assert sorted(diagram.message_masks(residue)) == masks
-                span = ward.residue_span(form, residue)
-                brute_messages = np.array(
-                    [[(mask >> bit) & 1 for bit in range(form.dim)] for mask in masks],
-                    dtype=np.uint8).reshape((-1, form.dim))
-                assert span.dimension == gf2.rank_gf2(brute_messages)
-
-    # Power-of-two regression family: a=7=2^3-1 singleton rows plus a disjoint repetition
-    # row.  The current prefix needs 2^a=128 words, whereas wt == 1 (mod 8) is a complete
-    # 8-word spanning fiber.  Both constructions produce exactly S_7 x S_9.
-    a = 7
-    G = np.zeros((a + 1, 2 * a + 3), dtype=np.uint8)
-    G[:a, :a] = np.eye(a, dtype=np.uint8)
-    G[a, a:2 * a + 2] = 1
-    legacy = leon.automorphism_group(G)
-    modular = ward.automorphism_group(G, modulus=8)
-    assert legacy.num_codewords == 1 << a
-    assert modular.residues == (1,) and modular.num_codewords == a + 1
-    assert modular.weight_classes == [1, a + 2]
-    assert modular.order == legacy.order == math.factorial(a) * math.factorial(a + 2)
-    A, M = legacy.group(), modular.group()
-    assert all(A.contains(g) for g in M.gens()) and all(M.contains(g) for g in A.gens())
-
-    # Support-minimal codewords are a competing exact invariant: on this direct-sum family they
-    # recover the same eight-word graph without modular arithmetic.
-    cocircuits = leon.automorphism_group(G, spanning_set="cocircuit")
-    assert cocircuits.spanning_set == "minimal"
-    assert cocircuits.num_codewords == a + 1 and cocircuits.num_incidences == 2 * (a + 1)
-    assert cocircuits.order == legacy.order
-
-    # A hard diagram guard is an exact Leon fallback, never a partial answer.
-    fallback = ward.automorphism_group(G, modulus=8, max_bdd_nodes=1)
-    assert not fallback.residues and fallback.order == legacy.order
-    assert "fallback" in fallback.method
-    for bad in (1, 3, 6, 4.5, "4", True):
+def test_classical_method_selection():
+    # classical_automorphisms mirrors css_automorphisms' engine choice: 'leon', 'bz', 'auto'.
+    # Both engines are exact, so on every code they must agree on the order AND on the group
+    # itself (mutual containment of generators).
+    simplex = np.array([[0, 0, 0, 1, 1, 1, 1], [0, 1, 1, 0, 0, 1, 1],
+                        [1, 0, 1, 0, 1, 0, 1]], np.uint8)
+    rng = np.random.default_rng(7)
+    random_code = rng.integers(0, 2, size=(5, 12), dtype=np.uint8)
+    cases = [("steane Hx", codes.steane().Hx), ("surface(3) Hx", codes.surface(3).Hx),
+             ("simplex [7,3,4]", simplex), ("random [12,<=5]", random_code)]
+    for name, G in cases:
+        rl = codeaut.classical_automorphisms(G, method="leon")
+        rb = codeaut.classical_automorphisms(G, method="bz")
+        assert rl.order == rb.order, (name, rl.order, rb.order)
+        L, B = rl.group(), rb.group()
+        assert all(L.contains(g) for g in B.gens()), name    # bz  subset of leon
+        assert all(B.contains(g) for g in L.gens()), name    # leon subset of bz
+        ra = codeaut.classical_automorphisms(G)              # 'auto' default, exact
+        assert ra.order == rl.order, (name, ra.order)
+    # the bz result carries its own dataclass with diagnostics
+    rb = codeaut.classical_automorphisms(simplex, method="bz")
+    assert isinstance(rb, codeaut.ClassicalAutResult)
+    assert rb.order == 168 and rb.n == 7 and rb.dim == 3 and "exact" in rb.method
+    # 'auto' uses Leon iff eff_dim = min(dim, n - dim) <= 20; every case above is small, so
+    # auto returned Leon's AutResult.  'leon' itself runs on the cheaper of C / C^perp: a
+    # high-dimensional code with a small dual must succeed without any max_dim escape hatch.
+    big = rng.integers(0, 2, size=(9, 13), dtype=np.uint8)   # dim 9 > n - dim = 4
+    ra = codeaut.classical_automorphisms(big)                # eff_dim = 4 -> Leon rung
+    assert isinstance(ra, leon.AutResult)
+    assert ra.order == codeaut.classical_automorphisms(big, method="bz").order
+    # aliases resolve; unknown method names are rejected
+    assert codeaut.classical_automorphisms(simplex, method="graph").order == 168
+    for bad in ("nope", "joint", "partial"):
         try:
-            ward.ward_form(G, bad)
-            assert False, ("expected power-of-two ValueError", bad)
+            codeaut.classical_automorphisms(simplex, method=bad)
+            assert False, f"expected ValueError for method={bad!r}"
         except ValueError:
             pass
-    print("  [ward] mod-2^t form/BDD exact; power-8 incidence 128 -> 8 words")
-
-
-def test_invariant_portfolio():
-    # One code exercises every forced route.  Some compact relations are strict overgroups and
-    # must advertise an exact fallback; direct certificates must agree with Leon by mutual
-    # containment, not just by order.
-    G = codes.surface(3).Hx
-    reference = leon.automorphism_group(G).group()
-    for method in invariants.available_methods():
-        result = invariants.automorphism_group(
-            G, method=method, max_dim=12, max_enumerated=1 << 12,
-            timeout=15, nauty_timeout=2, traces_timeout=15)
-        actual = result.group()
-        assert result.exact and result.complete
-        assert actual.order() == reference.order() == result.order
-        assert all(reference.contains(generator) for generator in actual.gens())
-        assert all(actual.contains(generator) for generator in reference.gens())
-
-    lcd = invariants.automorphism_group(G, method="lcd")
-    assert lcd.method == "lcd-projector" and not lcd.used_fallback
-    assert invariants.orthogonal_projector(G) is not None
-
-    simplex = codes.steane().Hx
-    assert invariants.orthogonal_projector(simplex) is None
-    lcd_fallback = invariants.automorphism_group(simplex, method="lcd")
-    assert lcd_fallback.used_fallback and lcd_fallback.order == 168
-    try:
-        invariants.automorphism_group(simplex, method="lcd", fallback=False)
-        assert False, "expected a non-LCD guard with fallback disabled"
-    except invariants.InvariantLimitExceeded:
-        pass
-    zero_residue = invariants.automorphism_group(
-        np.zeros((0, 5), dtype=np.uint8), method="residue", fallback=False)
-    assert zero_residue.order == math.factorial(5) and not zero_residue.used_fallback
-
-    # Exact component wreath product: four equivalent length-three repetition components.
-    blocks = 4
-    repeated = np.zeros((blocks, 3 * blocks), dtype=np.uint8)
-    for block in range(blocks):
-        repeated[block, 3 * block:3 * block + 3] = 1
-    component = invariants.automorphism_group(repeated, method="components")
-    assert component.method == "matroid-component-wreath"
-    assert component.order == math.factorial(3) ** blocks * math.factorial(blocks)
-    assert all(gf2.preserves_rowspace(repeated, generator)
-               for generator in component.generators)
-
-    small = np.array([[1, 1, 0, 0], [0, 1, 1, 0]], dtype=np.uint8)
-    stabilizer, orbit_size = invariants.rowspace_stabilizer(
-        pg.symmetric_group(4), small, max_orbit=100)
-    small_reference = leon.automorphism_group(small).group()
-    assert orbit_size > 1 and stabilizer.order() == small_reference.order()
-    assert all(stabilizer.contains(generator) for generator in small_reference.gens())
-    assert all(small_reference.contains(generator) for generator in stabilizer.gens())
-
-    # A failed/unparseable dreadnaut process must raise into the exact fallback.  Treating empty
-    # output as an empty generating set would vacuously pass verification and silently return a
-    # wrong trivial group.
-    saved_run = graphaut.subprocess.run
-    try:
-        for fake in (SimpleNamespace(stdout="", stderr="synthetic failure", returncode=1),
-                     SimpleNamespace(stdout="unparseable success", stderr="", returncode=0)):
-            graphaut.subprocess.run = lambda *_args, _fake=fake, **_kwargs: _fake
-            try:
-                graphaut.relation_group([0, 0], [[0, 0], [0, 0]])
-                assert False, "expected failed/unparseable dreadnaut process to raise"
-            except RuntimeError:
-                pass
-    finally:
-        graphaut.subprocess.run = saved_run
-
-    # Public resource guards are validated before trivial-length shortcuts.  Zero values must
-    # not leak inconsistent downstream ValueErrors or let an invalid Ward modulus appear valid.
-    trivial = np.zeros((0, 1), dtype=np.uint8)
-    bad_calls = [
-        {"method": "components", "max_geometry_candidates": 0},
-        {"method": "residue", "max_form_operations": 0},
-        {"method": "residue", "max_residue_indicator_terms": 0},
-        {"method": "modular", "max_bdd_nodes": 0},
-        {"method": "combined", "max_bdd_states": 0},
-        {"method": "minors", "max_minor_hull_work": 0},
-        {"method": "auto", "max_bdd_states": 1.5},
-        {"method": "lcd", "max_words": 0},
-        {"method": "residue", "modulus": 3},
-    ]
-    for kwargs in bad_calls:
-        try:
-            invariants.automorphism_group(trivial, **kwargs)
-            assert False, ("expected portfolio argument ValueError", kwargs)
-        except ValueError:
-            pass
-
-    # The bounded route's BZ discovery remains output-sensitive above the exhaustive dimension
-    # guard: the complete weight-three class spans 24 disjoint repetition components.
-    blocks = 24
-    high_dimensional = np.zeros((blocks, 3 * blocks), dtype=np.uint8)
-    for block in range(blocks):
-        high_dimensional[block, 3 * block:3 * block + 3] = 1
-    bounded_cells, bounded_info = invariants._bounded_invariant_cells(
-        high_dimensional, max_support_weight=3, max_bounded_subsets=1_000,
-        max_bounded_bz_budget=1_000_000, max_bounded_class_size=10_000)
-    assert [(cell["label"], len(cell["rows"])) for cell in bounded_cells] == [
-        (("cocircuits", 3), blocks)]
-    assert bounded_info["subsets_tested"] == 0
-    assert bounded_info["bz"]["cocircuits"]["spans"]
-
-    # Full shortened-hull weight enumerators distinguish coordinates that the former
-    # (dimension, hull-dimension)-only signature merged.
-    hull_fixture = np.array([[1, 1, 0, 1, 1], [0, 0, 1, 0, 1]], dtype=np.uint8)
-    signature_kwargs = dict(
-        max_hull_dimension=12, max_hull_words=1 << 14,
-        max_schur_products=200_000)
-    minor_zero = invariants._minor_invariant(hull_fixture, [0], **signature_kwargs)
-    minor_two = invariants._minor_invariant(hull_fixture, [2], **signature_kwargs)
-    assert tuple(part[:2] for part in minor_zero) == tuple(part[:2] for part in minor_two)
-    assert minor_zero != minor_two
-
-    # The conductor identity can reveal an LCD characteristic layer even when C and C^2 are
-    # non-LCD; this fixture guards the expanded Schur portfolio.
-    conductor_fixture = np.array(
-        [[1, 1, 0, 0, 1, 0], [0, 0, 1, 0, 1, 1]], dtype=np.uint8)
-    derived, _skipped = invariants._characteristic_codes(
-        conductor_fixture, max_schur_products=200_000)
-    conductor = dict(derived)["conductor-code-code"]
-    assert len(conductor) == 2 and invariants.orthogonal_projector(conductor) is not None
-
-    print("  [invariants] 14-route exact portfolio + guards/SSA/BZ/conductors OK")
+    print("  [classical] method selection OK (leon/bz/auto agree on "
+          f"{len(cases)} codes; simplex=168)")
 
 
 def test_permgroup():
@@ -329,7 +173,7 @@ def test_bz_completeness():
         B = rng.integers(0, 2, size=(k, n), dtype=np.uint8)
         if gf2.rank_gf2(B) != k:
             continue
-        cls, info = lowweight.low_weight_classes(B, full_enum_max_dim=6, budget=10 ** 9)
+        cls, info = lowweight.low_weight_classes(B, full_enum_max_dim=6)
         assert info["method"] == "bz"
         Bb = gf2.row_basis_gf2(B)
         idx = np.arange(1, 1 << k); U = ((idx[:, None] >> np.arange(k)) & 1).astype(np.uint8)
@@ -346,10 +190,11 @@ def test_bz_completeness():
 def test_css_known_orders():
     cases = {"steane": 168, "shor": 1296, "gross": 144}
     for name, expected in cases.items():
-        r = codeaut.css_automorphism_group(codes.BUILTIN[name]())
-        assert r.complete and r.verified and int(r.order) == expected, (name, r.order)
+        grp = codeaut.css_automorphisms(codes.BUILTIN[name]())
+        assert isinstance(grp, pg.Group), name
+        assert grp.order() == expected, (name, grp.order())
         # the returned generators really generate the reported order
-        assert pg.Group(r.generators, r.n).order() == expected
+        assert pg.Group(grp.gens(), codes.BUILTIN[name]().n).order() == expected
     print(f"  [css] known orders OK: {cases}")
 
 
@@ -358,73 +203,115 @@ def test_leon_dual_vs_joint():
     for name in ("steane", "shor", "iceberg", "toric", "surface"):
         c = codes.toric(3) if name == "toric" else (
             codes.surface(3) if name == "surface" else codes.BUILTIN[name]())
-        eff = css.effective_dims(c.Hx, c.Hz)
-        rl = css._leon_dual_exact(c.Hx, c.Hz, c.n, 24, eff, time.time())
+        rl = css._leon_dual_exact(c.Hx, c.Hz, c.n, 24)
         rj = joint.joint_exact(c.Hx, c.Hz, max_dim=24)
-        if rl is not None and rl["complete"] and rj["complete"]:
-            assert rl["order"] == rj["order"], (name, rl["order"], rj["order"])
+        assert isinstance(rj["order"], int)                     # exact int, no strings
+        if rl is not None:
+            G, _how = rl
+            assert G.order() == rj["order"], (name, G.order(), rj["order"])
     print("  [css] leon-dual and joint-incidence exact paths agree")
 
 
 def test_method_selection():
-    # Each selectable engine ('leon', 'bz') is exact and agrees with the ladder on codes it can
-    # solve.  Those two plus 'auto' are the whole public surface: the structural-subgroup floor is
-    # internal to 'auto' and is not selectable.
+    # Each selectable engine ('leon', 'bz') is exact-or-raise and agrees with the ladder on
+    # codes it can solve.  Those two plus 'auto' are the whole public surface.
     from qubitserf.codeaut import css
     st = codes.steane()
-    exact = int(codeaut.css_automorphism_group(st).order)        # auto ladder -> 168
+    exact = codeaut.css_automorphism_group(st).order()           # auto ladder -> 168
     for m in ("leon", "bz"):
-        r = codeaut.css_automorphism_group(st, method=m)
-        assert r.verified and r.complete and int(r.order) == exact, (m, r.order)
-        assert pg.Group(r.generators, r.n).order() == exact
+        grp = codeaut.css_automorphism_group(st, method=m)
+        assert isinstance(grp, pg.Group) and grp.order() == exact, (m, grp.order())
     assert css.METHODS == ("auto", "leon", "bz"), css.METHODS
     # gross [[144,12,12]]: BZ+graph is exact (144)
     g_bz = codeaut.css_automorphism_group(codes.gross(), method="bz")
-    assert g_bz.verified and g_bz.complete and int(g_bz.order) == 144
-    # gross has eff_dim=66 >> max_dim=24, so Leon's 2**eff_dim enumeration is infeasible: leon must
-    # not silently return a bare order=1 but carry a note naming eff_dim and pointing at bz/max_dim.
-    g_leon = codeaut.css_automorphism_group(codes.gross(), method="leon")
-    assert not g_leon.complete and int(g_leon.order) == 1
-    assert "eff_dim" in g_leon.method and ("max_dim" in g_leon.method or "bz" in g_leon.method), \
-        g_leon.method
+    assert g_bz.order() == 144
+    # gross has eff_dim=66 >> max_dim=24, so Leon's 2**eff_dim enumeration is infeasible:
+    # exact-or-raise means method='leon' must raise RuntimeError with an actionable message
+    # (naming eff_dim / the leon stage, and pointing at method='bz').
+    assert css.effective_dims(codes.gross().Hx, codes.gross().Hz)["eff_dim"] > css._MAX_DIM
+    try:
+        codeaut.css_automorphism_group(codes.gross(), method="leon")
+        assert False, "expected RuntimeError for method='leon' on gross (eff_dim=66)"
+    except RuntimeError as exc:
+        msg = str(exc)
+        assert "leon" in msg and "eff_dim" in msg and "bz" in msg, msg
     # aliases resolve ('joint' -> bz); unknown and retired method names are rejected
-    assert codeaut.css_automorphisms(st, method="joint").complete
+    assert codeaut.css_automorphisms(st, method="joint").order() == exact
     for bad in ("nope", "partial", "affine"):
         try:
             codeaut.css_automorphism_group(st, method=bad)
             assert False, f"expected ValueError for method={bad!r}"
         except ValueError:
             pass
-    print(f"  [css] method selection OK (leon/bz exact={exact})")
+    # a Group result feeds straight into group_intersection
+    assert codeaut.group_intersection(
+        codeaut.css_automorphisms(st), codeaut.css_automorphisms(st)).order() == exact
+    print(f"  [css] method selection OK (leon/bz exact={exact}; "
+          "leon on gross raises RuntimeError)")
 
 
-def test_cli_pauli_stabilisers():
-    from qubitserf.codeaut import cli
+def test_css_from_paulis():
     # Steane as Pauli strings: X-rows -> Hx, Z-rows -> Hz; the group has order 168.
     text = "IIIXXXX\nIXXIIXX\nXIXIXIX\nIIIZZZZ\nIZZIIZZ\nZIZIZIZ\n"
-    Hx, Hz = cli._css_from_pauli(text)
+    Hx, Hz = codeaut.css_from_paulis(text)
     assert Hx.shape == (3, 7) and Hz.shape == (3, 7)
-    assert int(codeaut.css_automorphism_group((Hx, Hz)).order) == 168
+    assert codeaut.css_automorphism_group((Hx, Hz)).order() == 168
+    # an iterable of lines parses identically to one newline-joined string
+    Hx2, Hz2 = codeaut.css_from_paulis(text.splitlines())
+    assert np.array_equal(Hx, Hx2) and np.array_equal(Hz, Hz2)
     # non-CSS / malformed inputs all raise ValueError
     for bad in ("XXXXIII\nYZIIZZI\n",   # a Y
                 "XXZIIII\nZZZZIII\n",    # a row mixing X and Z
                 "XXXX\nZZZZIII\n",       # ragged lengths
                 "IIIXXXX\nABCDEFG\n"):   # illegal characters
         try:
-            cli._css_from_pauli(bad)
+            codeaut.css_from_paulis(bad)
             assert False, ("expected ValueError", bad)
         except ValueError:
             pass
-    print("  [cli] Pauli-stabiliser CSS parsing OK (Steane 168; non-CSS rejected)")
+    print("  [interop] css_from_paulis OK (Steane 168; non-CSS rejected)")
+
+
+def test_verbose_progress():
+    # verbose=True must print [codeaut] progress to stderr WITHOUT changing the result;
+    # verbose=False (the default) must stay silent.
+    import contextlib
+    import io as _io
+    simplex = np.array([[0, 0, 0, 1, 1, 1, 1], [0, 1, 1, 0, 0, 1, 1],
+                        [1, 0, 1, 0, 1, 0, 1]], np.uint8)
+    quiet = codeaut.classical_automorphisms(simplex, method="bz")
+    buf = _io.StringIO()
+    with contextlib.redirect_stderr(buf):
+        loud = codeaut.classical_automorphisms(simplex, method="bz", verbose=True)
+    err = buf.getvalue()
+    assert "[codeaut]" in err and err.count("\n") >= 2, err
+    assert loud.order == quiet.order == 168
+    assert loud.generators == quiet.generators
+
+    st = codes.steane()
+    quiet_css = codeaut.css_automorphisms(st)
+    buf = _io.StringIO()
+    with contextlib.redirect_stderr(buf):
+        loud_css = codeaut.css_automorphisms(st, verbose=True)
+    err_css = buf.getvalue()
+    assert "[codeaut]" in err_css and "stage 1" in err_css and "done:" in err_css, err_css
+    assert loud_css.order() == quiet_css.order() == 168
+
+    # default (verbose=False) prints nothing to stderr
+    buf = _io.StringIO()
+    with contextlib.redirect_stderr(buf):
+        codeaut.classical_automorphisms(simplex, method="bz")
+        codeaut.css_automorphisms(st)
+    assert buf.getvalue() == "", buf.getvalue()
+    print("  [verbose] stderr progress emitted under verbose=True; silent by default")
 
 
 def main():
     tests = [test_leon_single_code, test_leon_congruence_spanning_set,
-             test_ward_power_of_two_residues,
-             test_invariant_portfolio,
+             test_classical_method_selection,
              test_permgroup, test_bz_completeness,
              test_css_known_orders, test_leon_dual_vs_joint, test_method_selection,
-             test_cli_pauli_stabilisers]
+             test_css_from_paulis, test_verbose_progress]
     print(f"codeaut {codeaut.version()} -- running {len(tests)} test groups")
     for t in tests:
         t()

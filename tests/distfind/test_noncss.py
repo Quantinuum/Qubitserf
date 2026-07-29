@@ -278,22 +278,6 @@ def test_css_fast_path_matches_css_distance():
 
 
 # --------------------------------------------------------------------------- #
-# CLI auto-routing: a non-CSS Pauli code on stdin -> the symplectic path
-# --------------------------------------------------------------------------- #
-def test_cli_routes_noncss(tmp_path):
-    import sys
-    src = "\n".join(FIVE_QUBIT) + "\n\n"
-    proc = subprocess.run(
-        [sys.executable, "-m", "qubitserf.distfind", "-", "--json"],
-        input=src, capture_output=True, text=True,
-        env={**os.environ, "PYTHONPATH": os.path.join(os.getcwd(), "python")},
-    )
-    import json
-    assert proc.returncode == 0, proc.stderr
-    assert json.loads(proc.stdout)["distance"] == 3
-
-
-# --------------------------------------------------------------------------- #
 # cc is rejected on genuinely non-CSS codes (no silent fallback)
 # --------------------------------------------------------------------------- #
 def test_cc_rejected_on_noncss():

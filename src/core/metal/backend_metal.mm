@@ -1,22 +1,30 @@
-// Metal GPU backend for the Brouwer-Zimmermann exponential enumeration.
+// Metal GPU backend for the shared Brouwer-Zimmermann exponential enumeration -- BOTH
+// modes of qsf::Backend over one kernel template:
+//
+//   * enumerate (min-weight, the distfind engine): per-thread minimum of the full weight
+//     of a logical codeword, folded through a threadgroup tree reduction into one global
+//     atomic_min.
+//   * collect (low-weight collection, the codeaut engine): every codeword of weight in
+//     [1, keep] is appended to an output buffer via an atomic slot counter; on capacity
+//     overflow the level falls back to the CPU backend (never a truncated set).
 //
 // One GPU thread owns a contiguous slice of combination indices (combinatorial-number-
-// system unranking gives it its start; advance steps through the slice). For each
-// weight-d combination it XORs the selected rows of every information-set generator,
-// tests the logical detector, popcounts, and folds the minimum into a global atomic.
+// system unranking gives it its start; advance steps through the slice).
 //
 // PERFORMANCE: three stacked ideas, each preserving the exact math (CPU stays the oracle):
 //
-//  1. Kernel VARIANTS per (stride, d, tgcache): `stride` and the weight level `d` are
-//     compile-time literals (codeword and unrank/advance loops unroll, pos[] stays in
-//     registers), and `tgcache` selects threadgroup-cached vs device reads. Variants are
-//     compiled lazily (~50ms each, once per level per process) and cached.
+//  1. Kernel VARIANTS per (stride, d, tgcache, mode): `stride` and the weight level `d`
+//     are compile-time literals (codeword and unrank/advance loops unroll, pos[] stays in
+//     registers), `tgcache` selects threadgroup-cached vs device reads, and `mode` bakes
+//     in the min-reduce vs collect epilogue. Variants are compiled lazily (~50ms each,
+//     once per level per process) and cached.
 //  2. TWO-LEVEL enumeration with an incremental codeword. The weight-d combination is
 //     split into d-1 OUTER positions (advanced rarely, with the codeword updated by XOR
 //     in place) and one INNER `last` index swept in a tight, SIMD-uniform loop, unrolled
 //     x4 so independent first-word popcounts hide latency. The weight test runs FIRST with
-//     a per-word early exit against `best`; the logical check only runs for the rare
-//     candidate lighter than `best` (a codeword with weight >= best can never improve it).
+//     a per-word early exit against the mode's bound (`best` for min-weight -- a codeword
+//     with weight >= best can never improve it -- and the constant keep+1 for collect);
+//     the logical check / the emit runs only for the rare lighter candidate.
 //  3. Threadgroup staging of the generator + check matrices WHEN THEY FIT: gamma is stored
 //     TRANSPOSED (word-major, so the unrolled word-0 reads of consecutive rows are
 //     contiguous -> no bank conflicts). Codes whose matrices exceed the threadgroup-memory
@@ -26,13 +34,15 @@
 // The host uploads gamma TRANSPOSED per generator: word w of row r of generator g lives at
 // gammaT[(g*STRIDE + w)*K + r]. plan.num_gamma may be a per-level ACTIVE PREFIX of the
 // uploaded plan.num_gamma_total generators (the BZ driver skips generators whose lower-
-// bound contribution is zero at this level); the buffer cache always holds the full set.
+// bound contribution is zero at this level); the buffer cache always holds the full set,
+// keyed on plan.buffers_key (which qsf::next_buffers_key() keeps unique across BOTH
+// engines -- never on host pointer identity).
 //
 // Shaders are compiled at runtime (newLibraryWithSource:) because the offline `metal`
 // toolchain is not assumed to be installed.
 #import <Metal/Metal.h>
 #import <Foundation/Foundation.h>
-#include "distfind/backend.hpp"
+#include "qsf/backend.hpp"
 #include <vector>
 #include <map>
 #include <mutex>
@@ -41,7 +51,7 @@
 #include <cstdlib>
 #include <cstdio>
 
-namespace distfind {
+namespace qsf {
 
 namespace {
 
@@ -49,12 +59,30 @@ constexpr int MAX_WORDS = 16;  // codeword <= 1024 bits on the GPU path (else CP
 constexpr int MAX_D     = 32;  // combination weight <= 32 on the GPU path (else CPU fallback)
 
 // A weight level with fewer than this many candidate codewords (combinations * gammas)
-// is cheaper to run on the multicore CPU than to pay GPU dispatch latency for. Tunable.
-// Lower than the historical 1<<20: the variant kernel makes the GPU pay off much sooner.
-static u64 gpu_min_work() {
-    static u64 v = [] {
-        const char* e = std::getenv("DISTFIND_GPU_MIN_WORK");
-        return e ? (u64)std::strtoull(e, nullptr, 10) : (u64)(1u << 18);
+// is cheaper to run on the multicore CPU than to pay GPU dispatch latency for. Tunable
+// per mode via the engines' historical env knobs.
+static u64 min_work_env(const char* name, u64 dflt) {
+    const char* e = std::getenv(name);
+    return e ? (u64)std::strtoull(e, nullptr, 10) : dflt;
+}
+static u64 gpu_min_work_enumerate() {
+    static u64 v = min_work_env("DISTFIND_GPU_MIN_WORK", (u64)(1u << 18));
+    return v;
+}
+static u64 gpu_min_work_collect() {
+    static u64 v = min_work_env("CODEAUT_GPU_MIN_WORK", (u64)(1u << 18));
+    return v;
+}
+
+// Collect-mode output capacity in codewords; overflow (rare: low-weight enumeration emits
+// few hits) falls the level back to the CPU. Env-overridable.
+static u32 collect_capacity() {
+    static u32 v = [] {
+        const char* e = std::getenv("CODEAUT_GPU_CAPACITY");
+        unsigned long long c = e ? std::strtoull(e, nullptr, 10) : (1ull << 20);
+        if (c == 0ull) c = 1ull << 20;
+        if (c > 0x7fffffffull) c = 0x7fffffffull;
+        return (u32)c;
     }();
     return v;
 }
@@ -69,13 +97,15 @@ static unsigned long default_tpt() {
     return v;
 }
 
-// MSL source for a kernel specialised to a compile-time stride, WEIGHT LEVEL d, and read
-// path. Baking d in as a literal fully unrolls the unrank/advance loops and promotes the
-// pos[] array to registers (dynamic indexing would spill it to slow thread-local memory --
-// and the outer advance runs every ~(K-d)/(d-1) elements, so it is hot). One variant per
-// level compiles lazily in ~50ms, trivially amortised. `tgcache` = 1 stages gammaT+check
-// into threadgroup memory (the host guarantees they fit); 0 reads device memory directly.
-static std::string make_kernel_src(int stride, int d, int tgcache) {
+// MSL source for a kernel specialised to a compile-time stride, WEIGHT LEVEL d, read
+// path, and mode. Baking d in as a literal fully unrolls the unrank/advance loops and
+// promotes the pos[] array to registers (dynamic indexing would spill it to slow
+// thread-local memory -- and the outer advance runs every ~(K-d)/(d-1) elements, so it
+// is hot). One variant per level compiles lazily in ~50ms, trivially amortised.
+// `tgcache` = 1 stages gammaT+check into threadgroup memory (the host guarantees they
+// fit); 0 reads device memory directly. `collect` = 1 emits every light nonzero codeword
+// through an atomic slot counter instead of folding an atomic minimum.
+static std::string make_kernel_src(int stride, int d, int tgcache, int collect) {
     static const char* kTemplate = R"MSL(
 #include <metal_stdlib>
 using namespace metal;
@@ -94,7 +124,8 @@ struct Params {
     uint n, stride, K, d, num_gamma, kcheck, binom_maxK;
     uint total_lo, total_hi;
     uint chunk;
-    uint current_best;
+    uint current_best;   // min mode: pruning bound; collect mode: keep_weight + 1
+    uint capacity;       // collect mode: out_buf capacity in codewords
 };
 
 inline ulong binomf(device const ulong* B, uint maxK, int n, int k) {
@@ -107,8 +138,13 @@ kernel void bz_enumerate(
     device const ulong*   chk     [[buffer(1)]],   // row-major: [c*STRIDE + w]
     device const ulong*   binomB  [[buffer(2)]],
     constant Params&      P       [[buffer(3)]],
+#if COLLECT
+    device atomic_uint*   out_cnt [[buffer(4)]],
+    device ulong*         out_buf [[buffer(5)]],
+#else
     device atomic_uint*   result  [[buffer(4)]],
     threadgroup uint*     tg      [[threadgroup(0)]],
+#endif
     threadgroup ulong*    gcache  [[threadgroup(1)]],
     uint                  gid     [[thread_position_in_grid]],
     uint                  lid     [[thread_position_in_threadgroup]],
@@ -176,8 +212,8 @@ kernel void bz_enumerate(
                 // Hot inner loop: uniform sweep of `last`, cw = cwb ^ row[last]. Unrolled x4
                 // so the (independent) first-word popcounts of four consecutive `last` issue
                 // together and hide read/popcount latency; the light candidate that needs the
-                // full weight + logical check is rare and drops to the per-element slow path.
-                // `hi` caps the run at the chunk end (need) or the inner range end (K).
+                // full weight + the mode epilogue is rare and drops to the per-element slow
+                // path. `hi` caps the run at the chunk end (need) or the inner range end (K).
                 int last_start = last;
                 int hi = K;
                 if ((ulong)(K - last) > need - cnt) hi = last + (int)(need - cnt);
@@ -199,6 +235,17 @@ kernel void bz_enumerate(
                                 light = wt < best;
                             }
                             if (!light) continue;
+#if COLLECT
+                            if (wt > 0u) {
+                                uint slot = atomic_fetch_add_explicit(out_cnt, 1u,
+                                                                      memory_order_relaxed);
+                                if (slot < P.capacity) {
+                                    device ulong* dst = out_buf + (ulong)slot * STRIDE;
+                                    for (uint w = 0; w < STRIDE; ++w)
+                                        dst[w] = cwb[w] ^ Gp[w * (uint)K + r];
+                                }
+                            }
+#else
                             bool logical = (P.kcheck == 0u);
                             for (uint c = 0; c < P.kcheck && !logical; ++c) {
                                 ulong acc = 0ul;
@@ -208,6 +255,7 @@ kernel void bz_enumerate(
                                 if (popcount(acc) & 1ul) logical = true;
                             }
                             if (logical) best = wt;
+#endif
                         }
                     }
                 }
@@ -220,6 +268,17 @@ kernel void bz_enumerate(
                         light = wt < best;
                     }
                     if (light) {
+#if COLLECT
+                        if (wt > 0u) {
+                            uint slot = atomic_fetch_add_explicit(out_cnt, 1u,
+                                                                  memory_order_relaxed);
+                            if (slot < P.capacity) {
+                                device ulong* dst = out_buf + (ulong)slot * STRIDE;
+                                for (uint w = 0; w < STRIDE; ++w)
+                                    dst[w] = cwb[w] ^ Gp[w * (uint)K + r];
+                            }
+                        }
+#else
                         bool logical = (P.kcheck == 0u);
                         for (uint c = 0; c < P.kcheck && !logical; ++c) {
                             ulong acc = 0ul;
@@ -229,6 +288,7 @@ kernel void bz_enumerate(
                             if (popcount(acc) & 1ul) logical = true;
                         }
                         if (logical) best = wt;
+#endif
                     }
                 }
                 cnt += (ulong)(hi - last_start);   // combos processed in this inner run
@@ -248,6 +308,7 @@ kernel void bz_enumerate(
         }
     }
 
+#if !COLLECT
     // Threadgroup tree reduction (tgsize is a power of two), then ONE atomic per group.
     // Uniform threadgroups + neutral `current_best` for out-of-range threads keep the
     // reduction correct on the boundary without divergent SIMD ops.
@@ -259,14 +320,16 @@ kernel void bz_enumerate(
     }
     if (lid == 0)
         atomic_fetch_min_explicit(result, tg[0], memory_order_relaxed);
+#endif
 }
 )MSL";
     int need = std::snprintf(nullptr, 0, kTemplate, stride, d);
     std::string out((size_t)need + 1, '\0');
     std::snprintf(&out[0], out.size(), kTemplate, stride, d);
     out.resize((size_t)need);
-    char def[32];
-    std::snprintf(def, sizeof(def), "#define TGC %d\n", tgcache ? 1 : 0);
+    char def[64];
+    std::snprintf(def, sizeof(def), "#define TGC %d\n#define COLLECT %d\n",
+                  tgcache ? 1 : 0, collect ? 1 : 0);
     return std::string(def) + out;
 }
 
@@ -275,16 +338,19 @@ struct Params {
     uint32_t total_lo, total_hi;
     uint32_t chunk;
     uint32_t current_best;
+    uint32_t capacity;
 };
 
 struct MetalBackend : Backend {
     id<MTLDevice> dev = nil;
     id<MTLCommandQueue> queue = nil;
-    id<MTLBuffer> rbuf = nil;       // persistent 1-word result buffer (shared storage)
+    id<MTLBuffer> rbuf = nil;       // persistent 1-word result/count buffer (shared storage)
+    id<MTLBuffer> obuf = nil;       // collect-mode output buffer (grow-only)
+    size_t obuf_words = 0;
     bool ok = false;
     std::mutex mtx;
 
-    // Lazily-compiled kernel variants, keyed by (stride, d, tgcache).
+    // Lazily-compiled kernel variants, keyed by (stride, d, tgcache, collect).
     std::map<uint32_t, id<MTLComputePipelineState>> pipelines;
 
     // Device-buffer cache for (gammaT, check, binom). These are constant across weight
@@ -301,7 +367,7 @@ struct MetalBackend : Backend {
             queue = [dev newCommandQueue];
             rbuf = [dev newBufferWithLength:sizeof(uint32_t) options:MTLResourceStorageModeShared];
             ok = (queue != nil && rbuf != nil);
-            if (ok && !pipeline_for(1, 8, 1)) { ok = false; return; }  // probe compile path
+            if (ok && !pipeline_for(1, 8, 1, 0)) { ok = false; return; }  // probe compile path
             if (ok) warmup();   // absorb one-time driver/pipeline first-dispatch latency
         }
     }
@@ -309,21 +375,22 @@ struct MetalBackend : Backend {
     std::string name() const override { return "metal"; }
     bool available() const override { return ok; }
 
-    // Get (compiling+caching on first use) the pipeline specialised to (stride, d, tgc).
-    id<MTLComputePipelineState> pipeline_for(int stride, int d, int tgc) {
-        uint32_t key = ((uint32_t)stride << 16) | ((uint32_t)d << 1) | (uint32_t)tgc;
+    // Get (compiling+caching on first use) the pipeline for (stride, d, tgc, collect).
+    id<MTLComputePipelineState> pipeline_for(int stride, int d, int tgc, int collect) {
+        uint32_t key = ((uint32_t)stride << 16) | ((uint32_t)d << 2)
+                     | ((uint32_t)tgc << 1) | (uint32_t)collect;
         auto it = pipelines.find(key);
         if (it != pipelines.end()) return it->second;
         @autoreleasepool {
             NSError* err = nil;
-            std::string src = make_kernel_src(stride, d, tgc);
+            std::string src = make_kernel_src(stride, d, tgc, collect);
             id<MTLLibrary> lib = [dev newLibraryWithSource:[NSString stringWithUTF8String:src.c_str()]
                                                    options:nil error:&err];
-            if (!lib) { NSLog(@"distfind metal compile error: %@", err); return nil; }
+            if (!lib) { NSLog(@"qubitserf metal compile error: %@", err); return nil; }
             id<MTLFunction> fn = [lib newFunctionWithName:@"bz_enumerate"];
             id<MTLComputePipelineState> pso =
                 [dev newComputePipelineStateWithFunction:fn error:&err];
-            if (!pso) { NSLog(@"distfind metal pipeline error: %@", err); return nil; }
+            if (!pso) { NSLog(@"qubitserf metal pipeline error: %@", err); return nil; }
             pipelines[key] = pso;
             return pso;
         }
@@ -332,7 +399,7 @@ struct MetalBackend : Backend {
     // Tiny no-op dispatch so the first real solve does not eat first-dispatch latency.
     void warmup() {
         @autoreleasepool {
-            id<MTLComputePipelineState> pso = pipeline_for(1, 8, 1);
+            id<MTLComputePipelineState> pso = pipeline_for(1, 8, 1, 0);
             if (!pso) return;
             id<MTLBuffer> z = [dev newBufferWithLength:8 options:MTLResourceStorageModeShared];
             Params P; std::memset(&P, 0, sizeof(P));
@@ -360,6 +427,28 @@ struct MetalBackend : Backend {
                      : [dev newBufferWithLength:1 options:MTLResourceStorageModeShared];
     }
 
+    // (Re)upload the per-solve constant buffers when the solve token changes. Must be
+    // called with mtx held. Returns the total combination count helpers need.
+    void ensure_solve_buffers(const EnumPlan& plan) {
+        if (plan.buffers_key == buf_key) return;
+        const int ng_total = plan.num_gamma_total > 0 ? plan.num_gamma_total : plan.num_gamma;
+        size_t g_bytes_up = (size_t)ng_total * plan.K * plan.stride * sizeof(u64);
+        size_t c_bytes_ = (size_t)plan.kcheck * plan.stride * sizeof(u64);
+        size_t b_bytes_ = (size_t)(plan.binom_maxN + 1) * (plan.binom_maxK + 1) * sizeof(u64);
+        // Transpose gamma per generator to word-major: word w of row r of
+        // generator g at gt[(g*stride + w)*K + r].
+        std::vector<u64> gt((size_t)ng_total * plan.K * plan.stride);
+        for (int g = 0; g < ng_total; ++g)
+            for (int r = 0; r < plan.K; ++r)
+                for (int w = 0; w < plan.stride; ++w)
+                    gt[((size_t)g * plan.stride + w) * plan.K + r] =
+                        plan.gamma[((size_t)g * plan.K + r) * plan.stride + w];
+        g_buf = upload(gt.data(), g_bytes_up);
+        c_buf = upload(plan.check, c_bytes_);
+        b_buf = upload(plan.binom, b_bytes_);
+        buf_key = plan.buffers_key;
+    }
+
     int enumerate(const EnumPlan& plan) override {
         if (plan.stride > MAX_WORDS || plan.d > MAX_D || !ok)
             return cpu_backend()->enumerate(plan);
@@ -374,18 +463,12 @@ struct MetalBackend : Backend {
 
         // Hybrid dispatch: small levels are dominated by GPU launch latency -> CPU.
         u64 work = total > (1ull << 40) ? total : total * (u64)plan.num_gamma;
-        if (work < gpu_min_work()) return cpu_backend()->enumerate(plan);
+        if (work < gpu_min_work_enumerate()) return cpu_backend()->enumerate(plan);
 
         std::lock_guard<std::mutex> lock(mtx);
 
-        const int ng_total = plan.num_gamma_total > 0 ? plan.num_gamma_total : plan.num_gamma;
-
-        // Sizes: upload covers ALL generators; the threadgroup fit check uses only the
-        // ACTIVE prefix this level actually reads.
-        size_t g_bytes_up = (size_t)ng_total * plan.K * plan.stride * sizeof(u64);
         size_t g_bytes_act = (size_t)plan.num_gamma * plan.K * plan.stride * sizeof(u64);
         size_t c_bytes_ = (size_t)plan.kcheck * plan.stride * sizeof(u64);
-        size_t b_bytes_ = (size_t)(plan.binom_maxN + 1) * (plan.binom_maxK + 1) * sizeof(u64);
 
         NSUInteger tpt = (NSUInteger)default_tpt();
         // Threadgroup staging only when generators + check + the reduction scratch fit the
@@ -393,7 +476,7 @@ struct MetalBackend : Backend {
         NSUInteger maxTG = [dev maxThreadgroupMemoryLength];
         bool tgc = (g_bytes_act + c_bytes_ + (size_t)tpt * sizeof(uint32_t) + 64) <= (size_t)maxTG;
 
-        id<MTLComputePipelineState> pso = pipeline_for(plan.stride, plan.d, tgc ? 1 : 0);
+        id<MTLComputePipelineState> pso = pipeline_for(plan.stride, plan.d, tgc ? 1 : 0, 0);
         if (!pso) return cpu_backend()->enumerate(plan);
 
         @autoreleasepool {
@@ -403,20 +486,7 @@ struct MetalBackend : Backend {
             u64 chunk = (total + num_threads - 1) / num_threads;
             num_threads = (total + chunk - 1) / chunk;
 
-            if (plan.buffers_key != buf_key) {   // new solve -> re-upload constant buffers
-                // Transpose gamma per generator to word-major: word w of row r of
-                // generator g at gt[(g*stride + w)*K + r].
-                std::vector<u64> gt((size_t)ng_total * plan.K * plan.stride);
-                for (int g = 0; g < ng_total; ++g)
-                    for (int r = 0; r < plan.K; ++r)
-                        for (int w = 0; w < plan.stride; ++w)
-                            gt[((size_t)g * plan.stride + w) * plan.K + r] =
-                                plan.gamma[((size_t)g * plan.K + r) * plan.stride + w];
-                g_buf = upload(gt.data(), g_bytes_up);
-                c_buf = upload(plan.check, c_bytes_);
-                b_buf = upload(plan.binom, b_bytes_);
-                buf_key = plan.buffers_key;
-            }
+            ensure_solve_buffers(plan);
             id<MTLBuffer> gbuf = g_buf, cbuf = c_buf, bbuf = b_buf;
 
             Params P;
@@ -427,6 +497,7 @@ struct MetalBackend : Backend {
             P.total_hi = (uint32_t)(total >> 32);
             P.chunk = (uint32_t)chunk;
             P.current_best = (uint32_t)plan.current_best;
+            P.capacity = 0;
 
             *(uint32_t*)[rbuf contents] = (uint32_t)plan.current_best;
 
@@ -453,6 +524,97 @@ struct MetalBackend : Backend {
             return (int)(*(uint32_t*)[rbuf contents]);
         }
     }
+
+    CollectResult collect(const EnumPlan& plan, int keep_weight) override {
+        if (plan.stride > MAX_WORDS || plan.d > MAX_D || !ok)
+            return cpu_backend()->collect(plan, keep_weight);
+
+        auto binom = [&](int n, int k) -> u64 {
+            if (k < 0 || n < 0 || k > n) return 0ull;
+            return plan.binom[(size_t)n * (plan.binom_maxK + 1) + k];
+        };
+        u64 total = binom(plan.K, plan.d);
+        if (total == 0 || plan.num_gamma == 0 || keep_weight <= 0)
+            return cpu_backend()->collect(plan, keep_weight);  // trivial: CPU returns it exactly
+
+        u64 work = total > (1ull << 40) ? total : total * (u64)plan.num_gamma;
+        if (work < gpu_min_work_collect()) return cpu_backend()->collect(plan, keep_weight);
+
+        std::lock_guard<std::mutex> lock(mtx);
+
+        size_t g_bytes_act = (size_t)plan.num_gamma * plan.K * plan.stride * sizeof(u64);
+
+        NSUInteger tpt = (NSUInteger)default_tpt();
+        NSUInteger maxTG = [dev maxThreadgroupMemoryLength];
+        bool tgc = (g_bytes_act + 64) <= (size_t)maxTG;
+
+        id<MTLComputePipelineState> pso = pipeline_for(plan.stride, plan.d, tgc ? 1 : 0, 1);
+        if (!pso) return cpu_backend()->collect(plan, keep_weight);
+
+        const u32 capacity = collect_capacity();
+
+        @autoreleasepool {
+            const u64 MAX_THREADS = 1u << 20;
+            u64 num_threads = total < MAX_THREADS ? total : MAX_THREADS;
+            u64 chunk = (total + num_threads - 1) / num_threads;
+            num_threads = (total + chunk - 1) / chunk;
+
+            ensure_solve_buffers(plan);
+            id<MTLBuffer> gbuf = g_buf, cbuf = c_buf, bbuf = b_buf;
+
+            // Grow-only output buffer sized for the configured capacity at this stride.
+            size_t need_words = (size_t)capacity * plan.stride;
+            if (!obuf || obuf_words < need_words) {
+                obuf = [dev newBufferWithLength:need_words * sizeof(u64)
+                                        options:MTLResourceStorageModeShared];
+                obuf_words = obuf ? need_words : 0;
+            }
+            if (!obuf) return cpu_backend()->collect(plan, keep_weight);
+
+            Params P;
+            P.n = plan.n; P.stride = plan.stride; P.K = plan.K; P.d = plan.d;
+            P.num_gamma = plan.num_gamma; P.kcheck = 0;
+            P.binom_maxK = plan.binom_maxK;
+            P.total_lo = (uint32_t)(total & 0xffffffffu);
+            P.total_hi = (uint32_t)(total >> 32);
+            P.chunk = (uint32_t)chunk;
+            P.current_best = (uint32_t)keep_weight + 1u;   // the weight-first exit bound
+            P.capacity = capacity;
+
+            *(uint32_t*)[rbuf contents] = 0u;   // hit counter
+
+            id<MTLCommandBuffer> cb = [queue commandBuffer];
+            id<MTLComputeCommandEncoder> enc = [cb computeCommandEncoder];
+            [enc setComputePipelineState:pso];
+            [enc setBuffer:gbuf offset:0 atIndex:0];
+            [enc setBuffer:cbuf offset:0 atIndex:1];
+            [enc setBuffer:bbuf offset:0 atIndex:2];
+            [enc setBytes:&P length:sizeof(P) atIndex:3];
+            [enc setBuffer:rbuf offset:0 atIndex:4];
+            [enc setBuffer:obuf offset:0 atIndex:5];
+
+            if (tpt > pso.maxTotalThreadsPerThreadgroup) tpt = pso.maxTotalThreadsPerThreadgroup;
+            NSUInteger pw = 1; while (pw * 2 <= tpt) pw *= 2; tpt = pw; // power of two
+            NSUInteger groups = (NSUInteger)((num_threads + tpt - 1) / tpt);
+            [enc setThreadgroupMemoryLength:(tgc ? g_bytes_act : 8) atIndex:1];
+            [enc dispatchThreadgroups:MTLSizeMake(groups, 1, 1)
+                  threadsPerThreadgroup:MTLSizeMake(tpt, 1, 1)];
+            [enc endEncoding];
+            [cb commit];
+            [cb waitUntilCompleted];
+
+            uint32_t cnt = *(uint32_t*)[rbuf contents];
+            if (cnt > capacity)   // truncated output -> recompute the level on the CPU oracle
+                return cpu_backend()->collect(plan, keep_weight);
+
+            CollectResult res;
+            if (cnt) {
+                const u64* src = (const u64*)[obuf contents];
+                res.hits.assign(src, src + (size_t)cnt * plan.stride);
+            }
+            return res;
+        }
+    }
 };
 
 } // namespace
@@ -462,4 +624,4 @@ Backend* metal_backend() {
     return &inst;
 }
 
-} // namespace distfind
+} // namespace qsf
