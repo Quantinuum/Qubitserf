@@ -11,9 +11,7 @@
 </div>
 
 Qubitserf is a Python QEC library with a C++ backend, including GPU acceleration of certain
-algorithms. Its goal is to be fast, very fast. The two engines — `distfind` (distance) and
-`codeaut` (automorphisms) — are built on a shared C++ core and ship as a single native library,
-`libqubitserf`, so one bit-packed GF(2) enumeration kernel (CPU / CUDA / Metal) serves both.
+algorithms. Its goal is to be fast, very fast.
 
 ## Features
 
@@ -21,10 +19,8 @@ algorithms. Its goal is to be fast, very fast. The two engines — `distfind` (d
   codes, and classical linear codes by multiple algorithms
 - **Operator weight** — the minimum weight of a Pauli operator modulo the stabilizer or gauge
   group, i.e. the minimum-weight coset leader.
-- **Automorphism groups** — `Aut(C)` of a binary linear code by Leon's algorithm, and the
-  qubit-permutation group `Aut(Hx) ∩ Aut(Hz)` of a CSS quantum code, with a full permutation-group
-  toolkit (order, membership, enumeration, intersection).
-- **Scales to real codes** — connected-cluster certifies distances of qLDPC codes with up to hundreds of qubits and distances up to 20. Similarly, automorphism groups of sparse codes with hundreds of bits/qubits can be computed exactly with the Brouwer-Zimmerman method.
+- **Automorphism groups** — `Aut(C)` of a classical binary linear code or of a quantum CSS code with a full permutation-group toolkit (order, membership, enumeration, intersection).
+- **Scales to real codes** — connected-cluster certifies distances of qLDPC codes with up to hundreds of qubits and distances up to 20. Similarly, automorphism groups of sparse codes with hundreds of bits/qubits can be computed exactly with the Brouwer-Zimmerman+nauty method.
 
 ## Installation
 
@@ -91,9 +87,7 @@ r = df.css_distance(Hx, Hz)                   # method="bz" is the default
 print(r.distance, r.proven, r.seconds, r.backend)
 ```
 
-`method` matters far more than hardware: use `"cc"` (connected cluster) for sparse qLDPC codes —
-it certifies in milliseconds where enumeration takes minutes — and `"bz"` (Brouwer-Zimmermann,
-the default, GPU-capable) for dense or random codes. `"mitm"` is an independent cross-check for
+choose `method` depending on the codes: use `"cc"` (connected cluster) for sparse qLDPC codes — and `"bz"` (Brouwer-Zimmermann, the default, GPU-capable) for dense or random codes. `"mitm"` is an independent cross-check for
 small codes.
 
 ```python
@@ -111,8 +105,7 @@ print(d_z, d_x)                                            # 10 10
 ```
 
 Useful keywords (shared by all distance functions): `which="min"|"z"|"x"`,
-`backend="auto"|"cpu"|"gpu"`, `threads=N` (0 = all cores), `max_weight=N` (cap an expensive
-search and return a certified bracket), `verbose=True`.
+`backend="auto"|"cpu"|"gpu"`, `threads=N` (0 = all cores), `max_weight=N` (cap an expensive search and return a certified bracket), `verbose=True`.
 
 ## Classical codes — `classical_distance`
 
@@ -199,14 +192,11 @@ print(codeaut.classical_automorphisms(G, method="bz").order)     # 168 (BZ + nau
 
 `method="auto"` (the default) runs Leon's algorithm when the effective dimension
 `min(dim, n − dim)` is small and the Brouwer-Zimmermann + nauty incidence route (best for
-LDPC-like codes, exact at any dimension) otherwise. Every route is exact — if no engine can
-certify the group, an error is raised rather than an approximation returned. `backend`,
-`max_threads`, and `verbose` steer the BZ enumeration as in `distfind`.
+LDPC-like codes, exact at any dimension) otherwise. 
 
 ## CSS codes — `css_automorphisms`
 
-The qubit permutations preserving both `Hx` and `Hz`, returned directly as a permutation
-group (`qubitserf.algebra.Group`):
+The qubit permutations preserving both `Hx` and `Hz`, returned directly as a permutation group (`qubitserf.algebra.Group`):
 
 ```python
 from qubitserf.codeaut import codes
