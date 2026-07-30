@@ -22,8 +22,8 @@ from pathlib import Path
 
 _PKG_DIR = Path(__file__).resolve().parent            # .../python/qubitserf
 _ROOT = _PKG_DIR.parent.parent                        # the qubitserf package root
-_SRC_DIRS = [_ROOT / "src" / "core", _ROOT / "src" / "distfind", _ROOT / "src" / "codeaut"]
-_INC = _ROOT / "include"
+_SRC_DIRS = [_ROOT / "cpp" / "qsf", _ROOT / "cpp" / "distfind", _ROOT / "cpp" / "codeaut"]
+_INC = _ROOT / "cpp"
 _LIBDIR = _PKG_DIR / "_lib"
 
 _IS_MAC = platform.system() == "Darwin"

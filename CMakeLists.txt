@@ -5,12 +5,12 @@ project(qubitserf LANGUAGES CXX)
 # qubitserf builds ONE native shared library, libqubitserf, exposing both flat extern "C"
 # ABIs loaded from Python via ctypes (no pybind11 / Cython):
 #
-#   * distfind_*              (src/distfind, include/distfind)
+#   * distfind_*              (cpp/distfind)
 #       exact code distance: Brouwer-Zimmermann, connected-cluster, meet-in-the-middle.
-#   * codeaut_bz_* / qaut_*   (src/codeaut, include/codeaut)
+#   * codeaut_bz_* / qaut_*   (cpp/codeaut)
 #       automorphism groups: Leon + Brouwer-Zimmermann low-weight enumeration.
 #
-# Both engines run on the SHARED core in src/core + include/qsf (bit-packed GF(2),
+# Both engines run on the SHARED core in cpp/qsf (bit-packed GF(2),
 # combinatorics, the two-level enumeration kernel, and the CPU/CUDA/Metal backends --
 # one Backend serving the min-weight mode for distfind and the collect mode for codeaut).
 #
@@ -58,41 +58,41 @@ endif()
 # ---- the one library ------------------------------------------------------------------
 set(QUBITSERF_SOURCES
   # shared core
-  src/core/gf2.cpp
-  src/core/backend_cpu.cpp
+  cpp/qsf/gf2.cpp
+  cpp/qsf/backend_cpu.cpp
   # distfind engine (min-weight mode)
-  src/distfind/css.cpp
-  src/distfind/stab.cpp
-  src/distfind/bz.cpp
-  src/distfind/mitm.cpp
-  src/distfind/cc.cpp
-  src/distfind/op_weight.cpp
-  src/distfind/capi.cpp
+  cpp/distfind/css.cpp
+  cpp/distfind/stab.cpp
+  cpp/distfind/bz.cpp
+  cpp/distfind/mitm.cpp
+  cpp/distfind/cc.cpp
+  cpp/distfind/op_weight.cpp
+  cpp/distfind/capi.cpp
   # codeaut engine (collect mode + Leon)
-  src/codeaut/leon.cpp
-  src/codeaut/bz.cpp
-  src/codeaut/capi.cpp)
+  cpp/codeaut/leon.cpp
+  cpp/codeaut/bz.cpp
+  cpp/codeaut/capi.cpp)
 set(QUBITSERF_DEFS "")
 set(QUBITSERF_GPU_LIBS "")
 
 if(_HAVE_OBJCXX)
-  list(APPEND QUBITSERF_SOURCES src/core/metal/backend_metal.mm)
+  list(APPEND QUBITSERF_SOURCES cpp/qsf/metal/backend_metal.mm)
   list(APPEND QUBITSERF_DEFS QSF_METAL=1)
-  set_source_files_properties(src/core/metal/backend_metal.mm PROPERTIES
+  set_source_files_properties(cpp/qsf/metal/backend_metal.mm PROPERTIES
     COMPILE_OPTIONS "-fobjc-arc")
   list(APPEND QUBITSERF_GPU_LIBS "-framework Metal" "-framework Foundation")
   message(STATUS "qubitserf: Metal backend enabled")
 endif()
 if(_HAVE_CUDA)
-  list(APPEND QUBITSERF_SOURCES src/core/cuda/backend_cuda.cu)
+  list(APPEND QUBITSERF_SOURCES cpp/qsf/cuda/backend_cuda.cu)
   list(APPEND QUBITSERF_DEFS QSF_CUDA=1)
   message(STATUS "qubitserf: CUDA backend enabled")
 endif()
 
 add_library(qubitserf SHARED ${QUBITSERF_SOURCES})
-target_include_directories(qubitserf PUBLIC include)
+target_include_directories(qubitserf PUBLIC cpp)
 # codeaut sources include their own headers unqualified ("capi.h").
-target_include_directories(qubitserf PRIVATE include/codeaut)
+target_include_directories(qubitserf PRIVATE cpp/codeaut)
 target_compile_definitions(qubitserf PRIVATE ${QUBITSERF_DEFS})
 target_link_libraries(qubitserf PRIVATE ${QUBITSERF_GPU_LIBS} Threads::Threads)
 
@@ -106,10 +106,10 @@ install(TARGETS qubitserf
   RUNTIME DESTINATION qubitserf/_lib)
 
 if(QUBITSERF_TESTS)
-  add_executable(distfind_smoke        src/distfind/tests/smoke.cpp)
-  add_executable(distfind_compare      src/distfind/tests/backend_compare.cpp)
-  add_executable(distfind_op_smoke     src/distfind/tests/op_smoke.cpp)
-  add_executable(distfind_cpu_enum_ref src/distfind/tests/cpu_enum_ref.cpp)
+  add_executable(distfind_smoke        cpp/distfind/tests/smoke.cpp)
+  add_executable(distfind_compare      cpp/distfind/tests/backend_compare.cpp)
+  add_executable(distfind_op_smoke     cpp/distfind/tests/op_smoke.cpp)
+  add_executable(distfind_cpu_enum_ref cpp/distfind/tests/cpu_enum_ref.cpp)
   foreach(t distfind_smoke distfind_compare distfind_op_smoke distfind_cpu_enum_ref)
     target_link_libraries(${t} PRIVATE qubitserf)
   endforeach()
@@ -117,7 +117,7 @@ endif()
 
 # Native distfind CLI (not built for the wheel; there the `distfind` console script is the CLI).
 if(QUBITSERF_CLI)
-  add_executable(distfind_cli src/distfind/cli/distfind_cli.cpp)
+  add_executable(distfind_cli cpp/distfind/cli/distfind_cli.cpp)
   target_link_libraries(distfind_cli PRIVATE qubitserf)
   set_target_properties(distfind_cli PROPERTIES OUTPUT_NAME distfind)
 endif()

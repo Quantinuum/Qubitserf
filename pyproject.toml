@@ -48,7 +48,7 @@ Repository = "https://github.com/quantinuum/qubitserf"
 # ---------------------------------------------------------------------------------------
 # Native backends: CMake builds ONE shared library (libqubitserf -> qubitserf/_lib) exposing
 # both flat extern "C" ABIs over a shared enumeration core, loaded via ctypes (no pybind11 /
-# Cython): distfind_* (include/distfind/capi.h) and codeaut_bz_*/qaut_* (include/codeaut/capi.h).
+# Cython): distfind_* (cpp/distfind/capi.h) and codeaut_bz_*/qaut_* (cpp/codeaut/capi.h).
 #
 # codeaut's CSS / classical colored-graph solves additionally use the system nauty/Traces
 # (`dreadnaut`); install with `brew install nauty` / `apt install nauty` / conda-forge. The
@@ -58,7 +58,7 @@ Repository = "https://github.com/quantinuum/qubitserf"
 minimum-version = "0.8"
 wheel.packages = ["python/qubitserf"]
 cmake.version = ">=3.20"
-sdist.include = ["src", "include", "CMakeLists.txt", "LICENSE", "README.md"]
+sdist.include = ["cpp", "CMakeLists.txt", "LICENSE", "README.md"]
 
 [tool.scikit-build.cmake.define]
 QUBITSERF_TESTS = "OFF"
