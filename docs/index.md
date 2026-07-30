@@ -41,7 +41,7 @@ The distance numbers come from the committed benchmark outputs — see
 |---|---|
 | [Code distance](distance.md) | `css_distance`, `classical_distance`, `operator_weight`, subsystem and non-CSS codes |
 | [Automorphism groups](automorphisms.md) | `classical_automorphisms`, `css_automorphisms`, working with permutation groups |
-| [Benchmarks](benchmarks.md) | Measured numbers vs the reference, and how to reproduce |
+| [Benchmarks](benchmarks.md) | Measured distance timings (CPU/GPU BZ, connected cluster) |
 
 ## License
 
