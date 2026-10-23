@@ -1,0 +1,2 @@
+{"ready": true, "case": "LP_442_68_10", "ranks": [187, 187], "shapes": [[195, 442], [195, 442]]}
+{"distance": 10, "lower_bound": 10, "proven": true, "native_seconds": 0.031812292, "call_wall_seconds": 0.0322114159935154, "call_cpu_seconds": 0.031528, "backend": "cc"}

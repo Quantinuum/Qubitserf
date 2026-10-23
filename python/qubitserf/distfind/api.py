@@ -6,6 +6,7 @@ has no non-trivial operator to measure.
 """
 from __future__ import annotations
 
+import operator as _operator
 import numpy as np
 
 from . import _native
@@ -94,6 +95,25 @@ def css_distance(Hx, Hz=None, *, method="bz", which="min", backend="auto",
     backend = _normalize_backend(backend)
     r = _native.css_distance_raw(Hx, Hz, method, w, backend, threads, verbose)
     return int(r.distance)
+
+
+def css_distance_at_least(Hx, Hz=None, *, lower_bound, which="min",
+                         threads=0, verbose=False) -> bool:
+    """Prove or refute a CSS distance lower bound by one CPU bounded search.
+
+    No smaller distance is assumed: all logical weights below ``lower_bound``
+    are covered. Returns False if a lighter logical exists; raises for invalid
+    CSS matrices or undefined distance. Like css_distance, this has no timeout.
+    """
+    Hx, Hz = as_css(Hx, Hz)
+    lower_bound, threads = _operator.index(lower_bound), _operator.index(threads)
+    if lower_bound < 1 or not 0 <= threads <= 2**31 - 1:
+        raise ValueError("lower_bound must be positive and threads must fit a nonnegative C int")
+    w = _WHICH.get(str(which).lower())
+    if w is None:
+        raise ValueError("which must be one of min/z/x")
+    return _native.css_distance_at_least_raw(
+        Hx, Hz, min(lower_bound, Hx.shape[1] + 1), w, threads, verbose)
 
 
 def subsystem_css_distance(Gx, Gz=None, *, method="bz", which="min", backend="auto",

@@ -1,0 +1,354 @@
+{
+  "metadata": {
+    "qubitserf_commit": "ab96b9c",
+    "qdist_sat_commit": "6f110fadfffd6904c950f5da904ddc495176060a",
+    "method": "cc",
+    "which": "M",
+    "backend": "cpu",
+    "threads": 1,
+    "timeout_seconds": 10,
+    "timeout_excludes_input_and_library_loading": true,
+    "library_sha256": "51408033928f27356ad8aa5b6418ae0c5727ab4d6a70118273e93ee50407b77b",
+    "platform": "macOS-26.7.1-arm64-arm-64bit",
+    "python": "3.12.13 | packaged by conda-forge | (main, Mar  5 2026, 17:06:14) [Clang 19.1.7 ]",
+    "cpu": "Apple M4",
+    "started_at": "2026-10-21T11:13:08+0100"
+  },
+  "results": [
+    {
+      "case": "BB_108_8_10",
+      "input": {
+        "ready": true,
+        "case": "BB_108_8_10",
+        "ranks": [
+          50,
+          50
+        ],
+        "shapes": [
+          [
+            54,
+            108
+          ],
+          [
+            54,
+            108
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "native_seconds": 0.078321583,
+      "call_wall_seconds": 0.07874308299506083,
+      "call_cpu_seconds": 0.078335,
+      "backend": "cc"
+    },
+    {
+      "case": "BB_144_12_12",
+      "input": {
+        "ready": true,
+        "case": "BB_144_12_12",
+        "ranks": [
+          66,
+          66
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "native_seconds": 2.127163458,
+      "call_wall_seconds": 2.1272370829974534,
+      "call_cpu_seconds": 2.0555120000000002,
+      "backend": "cc"
+    },
+    {
+      "case": "LP_238_44_6",
+      "input": {
+        "ready": true,
+        "case": "LP_238_44_6",
+        "ranks": [
+          97,
+          97
+        ],
+        "shapes": [
+          [
+            105,
+            238
+          ],
+          [
+            105,
+            238
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 6,
+      "lower_bound": 6,
+      "proven": true,
+      "native_seconds": 0.002745042,
+      "call_wall_seconds": 0.0028316249954514205,
+      "call_cpu_seconds": 0.0027590000000000114,
+      "backend": "cc"
+    },
+    {
+      "case": "LP_340_56_8",
+      "input": {
+        "ready": true,
+        "case": "LP_340_56_8",
+        "ranks": [
+          142,
+          142
+        ],
+        "shapes": [
+          [
+            150,
+            340
+          ],
+          [
+            150,
+            340
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 8,
+      "lower_bound": 8,
+      "proven": true,
+      "native_seconds": 0.07392075,
+      "call_wall_seconds": 0.07401966699399054,
+      "call_cpu_seconds": 0.07370800000000001,
+      "backend": "cc"
+    },
+    {
+      "case": "LP_442_68_10",
+      "input": {
+        "ready": true,
+        "case": "LP_442_68_10",
+        "ranks": [
+          187,
+          187
+        ],
+        "shapes": [
+          [
+            195,
+            442
+          ],
+          [
+            195,
+            442
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "native_seconds": 3.889639667,
+      "call_wall_seconds": 3.889799208001932,
+      "call_cpu_seconds": 3.878322,
+      "backend": "cc"
+    },
+    {
+      "case": "TN_108_2_12",
+      "input": {
+        "ready": true,
+        "case": "TN_108_2_12",
+        "ranks": [
+          53,
+          53
+        ],
+        "shapes": [
+          [
+            54,
+            108
+          ],
+          [
+            54,
+            108
+          ]
+        ]
+      },
+      "status": "timeout",
+      "observed_wall_seconds": 10.001129707990913
+    },
+    {
+      "case": "TN_200_10_10",
+      "input": {
+        "ready": true,
+        "case": "TN_200_10_10",
+        "ranks": [
+          94,
+          96
+        ],
+        "shapes": [
+          [
+            96,
+            200
+          ],
+          [
+            96,
+            200
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "native_seconds": 6.993932959,
+      "call_wall_seconds": 6.994013082992751,
+      "call_cpu_seconds": 6.953881,
+      "backend": "cc"
+    },
+    {
+      "case": "GB_144_12_12",
+      "input": {
+        "ready": true,
+        "case": "GB_144_12_12",
+        "ranks": [
+          66,
+          66
+        ],
+        "shapes": [
+          [
+            66,
+            144
+          ],
+          [
+            66,
+            144
+          ]
+        ]
+      },
+      "status": "timeout",
+      "observed_wall_seconds": 10.001319707997027
+    },
+    {
+      "case": "LP_544_80_12",
+      "input": {
+        "ready": true,
+        "case": "LP_544_80_12",
+        "ranks": [
+          232,
+          232
+        ],
+        "shapes": [
+          [
+            240,
+            544
+          ],
+          [
+            240,
+            544
+          ]
+        ]
+      },
+      "status": "timeout",
+      "observed_wall_seconds": 10.001176124991616
+    },
+    {
+      "case": "TN_144_2_13",
+      "input": {
+        "ready": true,
+        "case": "TN_144_2_13",
+        "ranks": [
+          71,
+          71
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ]
+      },
+      "status": "timeout",
+      "observed_wall_seconds": 10.001274291003938
+    },
+    {
+      "case": "BB_144_14_14",
+      "input": {
+        "ready": true,
+        "case": "BB_144_14_14",
+        "ranks": [
+          65,
+          65
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ]
+      },
+      "status": "timeout",
+      "observed_wall_seconds": 10.001057667002897
+    },
+    {
+      "case": "BB_288_12_18",
+      "input": {
+        "ready": true,
+        "case": "BB_288_12_18",
+        "ranks": [
+          138,
+          138
+        ],
+        "shapes": [
+          [
+            144,
+            288
+          ],
+          [
+            144,
+            288
+          ]
+        ]
+      },
+      "status": "timeout",
+      "observed_wall_seconds": 10.001145166999777
+    },
+    {
+      "case": "TN_250_10_15",
+      "input": {
+        "ready": true,
+        "case": "TN_250_10_15",
+        "ranks": [
+          120,
+          120
+        ],
+        "shapes": [
+          [
+            120,
+            250
+          ],
+          [
+            120,
+            250
+          ]
+        ]
+      },
+      "status": "timeout",
+      "observed_wall_seconds": 10.001256417002878
+    }
+  ]
+}

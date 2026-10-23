@@ -54,6 +54,13 @@ def lib():
         ctypes.c_int, ctypes.c_int,
         rp,
     ]
+    if hasattr(_lib, "distfind_css_distance_at_least"):
+        _lib.distfind_css_distance_at_least.restype = ctypes.c_int
+        _lib.distfind_css_distance_at_least.argtypes = [
+            u8p, ctypes.c_int, ctypes.c_int, u8p, ctypes.c_int, ctypes.c_int,
+            ctypes.c_int, ctypes.c_char, ctypes.c_int, ctypes.c_int,
+            ctypes.POINTER(ctypes.c_int),
+        ]
     _lib.distfind_classical_distance.restype = ctypes.c_int
     _lib.distfind_classical_distance.argtypes = [
         u8p, ctypes.c_int, ctypes.c_int,
@@ -132,6 +139,24 @@ def css_distance_raw(Hx, Hz, method, which, backend, threads, verbose):
     if rc != 0:
         raise RuntimeError("distfind_css_distance failed (rc=%d)" % rc)
     return out
+
+
+def css_distance_at_least_raw(Hx, Hz, lower_bound, which, threads, verbose):
+    L = lib()
+    if not hasattr(L, "distfind_css_distance_at_least"):
+        raise RuntimeError("rebuild libqubitserf to use css_distance_at_least")
+    ax, az = _as_u8(Hx), _as_u8(Hz)
+    out = ctypes.c_int()
+    rc = L.distfind_css_distance_at_least(
+        _ptr(ax), ax.shape[0], ax.shape[1], _ptr(az), az.shape[0], az.shape[1],
+        lower_bound, which.encode(), threads, int(verbose), ctypes.byref(out))
+    if rc == 2:
+        raise ValueError("invalid CSS matrices, threshold, or worker count")
+    if rc:
+        raise RuntimeError(f"distfind_css_distance_at_least failed (rc={rc})")
+    if out.value < 0:
+        raise ValueError("distance is undefined for a code with no logical qubits")
+    return bool(out.value)
 
 
 def classical_distance_raw(H, method, backend, threads, verbose):

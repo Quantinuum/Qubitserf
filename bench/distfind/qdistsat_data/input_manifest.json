@@ -1,0 +1,106 @@
+{
+  "BB_108_8_10_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/BB_108_8_10_Hx.txt",
+    "sha256": "c89441f4e417475fef2205b6aa76ae8062abe823b068b5d176f47fd12168212b"
+  },
+  "BB_108_8_10_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/BB_108_8_10_Hz.txt",
+    "sha256": "4f098c52399fb2eeebcd80152fc6e153e642cfb7aa624640184a133f9c755c83"
+  },
+  "BB_144_12_12_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/BB_144_12_12_Hx.txt",
+    "sha256": "691d141dbb2ac2e98a2e0d4e4eb079ff603e985296e97774245195d141b64f92"
+  },
+  "BB_144_12_12_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/BB_144_12_12_Hz.txt",
+    "sha256": "e640ce7f40ca1b140e830bbf7bb6526821762edcf2c2372cc57a22599d3a967e"
+  },
+  "LP_238_44_6_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/LP_238_44_6_Hx.txt",
+    "sha256": "6e42eafba57c62f9e185d219bc029c2aa3934fd21cbdda76efd46abe4d4a25f3"
+  },
+  "LP_238_44_6_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/LP_238_44_6_Hz.txt",
+    "sha256": "be0dbcc33cdcabefa56254e65186f6d2fe0a831c2bcc43ea16806a077f06f8d5"
+  },
+  "LP_340_56_8_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/LP_340_56_8_Hx.txt",
+    "sha256": "097a76f0030e82b3077259ffda5c74e5009b42efba58a7dabad252c13b348d8a"
+  },
+  "LP_340_56_8_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/LP_340_56_8_Hz.txt",
+    "sha256": "d5fd553dfa914dad412abf357ed42b0ff79c35b1ee3bad4ef5c83d7b8f33e9e6"
+  },
+  "LP_442_68_10_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/LP_442_68_10_Hx.txt",
+    "sha256": "ea7c96ee8aa08b25b4d8f6b562d8dca60341997a377fdb18a0415d50a419cdae"
+  },
+  "LP_442_68_10_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/LP_442_68_10_Hz.txt",
+    "sha256": "5b3d1b6c5188f2e347b5c2a91c263d1523608b9ef009d0bfb8db5a68a6f61242"
+  },
+  "TN_108_2_12_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/TN_108_2_12_Hx.txt",
+    "sha256": "35f268cebee3ace195d1289e219a5520f44abe9f86b9783ed9f2d4e95b4b7918"
+  },
+  "TN_108_2_12_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/TN_108_2_12_Hz.txt",
+    "sha256": "a3998077013f23d88ef5fd6dc171f278d7bf32188651447ae30d2b0663ee8b2d"
+  },
+  "TN_200_10_10_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/TN_200_10_10_Hx.txt",
+    "sha256": "dc4f1d43da7ef8b92566205b1d919ea254c81bcd68b219347fba378b18704329"
+  },
+  "TN_200_10_10_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/TN_200_10_10_Hz.txt",
+    "sha256": "f7ce20a110e9ee5827f093a2759ace0ca81d7c107eaa9eb010214680b66aacc5"
+  },
+  "GB_144_12_12_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/GB_144_12_12_Hx.txt",
+    "sha256": "51bc2cb811158409662b9826cd5bdcb3e0c688ce196c9a758c8c5fc4b118d107"
+  },
+  "GB_144_12_12_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/GB_144_12_12_Hz.txt",
+    "sha256": "0c25d8dc04eaa85777bba7e200e8916179df7d51bfaefb890d7765e08c6905dc"
+  },
+  "LP_544_80_12_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/LP_544_80_12_Hx.txt",
+    "sha256": "f72754e30c01c097bad6c1a238674397e3f392f10d83c6f4f49d22f6a13f4a1f"
+  },
+  "LP_544_80_12_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/LP_544_80_12_Hz.txt",
+    "sha256": "65041d630c7950510695a25470171f565783a92dc0c3f91e8d6a7183d57e9441"
+  },
+  "TN_144_2_13_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/TN_144_2_13_Hx.txt",
+    "sha256": "89e7dccdb201295af0a12c67d393aeeee9d3a4766e6071508a23c0653c742bb9"
+  },
+  "TN_144_2_13_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/TN_144_2_13_Hz.txt",
+    "sha256": "b08ecd342ac73247d376312a1629d2c191e043d1ce81f74b2c1c2c545ca94d4b"
+  },
+  "BB_144_14_14_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/BB_144_14_14_Hx.txt",
+    "sha256": "3a16e0753be12eac0e1617cfde41ddf712a3475ece3b79f64e812042d9da6bfb"
+  },
+  "BB_144_14_14_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/BB_144_14_14_Hz.txt",
+    "sha256": "d646d257a0d599cf100dc2ab6d90ff5d4eb69862af8beaa90adf3cc33ffd714c"
+  },
+  "BB_288_12_18_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/BB_288_12_18_Hx.txt",
+    "sha256": "2c85c06915bee464eda2cb7d20c4db6588353a7b4118e6439bd0d21e69d7ee43"
+  },
+  "BB_288_12_18_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/BB_288_12_18_Hz.txt",
+    "sha256": "5495d05d9dc8c32eb8328f192b931e1da073ee936febae6afaf390410e98806a"
+  },
+  "TN_250_10_15_Hx.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier4/TN_250_10_15_Hx.txt",
+    "sha256": "9b73ba5867eb70638d6f1537d0e1e054fb111b0c0eb9626ee3f5b6b0f3ff957a"
+  },
+  "TN_250_10_15_Hz.txt": {
+    "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier4/TN_250_10_15_Hz.txt",
+    "sha256": "8c6757601c387245e4d1674f37c4ddc5cee28f2fb94972015caa25550c016e11"
+  }
+}

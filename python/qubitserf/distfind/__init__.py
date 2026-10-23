@@ -5,6 +5,7 @@ GPU via combinatorial-number-system work splitting.
 """
 from .api import (
     css_distance,
+    css_distance_at_least,
     subsystem_css_distance,
     operator_weight,
     stabilizer_distance,
@@ -19,6 +20,7 @@ from . import codes
 
 __all__ = [
     "css_distance",
+    "css_distance_at_least",
     "subsystem_css_distance",
     "operator_weight",
     "stabilizer_distance",

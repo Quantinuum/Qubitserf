@@ -1,0 +1,2 @@
+{"ready": true, "case": "TN_250_10_15", "ranks": [120, 120], "shapes": [[120, 250], [120, 250]], "native_version": "0.1.0"}
+{"distance": 15, "lower_bound": 15, "proven": true, "levels": 15, "native_seconds": 4.165226584, "call_wall_seconds": 4.165408582950477, "call_cpu_seconds": 4.148021, "backend": "cc"}

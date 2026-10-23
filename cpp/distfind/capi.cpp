@@ -26,6 +26,24 @@ void fill(DistfindResult* out, const BZResult& r) {
 
 extern "C" {
 
+int distfind_css_distance_at_least(
+    const uint8_t* Hx, int hx_rows, int hx_cols,
+    const uint8_t* Hz, int hz_rows, int hz_cols,
+    int lower_bound, char which, int threads, int verbose, int* out) {
+    if (!out || (hx_rows && !Hx) || (hz_rows && !Hz)) return 1;
+    if (hx_rows < 0 || hz_rows < 0 || hx_cols < 0 || hx_cols != hz_cols ||
+        lower_bound < 1 || threads < 0) return 2;
+    if (hx_cols == 0) { *out = -1; return 0; }
+    GF2Mat x = from_dense(Hx, hx_rows, hx_cols), z = from_dense(Hz, hz_rows, hz_cols);
+    for (int i = 0; i < x.rows; ++i)
+        for (int j = 0; j < z.rows; ++j)
+            if (vec_dot(x.row(i), z.row(j), x.stride)) return 2;
+    BZOptions opt;
+    opt.backend = "cpu"; opt.threads = threads; opt.verbose = verbose != 0;
+    *out = cc_css_distance_at_least(x, z, lower_bound, which, opt);
+    return 0;
+}
+
 int distfind_css_distance(
     const uint8_t* Hx, int hx_rows, int hx_cols,
     const uint8_t* Hz, int hz_rows, int hz_cols,

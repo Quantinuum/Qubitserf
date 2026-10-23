@@ -28,6 +28,12 @@ int distfind_css_distance(
     int threads, int verbose,
     DistfindResult* out);
 
+// CPU connected-cluster decision. out=1/0 for true/false; -1 means no logicals.
+int distfind_css_distance_at_least(
+    const uint8_t* Hx, int hx_rows, int hx_cols,
+    const uint8_t* Hz, int hz_rows, int hz_cols,
+    int lower_bound, char which, int threads, int verbose, int* out);
+
 // Minimum distance of a classical linear code with parity-check matrix H.
 int distfind_classical_distance(
     const uint8_t* H, int rows, int cols,

@@ -1,0 +1,38 @@
+CC: verified equivalent X/Z sectors
+Z-CC: 2 seeds, 41328 syndrome pairs, even=1
+Z-distance bound: >2
+Elapsed:[0ms]
+X-distance bound: >2
+Elapsed:[0ms]
+Z-distance bound: >4
+Elapsed:[0ms]
+X-distance bound: >4
+Elapsed:[0ms]
+Z-distance bound: >6
+Elapsed:[0ms]
+X-distance bound: >6
+Elapsed:[0ms]
+Z-distance bound: >8
+Elapsed:[0ms]
+X-distance bound: >8
+Elapsed:[0ms]
+Z-distance bound: >10
+Elapsed:[1ms]
+X-distance bound: >10
+Elapsed:[0ms]
+Z-distance bound: >12
+Elapsed:[3ms]
+X-distance bound: >12
+Elapsed:[0ms]
+Z-distance bound: >14
+Elapsed:[7ms]
+X-distance bound: >14
+Elapsed:[0ms]
+Z-distance bound: >16
+Elapsed:[36ms]
+X-distance bound: >16
+Elapsed:[0ms]
+Z-distance: =18
+Elapsed:[47ms]
+X-distance: =18
+Elapsed:[0ms]

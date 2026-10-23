@@ -1,0 +1,2 @@
+{"ready": true, "case": "LP_544_80_12", "ranks": [232, 232], "shapes": [[240, 544], [240, 544]], "native_version": "0.1.0"}
+{"distance": 12, "lower_bound": 12, "proven": true, "levels": 12, "native_seconds": 0.015441042, "call_wall_seconds": 0.01567862502997741, "call_cpu_seconds": 0.015668, "backend": "cc"}

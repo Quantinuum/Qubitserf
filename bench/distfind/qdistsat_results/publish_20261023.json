@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-23",
+  "validated_git_tree": "0550f46cd33cc530d9ad92ebd68edb55fc4d3fd7",
+  "isolated_build": true,
+  "build": {
+    "cmake_cache_sha256": "06f96b4d90f93074edc2315bb23d8a951fe7de9c7e01c5dfe62c33d3d5a9dd6f",
+    "CMAKE_BUILD_TYPE:STRING": "Release",
+    "CMAKE_CXX_COMPILER:STRING": "/Library/Developer/CommandLineTools/usr/bin/clang++",
+    "CMAKE_CXX_FLAGS:STRING": "",
+    "CMAKE_CXX_FLAGS_DEBUG:STRING": "-g",
+    "CMAKE_CXX_FLAGS_MINSIZEREL:STRING": "-Os -DNDEBUG",
+    "CMAKE_CXX_FLAGS_RELEASE:STRING": "-O3 -DNDEBUG",
+    "CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING": "-O2 -g -DNDEBUG",
+    "QUBITSERF_CLI:BOOL": "ON",
+    "QUBITSERF_CUDA:BOOL": "OFF",
+    "QUBITSERF_METAL:BOOL": "OFF",
+    "QUBITSERF_TESTS:BOOL": "ON",
+    "CMAKE_CXX_FLAGS-ADVANCED:INTERNAL": "1",
+    "CMAKE_CXX_FLAGS_DEBUG-ADVANCED:INTERNAL": "1",
+    "CMAKE_CXX_FLAGS_MINSIZEREL-ADVANCED:INTERNAL": "1",
+    "CMAKE_CXX_FLAGS_RELEASE-ADVANCED:INTERNAL": "1",
+    "CMAKE_CXX_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL": "1"
+  },
+  "library_sha256": "ca8c3a85999084809559c6ad9d3e465fbefc0f73b8cad79c05bbb4056ce946b9",
+  "pytest": {
+    "command": "PATH=/opt/miniconda3/envs/sage_env/bin:$PATH PYTHONPATH=python /opt/miniconda3/envs/sage_env/bin/python -m pytest tests -q",
+    "passed": 341,
+    "skipped": 19,
+    "subtests_passed": 8,
+    "seconds": 9.83
+  },
+  "native": {
+    "distfind_smoke": "passed",
+    "distfind_op_smoke": "passed",
+    "distfind_compare": "passed_cpu_gpu_unavailable",
+    "distfind_cpu_enum_ref": {
+      "plans": 84,
+      "failures": 0
+    },
+    "distfind_erasure_ref": {
+      "oracle_cases": 103200,
+      "false_proofs": 0,
+      "conservative_outcomes": 2812
+    }
+  },
+  "benchmark": {
+    "method": "cc",
+    "threads": 1,
+    "backend": "cpu",
+    "timeout_seconds": 10,
+    "includes_native_preprocessing": true,
+    "excludes_input_and_library_loading": true,
+    "input_manifest_sha256": "ac735e5c858c535bf2710c527db0727810eb61ff39533069aa0e34a20abb56b1",
+    "summary": {
+      "completed": 13,
+      "timeout": 0,
+      "error": 0
+    },
+    "results": [
+      {
+        "case": "BB_108_8_10",
+        "distance": 10,
+        "proven": true,
+        "call_wall_seconds": 0.0024543749168515205,
+        "call_cpu_seconds": 0.002239999999999992
+      },
+      {
+        "case": "BB_144_12_12",
+        "distance": 12,
+        "proven": true,
+        "call_wall_seconds": 0.003851708024740219,
+        "call_cpu_seconds": 0.003130999999999995
+      },
+      {
+        "case": "LP_238_44_6",
+        "distance": 6,
+        "proven": true,
+        "call_wall_seconds": 0.003105832962319255,
+        "call_cpu_seconds": 0.0026529999999999887
+      },
+      {
+        "case": "LP_340_56_8",
+        "distance": 8,
+        "proven": true,
+        "call_wall_seconds": 0.011454707942903042,
+        "call_cpu_seconds": 0.007965
+      },
+      {
+        "case": "LP_442_68_10",
+        "distance": 10,
+        "proven": true,
+        "call_wall_seconds": 0.020671249949373305,
+        "call_cpu_seconds": 0.012796000000000002
+      },
+      {
+        "case": "TN_108_2_12",
+        "distance": 12,
+        "proven": true,
+        "call_wall_seconds": 0.7467440000036731,
+        "call_cpu_seconds": 0.5397120000000001
+      },
+      {
+        "case": "TN_200_10_10",
+        "distance": 10,
+        "proven": true,
+        "call_wall_seconds": 0.08063141698949039,
+        "call_cpu_seconds": 0.06921
+      },
+      {
+        "case": "GB_144_12_12",
+        "distance": 12,
+        "proven": true,
+        "call_wall_seconds": 0.08444916701409966,
+        "call_cpu_seconds": 0.070662
+      },
+      {
+        "case": "LP_544_80_12",
+        "distance": 12,
+        "proven": true,
+        "call_wall_seconds": 0.03334779106080532,
+        "call_cpu_seconds": 0.028450999999999976
+      },
+      {
+        "case": "TN_144_2_13",
+        "distance": 13,
+        "proven": true,
+        "call_wall_seconds": 3.3169255420798436,
+        "call_cpu_seconds": 2.72496
+      },
+      {
+        "case": "BB_144_14_14",
+        "distance": 14,
+        "proven": true,
+        "call_wall_seconds": 0.31975991697981954,
+        "call_cpu_seconds": 0.271812
+      },
+      {
+        "case": "BB_288_12_18",
+        "distance": 18,
+        "proven": true,
+        "call_wall_seconds": 0.0875340000493452,
+        "call_cpu_seconds": 0.07115099999999999
+      },
+      {
+        "case": "TN_250_10_15",
+        "distance": 15,
+        "proven": true,
+        "call_wall_seconds": 7.438627833034843,
+        "call_cpu_seconds": 5.801819
+      }
+    ]
+  }
+}

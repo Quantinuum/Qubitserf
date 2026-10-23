@@ -1,0 +1,2 @@
+{"ready": true, "case": "TN_108_2_12", "ranks": [53, 53], "shapes": [[54, 108], [54, 108]]}
+{"distance": 12, "lower_bound": 12, "proven": true, "native_seconds": 1.002091583, "call_wall_seconds": 1.002396208990831, "call_cpu_seconds": 0.9593510000000001, "backend": "cc"}

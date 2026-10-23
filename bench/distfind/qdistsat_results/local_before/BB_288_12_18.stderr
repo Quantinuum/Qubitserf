@@ -1,0 +1,36 @@
+Z-distance bound: >2
+Elapsed:[0ms]
+X-distance bound: >2
+Elapsed:[0ms]
+Z-distance bound: >4
+Elapsed:[1ms]
+X-distance bound: >4
+Elapsed:[1ms]
+Z-distance bound: >6
+Elapsed:[2ms]
+X-distance bound: >6
+Elapsed:[2ms]
+Z-distance bound: >8
+Elapsed:[4ms]
+X-distance bound: >8
+Elapsed:[3ms]
+Z-distance bound: >10
+Elapsed:[8ms]
+X-distance bound: >10
+Elapsed:[10ms]
+Z-distance bound: >12
+Elapsed:[47ms]
+X-distance bound: >12
+Elapsed:[34ms]
+Z-distance bound: >14
+Elapsed:[188ms]
+X-distance bound: >14
+Elapsed:[165ms]
+Z-distance bound: >16
+Elapsed:[1.177s]
+X-distance bound: >16
+Elapsed:[1.001s]
+Z-distance: =18
+Elapsed:[2.652s]
+X-distance: =18
+Elapsed:[2.653s]

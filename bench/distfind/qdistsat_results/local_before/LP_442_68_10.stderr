@@ -1,0 +1,20 @@
+Z-distance bound: >2
+Elapsed:[1ms]
+X-distance bound: >2
+Elapsed:[1ms]
+Z-distance bound: >4
+Elapsed:[2ms]
+X-distance bound: >4
+Elapsed:[2ms]
+Z-distance bound: >6
+Elapsed:[3ms]
+X-distance bound: >6
+Elapsed:[3ms]
+Z-distance bound: >8
+Elapsed:[7ms]
+X-distance bound: >8
+Elapsed:[7ms]
+Z-distance: =10
+Elapsed:[31ms]
+X-distance: =10
+Elapsed:[32ms]

@@ -1,0 +1,1684 @@
+{
+  "metadata": {
+    "started_at": "2026-10-21T10:34:10.310454+00:00",
+    "qubitserf_commit": "ab96b9c12513ed58c7d9e817473ccfda1ababedd",
+    "git_status": "M CHANGELOG.md\n M CMakeLists.txt\n M README.md\n M cpp/distfind/capi.cpp\n M cpp/distfind/capi.h\n M cpp/distfind/cc.cpp\n M cpp/distfind/cc.hpp\n M docs/distance.md\n M python/qubitserf/distfind/__init__.py\n M python/qubitserf/distfind/_native.py\n M python/qubitserf/distfind/api.py\n?? bench/distfind/challenge_630.json\n?? bench/distfind/challenge_630.py\n?? bench/distfind/challenge_630_results/\n?? bench/distfind/challenge_630_sat.py\n?? bench/distfind/experiment_qdistsat/\n?? bench/distfind/qdistsat_10s.py\n?? bench/distfind/qdistsat_data/\n?? bench/distfind/qdistsat_results/\n?? cpp/distfind/erasure_bound.hpp\n?? cpp/distfind/tests/erasure_ref.cpp\n?? tests/distfind/test_auto_distance.py\n?? tests/distfind/test_cc_pruning.py\n?? tests/distfind/test_cc_symmetry.py\n?? tests/distfind/test_challenge_runner.py\n?? tests/distfind/test_challenge_sat.py\n?? tests/distfind/test_qdistsat_runner.py",
+    "git_diff_sha256": "e38e90d40b61f6836d18acebf19df6000a4f4e456260be102365ee24aa6b329d",
+    "source_sha256": {
+      "cpp/codeaut/bz.cpp": "bc8533dea192819e8a39b2e941b0656ce7eb356081505e2b0176327ccef61396",
+      "cpp/codeaut/capi.cpp": "e6b5812513968685128b0d56ea21a8c2458c019da2141439fc26af2f792fc92d",
+      "cpp/codeaut/capi.h": "5336f44de7610ebcad40f0fd279ed9effc5128cfdb2914bf2404871af6ab230d",
+      "cpp/codeaut/leon.cpp": "d65b4d15654e45bc43362730ff998659e48b338e9a91030eedbcd520d47247c6",
+      "cpp/distfind/backend.hpp": "06d67c84c5ba6b3867f65305296afa7eafc2bc1a2ed8b594d1895122a9d377d3",
+      "cpp/distfind/bits.hpp": "39cbd4a6e92c721dc9e51e321322f66dd77434b042be15081d969f492e40cc90",
+      "cpp/distfind/bz.cpp": "b1970c3f3cbe411622dbdd73bd953db5227b2a6939071710a7a4c64dcbbf4c11",
+      "cpp/distfind/bz.hpp": "0090d19e1565d667b5d8c26c0ca935fc69e7ca0b57f880518c62ebdb3442da52",
+      "cpp/distfind/capi.cpp": "96824f8b49be62e2233ee5140b8a5b3fa1bbb200d1ba2ca35b35bdcf032d604b",
+      "cpp/distfind/capi.h": "d6b9d2761289b91f5f8dd4ddbeb6ae92a90aeb60ac49b0232b17227fe9df2c14",
+      "cpp/distfind/cc.cpp": "114bcfc26137e7989669d5b20aa37d45bc526bcc29cda5f082c2a8a16b466247",
+      "cpp/distfind/cc.hpp": "6a7c4072182f0d611c4559fbbb6c6de32c69c791d0f43f4987dae7a623755c97",
+      "cpp/distfind/cli/distfind_cli.cpp": "a5e9562deb6f033f0c13d1514f85e77798479ffac074191bdf075bc1bb74e091",
+      "cpp/distfind/combinatorics.hpp": "d61e753bbc6e3452a01980578084f52cd30b173b5601e76dccb20b70e8587e40",
+      "cpp/distfind/css.cpp": "0a7ddf534c16acb48ee96c00bb712832be51dfd237ea980e0feb102d766dae69",
+      "cpp/distfind/css.hpp": "905882e3092f8b631c56d0fdb7742f4cff1faaf7107576d15ef44f57ca9c81cd",
+      "cpp/distfind/erasure_bound.hpp": "111eef98c7af6619ad34a1b4566c9850bfdfd8bcf203d8eeae7fcd6867e83088",
+      "cpp/distfind/gf2.hpp": "940f1272b166c066d20ecdb873af15dfe7938ae486d835bd3c81265ae19a651f",
+      "cpp/distfind/mitm.cpp": "418208d395173cb5cb0c306fa3d9c65acacf6910043ffdfe8332a473aad17477",
+      "cpp/distfind/mitm.hpp": "0cf1eb70d20d59a83615f62606bd008bfa02dae886f9c68eab8eb5e8e1a37b10",
+      "cpp/distfind/op_weight.cpp": "60a9f751e529e9ef64f1cdb0179df33b7692b986d6ae3d829c6ad17d3049e9d7",
+      "cpp/distfind/op_weight.hpp": "64958f4577aa51d021edd31b5f650c149a38823848deff7f491efe0aa2d7de01",
+      "cpp/distfind/progress.hpp": "5892fdba7a3dfe0da541c360830535ef786891446c0ecf57dc666801e182bd97",
+      "cpp/distfind/stab.cpp": "ddeeaceec4fdfdb1b3bb6ca4667473c8c4621de6881ac29619c7b548a2fa592f",
+      "cpp/distfind/stab.hpp": "3914494ece258c78f42def485273ae83164176f9ae9b4a700edaced1a1d52107",
+      "cpp/distfind/tests/backend_compare.cpp": "679f9af5660262fb807f70727a2cba3dfbb597facd556db463a99fc9be973533",
+      "cpp/distfind/tests/cpu_enum_ref.cpp": "545fdfb0dd8234cfef2102108994a765bbee96ff9aba723d7be2bf421ccd8753",
+      "cpp/distfind/tests/erasure_ref.cpp": "5a2ec33260b3850de55d8632ab109fb836b05bb88757f4c1a9265c2b8df856b8",
+      "cpp/distfind/tests/mitm_smoke.cpp": "ea17e311fc8ef382f43be323e5318b555b83548bcf5139fa6d977cbcc1ef5abe",
+      "cpp/distfind/tests/op_smoke.cpp": "a3badccd0de2d26afc7d9eea5401a89fea4e536ab76c3a6d573d32dc251342a3",
+      "cpp/distfind/tests/smoke.cpp": "eccc6b3f25f6b446bf4f4d562fa39b69fb4ad0171ebe8e8414b8ddd263f9c931",
+      "cpp/qsf/backend.hpp": "875c52aa2b823b1d504f4f5a6f41c149f178382defc357d05a50732427f7476d",
+      "cpp/qsf/backend_cpu.cpp": "5e1418aac667a52a7cad130f883759469954b745ebde98b7f409e7afc1d03c87",
+      "cpp/qsf/bits.hpp": "405533ed8882c88c65c015e2cdf7995f2955802ff25311608fee7e777e7c86e2",
+      "cpp/qsf/combinatorics.hpp": "52a4f131a21768a7b192ec34476158cb891cd205ce1d4297516b58c6f965195f",
+      "cpp/qsf/cuda/backend_cuda.cu": "afdec3d4a06fbe3eb0b795cc76687b538cbbf804cac8f47561a4abc7d1d1e7bd",
+      "cpp/qsf/enum_core.hpp": "303966860c0abc298b329d980dc9103fd57a0638464b63d030e00f81bc449ea3",
+      "cpp/qsf/gf2.cpp": "13a4931718ee361ebcea4af8f086ad98f4ee9b5d739b8907826342aefa8f098b",
+      "cpp/qsf/gf2.hpp": "16c8021ddee5277cf4adf0933bcd8c4b055146f3b40a809ec497686597ee9b3a",
+      "cpp/qsf/gf2span.hpp": "266b663aa050d19c08e015bb106a5dfc9f59928060a3e86b5325e52d8422b598",
+      "python/qubitserf/__init__.py": "cbf318edff7de5edc6ab64c14093b10c726cfa8e2334bc2b6c78410fc31dc8d1",
+      "python/qubitserf/_constructions.py": "b7eeb6747c4ca821ea59f45c54b5efa831f0054be4d821317617b5c06b23e907",
+      "python/qubitserf/_interop.py": "a55417e1b371227001d8440edb759ce4f1503be43ca8823ed0cc54c4ae4a47a3",
+      "python/qubitserf/_native.py": "53d8bb7d0353889201afe6f346a2b86fe47ea386c0d1f94cf300f79ccb8ee6e3",
+      "python/qubitserf/algebra/__init__.py": "9e5c56502f200f0a3ce6cbcd9b967876f263650ee61bd917451c288a35419f6c",
+      "python/qubitserf/algebra/permgroup.py": "b22b3115db170da3ad43f72bcbc3ef93d1d99802a9d608a84a371f265ea7dbc9",
+      "python/qubitserf/codeaut/__init__.py": "6085aaf2c28e845ed6a329f75dc7d7104344befa4e63409c87b6dabcffc7b539",
+      "python/qubitserf/codeaut/_interop.py": "d6d11e0c463a50acdca472aca3ab6bc7861894c1d63501ef2aadc89ab0f743d4",
+      "python/qubitserf/codeaut/_native.py": "b4ca0a2ea98c8a21acc5a2e5a5140db6cd860235f127f560b4b809b25af1ed6e",
+      "python/qubitserf/codeaut/api.py": "0784609e27b6f0312e98dd4622042f164964201094e66bf8123a781b69dcfb08",
+      "python/qubitserf/codeaut/classical_bz.py": "bc14e7f1ec7dc0e17bda2a622f15c8579bce833b80ec3de8a1f0c338a2b92496",
+      "python/qubitserf/codeaut/codes.py": "38b56cb8e1ea7988302b9cdf1bae9af92f2ac23693be9cfa6de8d3a18afcf141",
+      "python/qubitserf/codeaut/css.py": "8fd816c2e7310281d495e9e2bebb31ffead935e84345bf93fe5f109d1c8a4bfc",
+      "python/qubitserf/codeaut/experimental/__init__.py": "fbbe75fbf480de94c3b866d3fed9a52c731a9eb6f348ee89e95ac5a8eb997d5c",
+      "python/qubitserf/codeaut/experimental/components.py": "dc1fae0c45142f8ee4b3ae9a212764be6b505652c4f5d23e029a4b48a0a1ba32",
+      "python/qubitserf/codeaut/experimental/invariants.py": "5ad48c272041c59a04e40f203b1729f9c861c8f00493057b79f93109d829bb4c",
+      "python/qubitserf/codeaut/experimental/ward.py": "77bd56128110adb5732d347676651e9bf56fb753160371260e08f4135025739f",
+      "python/qubitserf/codeaut/gf2.py": "ee475a020c91b197d3994ce1b3806c192fd3d75a9665b0f0f526ebbdd7c8ac55",
+      "python/qubitserf/codeaut/graphaut.py": "58b140e703473807a07a6c75c3af423af1b2d5989fb7226884657af387516cb8",
+      "python/qubitserf/codeaut/joint.py": "1540c26646f1cf146a40f1c8f58fb31354081240b5f683d44f4fc3d67da433f7",
+      "python/qubitserf/codeaut/leon.py": "b1e4f0da05e3b8fc0fa791960177b314c5da7f996e8c737a92b40d5ceee39ab1",
+      "python/qubitserf/codeaut/lowweight.py": "da03ada48707ac5666889945d5f9404ca30889ebfa15dc0c0ce2364067f5b06c",
+      "python/qubitserf/codeaut/matroid_pack.py": "2e6efd2dbd0301ba08a8a6e24fed437a3cca5bde916c0a99876a3d154464f58d",
+      "python/qubitserf/codeaut/side.py": "b7116cc7d6ab8ffb80de6d01a4517f641996cf2032e2816a7846c6e64f09d09c",
+      "python/qubitserf/distfind/__init__.py": "26bdb5dc530ffc0332c11df57f952ae7afba9cf8bfda381c8b51c83177f111a2",
+      "python/qubitserf/distfind/_interop.py": "6a8f2e36d71b7b9c7a51346d98a18fd0def80266baec36162c642c2013de663f",
+      "python/qubitserf/distfind/_native.py": "541a1292804cb0c3b57a3ac2f09fcebd040d5eec1768fb4199004c1bd59d21a9",
+      "python/qubitserf/distfind/api.py": "870ec4f6c941e5b78a0e88dbd4940caa6e2954e53ddfe5d81549f49cf68eaa2c",
+      "python/qubitserf/distfind/codes.py": "73bb93780c26baa589ad5524a53f29b439487a9e6943a79b55d1a85bf071bcec",
+      "python/qubitserf/distfind/io.py": "3e12e76fb6aa368c34046316aff2552f6edbe839faac00bcc854d6eaa344b520",
+      "CMakeLists.txt": "0d14961e07671f421b2b2dc284c37140a545f921fcb4bb7bec6069d67f5cc062",
+      "build.sh": "19bd9be4b7491b54d37b7c5f21de4555bd810872e9c63c7b197dd2f203738935",
+      "bench/distfind/qdistsat_10s.py": "d6e00b5ff5b8e053666e724ee43b418fbadd8dbc4ec71163af1a33d20494f31d"
+    },
+    "build": {
+      "cmake_cache_sha256": "2792919220c948bf0099bd991f091e8d41f451a3462f2e3775e39997300e6874",
+      "CMAKE_BUILD_TYPE:STRING": "Release",
+      "CMAKE_CXX_COMPILER:STRING": "/Library/Developer/CommandLineTools/usr/bin/clang++",
+      "CMAKE_CXX_FLAGS:STRING": "",
+      "CMAKE_CXX_FLAGS_DEBUG:STRING": "-g",
+      "CMAKE_CXX_FLAGS_MINSIZEREL:STRING": "-Os -DNDEBUG",
+      "CMAKE_CXX_FLAGS_RELEASE:STRING": "-O3 -DNDEBUG",
+      "CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING": "-O2 -g -DNDEBUG",
+      "QUBITSERF_CLI:BOOL": "ON",
+      "QUBITSERF_CUDA:BOOL": "ON",
+      "QUBITSERF_METAL:BOOL": "ON",
+      "QUBITSERF_TESTS:BOOL": "ON",
+      "CMAKE_CXX_FLAGS-ADVANCED:INTERNAL": "1",
+      "CMAKE_CXX_FLAGS_DEBUG-ADVANCED:INTERNAL": "1",
+      "CMAKE_CXX_FLAGS_MINSIZEREL-ADVANCED:INTERNAL": "1",
+      "CMAKE_CXX_FLAGS_RELEASE-ADVANCED:INTERNAL": "1",
+      "CMAKE_CXX_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL": "1"
+    },
+    "library": "/Users/serban.cercelescu/Quirky/products/qubitserf/python/qubitserf/_lib/libqubitserf.dylib",
+    "library_sha256": "c638ee1bdc5814c742c4f42a89b52586e60b5856982daa0f0b7655de5b8aaf05",
+    "qdist_sat_commit": "6f110fadfffd6904c950f5da904ddc495176060a",
+    "inputs": {
+      "BB_108_8_10_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/BB_108_8_10_Hx.txt",
+        "sha256": "c89441f4e417475fef2205b6aa76ae8062abe823b068b5d176f47fd12168212b"
+      },
+      "BB_108_8_10_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/BB_108_8_10_Hz.txt",
+        "sha256": "4f098c52399fb2eeebcd80152fc6e153e642cfb7aa624640184a133f9c755c83"
+      },
+      "BB_144_12_12_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/BB_144_12_12_Hx.txt",
+        "sha256": "691d141dbb2ac2e98a2e0d4e4eb079ff603e985296e97774245195d141b64f92"
+      },
+      "BB_144_12_12_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/BB_144_12_12_Hz.txt",
+        "sha256": "e640ce7f40ca1b140e830bbf7bb6526821762edcf2c2372cc57a22599d3a967e"
+      },
+      "LP_238_44_6_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/LP_238_44_6_Hx.txt",
+        "sha256": "6e42eafba57c62f9e185d219bc029c2aa3934fd21cbdda76efd46abe4d4a25f3"
+      },
+      "LP_238_44_6_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/LP_238_44_6_Hz.txt",
+        "sha256": "be0dbcc33cdcabefa56254e65186f6d2fe0a831c2bcc43ea16806a077f06f8d5"
+      },
+      "LP_340_56_8_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/LP_340_56_8_Hx.txt",
+        "sha256": "097a76f0030e82b3077259ffda5c74e5009b42efba58a7dabad252c13b348d8a"
+      },
+      "LP_340_56_8_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier1/LP_340_56_8_Hz.txt",
+        "sha256": "d5fd553dfa914dad412abf357ed42b0ff79c35b1ee3bad4ef5c83d7b8f33e9e6"
+      },
+      "LP_442_68_10_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/LP_442_68_10_Hx.txt",
+        "sha256": "ea7c96ee8aa08b25b4d8f6b562d8dca60341997a377fdb18a0415d50a419cdae"
+      },
+      "LP_442_68_10_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/LP_442_68_10_Hz.txt",
+        "sha256": "5b3d1b6c5188f2e347b5c2a91c263d1523608b9ef009d0bfb8db5a68a6f61242"
+      },
+      "TN_108_2_12_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/TN_108_2_12_Hx.txt",
+        "sha256": "35f268cebee3ace195d1289e219a5520f44abe9f86b9783ed9f2d4e95b4b7918"
+      },
+      "TN_108_2_12_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/TN_108_2_12_Hz.txt",
+        "sha256": "a3998077013f23d88ef5fd6dc171f278d7bf32188651447ae30d2b0663ee8b2d"
+      },
+      "TN_200_10_10_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/TN_200_10_10_Hx.txt",
+        "sha256": "dc4f1d43da7ef8b92566205b1d919ea254c81bcd68b219347fba378b18704329"
+      },
+      "TN_200_10_10_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/TN_200_10_10_Hz.txt",
+        "sha256": "f7ce20a110e9ee5827f093a2759ace0ca81d7c107eaa9eb010214680b66aacc5"
+      },
+      "GB_144_12_12_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/GB_144_12_12_Hx.txt",
+        "sha256": "51bc2cb811158409662b9826cd5bdcb3e0c688ce196c9a758c8c5fc4b118d107"
+      },
+      "GB_144_12_12_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/GB_144_12_12_Hz.txt",
+        "sha256": "0c25d8dc04eaa85777bba7e200e8916179df7d51bfaefb890d7765e08c6905dc"
+      },
+      "LP_544_80_12_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/LP_544_80_12_Hx.txt",
+        "sha256": "f72754e30c01c097bad6c1a238674397e3f392f10d83c6f4f49d22f6a13f4a1f"
+      },
+      "LP_544_80_12_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/LP_544_80_12_Hz.txt",
+        "sha256": "65041d630c7950510695a25470171f565783a92dc0c3f91e8d6a7183d57e9441"
+      },
+      "TN_144_2_13_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/TN_144_2_13_Hx.txt",
+        "sha256": "89e7dccdb201295af0a12c67d393aeeee9d3a4766e6071508a23c0653c742bb9"
+      },
+      "TN_144_2_13_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/TN_144_2_13_Hz.txt",
+        "sha256": "b08ecd342ac73247d376312a1629d2c191e043d1ce81f74b2c1c2c545ca94d4b"
+      },
+      "BB_144_14_14_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/BB_144_14_14_Hx.txt",
+        "sha256": "3a16e0753be12eac0e1617cfde41ddf712a3475ece3b79f64e812042d9da6bfb"
+      },
+      "BB_144_14_14_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier2/BB_144_14_14_Hz.txt",
+        "sha256": "d646d257a0d599cf100dc2ab6d90ff5d4eb69862af8beaa90adf3cc33ffd714c"
+      },
+      "BB_288_12_18_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/BB_288_12_18_Hx.txt",
+        "sha256": "2c85c06915bee464eda2cb7d20c4db6588353a7b4118e6439bd0d21e69d7ee43"
+      },
+      "BB_288_12_18_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier3/BB_288_12_18_Hz.txt",
+        "sha256": "5495d05d9dc8c32eb8328f192b931e1da073ee936febae6afaf390410e98806a"
+      },
+      "TN_250_10_15_Hx.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier4/TN_250_10_15_Hx.txt",
+        "sha256": "9b73ba5867eb70638d6f1537d0e1e054fb111b0c0eb9626ee3f5b6b0f3ff957a"
+      },
+      "TN_250_10_15_Hz.txt": {
+        "url": "https://raw.githubusercontent.com/guluchen/QDistSAT/6f110fadfffd6904c950f5da904ddc495176060a/data/tier4/TN_250_10_15_Hz.txt",
+        "sha256": "8c6757601c387245e4d1674f37c4ddc5cee28f2fb94972015caa25550c016e11"
+      }
+    },
+    "input_manifest_sha256": "ac735e5c858c535bf2710c527db0727810eb61ff39533069aa0e34a20abb56b1",
+    "method": "cc",
+    "which": "M",
+    "backend": "cpu",
+    "threads": 1,
+    "thread_environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "BLIS_NUM_THREADS": "1"
+    },
+    "timeout_seconds": 10,
+    "startup_timeout_seconds": 30,
+    "timeout_excludes_input_and_library_loading": true,
+    "timeout_includes_native_preprocessing": true,
+    "watchdog_starts_at_parent_go_signal": true,
+    "platform": "macOS-26.7.1-arm64-arm-64bit",
+    "cpu": "arm",
+    "python": "3.12.13 | packaged by conda-forge | (main, Mar  5 2026, 17:06:14) [Clang 19.1.7 ]",
+    "python_executable": "/opt/miniconda3/envs/sage_env/bin/python",
+    "repetitions": 3
+  },
+  "results": [
+    {
+      "case": "BB_108_8_10",
+      "repetition": 1,
+      "expected_distance": 10,
+      "stdout": "BB_108_8_10.stdout",
+      "stderr": "BB_108_8_10.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_108_8_10",
+        "ranks": [
+          50,
+          50
+        ],
+        "shapes": [
+          [
+            54,
+            108
+          ],
+          [
+            54,
+            108
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.0012514159898273647,
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "levels": 10,
+      "native_seconds": 0.001119208,
+      "call_wall_seconds": 0.00116808305028826,
+      "call_cpu_seconds": 0.0011870000000000075,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_144_12_12",
+      "repetition": 1,
+      "expected_distance": 12,
+      "stdout": "BB_144_12_12.stdout",
+      "stderr": "BB_144_12_12.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_144_12_12",
+        "ranks": [
+          66,
+          66
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.0023390830028802156,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.002242667,
+      "call_wall_seconds": 0.002280707994941622,
+      "call_cpu_seconds": 0.0022879999999999984,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_238_44_6",
+      "repetition": 1,
+      "expected_distance": 6,
+      "stdout": "LP_238_44_6.stdout",
+      "stderr": "LP_238_44_6.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_238_44_6",
+        "ranks": [
+          97,
+          97
+        ],
+        "shapes": [
+          [
+            105,
+            238
+          ],
+          [
+            105,
+            238
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.0020589170162566006,
+      "distance": 6,
+      "lower_bound": 6,
+      "proven": true,
+      "levels": 6,
+      "native_seconds": 0.001893083,
+      "call_wall_seconds": 0.0019902089843526483,
+      "call_cpu_seconds": 0.0019979999999999998,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_340_56_8",
+      "repetition": 1,
+      "expected_distance": 8,
+      "stdout": "LP_340_56_8.stdout",
+      "stderr": "LP_340_56_8.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_340_56_8",
+        "ranks": [
+          142,
+          142
+        ],
+        "shapes": [
+          [
+            150,
+            340
+          ],
+          [
+            150,
+            340
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.003951374965254217,
+      "distance": 8,
+      "lower_bound": 8,
+      "proven": true,
+      "levels": 8,
+      "native_seconds": 0.003737458,
+      "call_wall_seconds": 0.0038796670269221067,
+      "call_cpu_seconds": 0.0038839999999999986,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_442_68_10",
+      "repetition": 1,
+      "expected_distance": 10,
+      "stdout": "LP_442_68_10.stdout",
+      "stderr": "LP_442_68_10.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_442_68_10",
+        "ranks": [
+          187,
+          187
+        ],
+        "shapes": [
+          [
+            195,
+            442
+          ],
+          [
+            195,
+            442
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.0075439580250531435,
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "levels": 10,
+      "native_seconds": 0.007275625,
+      "call_wall_seconds": 0.007467292016372085,
+      "call_cpu_seconds": 0.0074729999999999935,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_108_2_12",
+      "repetition": 1,
+      "expected_distance": 12,
+      "stdout": "TN_108_2_12.stdout",
+      "stderr": "TN_108_2_12.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_108_2_12",
+        "ranks": [
+          53,
+          53
+        ],
+        "shapes": [
+          [
+            54,
+            108
+          ],
+          [
+            54,
+            108
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.3108249169890769,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.310613625,
+      "call_wall_seconds": 0.3106987919891253,
+      "call_cpu_seconds": 0.310388,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_200_10_10",
+      "repetition": 1,
+      "expected_distance": 10,
+      "stdout": "TN_200_10_10.stdout",
+      "stderr": "TN_200_10_10.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_200_10_10",
+        "ranks": [
+          94,
+          96
+        ],
+        "shapes": [
+          [
+            96,
+            200
+          ],
+          [
+            96,
+            200
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.05130962503608316,
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "levels": 10,
+      "native_seconds": 0.051137791,
+      "call_wall_seconds": 0.051236749975942075,
+      "call_cpu_seconds": 0.051218,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "GB_144_12_12",
+      "repetition": 1,
+      "expected_distance": 12,
+      "stdout": "GB_144_12_12.stdout",
+      "stderr": "GB_144_12_12.stderr",
+      "input": {
+        "ready": true,
+        "case": "GB_144_12_12",
+        "ranks": [
+          66,
+          66
+        ],
+        "shapes": [
+          [
+            66,
+            144
+          ],
+          [
+            66,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.054358666006010026,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.054212709,
+      "call_wall_seconds": 0.0542604589718394,
+      "call_cpu_seconds": 0.05424999999999999,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_544_80_12",
+      "repetition": 1,
+      "expected_distance": 12,
+      "stdout": "LP_544_80_12.stdout",
+      "stderr": "LP_544_80_12.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_544_80_12",
+        "ranks": [
+          232,
+          232
+        ],
+        "shapes": [
+          [
+            240,
+            544
+          ],
+          [
+            240,
+            544
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.015766208001878113,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.015441042,
+      "call_wall_seconds": 0.01567862502997741,
+      "call_cpu_seconds": 0.015668,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_144_2_13",
+      "repetition": 1,
+      "expected_distance": 13,
+      "stdout": "TN_144_2_13.stdout",
+      "stderr": "TN_144_2_13.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_144_2_13",
+        "ranks": [
+          71,
+          71
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 2.1053021660191007,
+      "distance": 13,
+      "lower_bound": 13,
+      "proven": true,
+      "levels": 13,
+      "native_seconds": 2.105026833,
+      "call_wall_seconds": 2.1051487079821527,
+      "call_cpu_seconds": 2.094573,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_144_14_14",
+      "repetition": 1,
+      "expected_distance": 14,
+      "stdout": "BB_144_14_14.stdout",
+      "stderr": "BB_144_14_14.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_144_14_14",
+        "ranks": [
+          65,
+          65
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.21377924998523667,
+      "distance": 14,
+      "lower_bound": 14,
+      "proven": true,
+      "levels": 14,
+      "native_seconds": 0.213596667,
+      "call_wall_seconds": 0.21366358298109844,
+      "call_cpu_seconds": 0.213473,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_288_12_18",
+      "repetition": 1,
+      "expected_distance": 18,
+      "stdout": "BB_288_12_18.stdout",
+      "stderr": "BB_288_12_18.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_288_12_18",
+        "ranks": [
+          138,
+          138
+        ],
+        "shapes": [
+          [
+            144,
+            288
+          ],
+          [
+            144,
+            288
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.054542083002161235,
+      "distance": 18,
+      "lower_bound": 18,
+      "proven": true,
+      "levels": 18,
+      "native_seconds": 0.054270375,
+      "call_wall_seconds": 0.05435937503352761,
+      "call_cpu_seconds": 0.053911,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_250_10_15",
+      "repetition": 1,
+      "expected_distance": 15,
+      "stdout": "TN_250_10_15.stdout",
+      "stderr": "TN_250_10_15.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_250_10_15",
+        "ranks": [
+          120,
+          120
+        ],
+        "shapes": [
+          [
+            120,
+            250
+          ],
+          [
+            120,
+            250
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 4.132626082981005,
+      "distance": 15,
+      "lower_bound": 15,
+      "proven": true,
+      "levels": 15,
+      "native_seconds": 4.132193875,
+      "call_wall_seconds": 4.132389166974463,
+      "call_cpu_seconds": 4.121352,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_108_8_10",
+      "repetition": 2,
+      "expected_distance": 10,
+      "stdout": "BB_108_8_10.repeat2.stdout",
+      "stderr": "BB_108_8_10.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_108_8_10",
+        "ranks": [
+          50,
+          50
+        ],
+        "shapes": [
+          [
+            54,
+            108
+          ],
+          [
+            54,
+            108
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.001270041975658387,
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "levels": 10,
+      "native_seconds": 0.001152916,
+      "call_wall_seconds": 0.001197666977532208,
+      "call_cpu_seconds": 0.0012049999999999977,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_144_12_12",
+      "repetition": 2,
+      "expected_distance": 12,
+      "stdout": "BB_144_12_12.repeat2.stdout",
+      "stderr": "BB_144_12_12.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_144_12_12",
+        "ranks": [
+          66,
+          66
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.002296999969985336,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.002161167,
+      "call_wall_seconds": 0.002219374990090728,
+      "call_cpu_seconds": 0.002227999999999994,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_238_44_6",
+      "repetition": 2,
+      "expected_distance": 6,
+      "stdout": "LP_238_44_6.repeat2.stdout",
+      "stderr": "LP_238_44_6.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_238_44_6",
+        "ranks": [
+          97,
+          97
+        ],
+        "shapes": [
+          [
+            105,
+            238
+          ],
+          [
+            105,
+            238
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.00212004198692739,
+      "distance": 6,
+      "lower_bound": 6,
+      "proven": true,
+      "levels": 6,
+      "native_seconds": 0.001934125,
+      "call_wall_seconds": 0.0020429170108400285,
+      "call_cpu_seconds": 0.0020540000000000003,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_340_56_8",
+      "repetition": 2,
+      "expected_distance": 8,
+      "stdout": "LP_340_56_8.repeat2.stdout",
+      "stderr": "LP_340_56_8.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_340_56_8",
+        "ranks": [
+          142,
+          142
+        ],
+        "shapes": [
+          [
+            150,
+            340
+          ],
+          [
+            150,
+            340
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.003958874964155257,
+      "distance": 8,
+      "lower_bound": 8,
+      "proven": true,
+      "levels": 8,
+      "native_seconds": 0.003750875,
+      "call_wall_seconds": 0.0038928749854676425,
+      "call_cpu_seconds": 0.0038979999999999987,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_442_68_10",
+      "repetition": 2,
+      "expected_distance": 10,
+      "stdout": "LP_442_68_10.repeat2.stdout",
+      "stderr": "LP_442_68_10.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_442_68_10",
+        "ranks": [
+          187,
+          187
+        ],
+        "shapes": [
+          [
+            195,
+            442
+          ],
+          [
+            195,
+            442
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.008357833023183048,
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "levels": 10,
+      "native_seconds": 0.007969375,
+      "call_wall_seconds": 0.008224540972150862,
+      "call_cpu_seconds": 0.008234999999999992,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_108_2_12",
+      "repetition": 2,
+      "expected_distance": 12,
+      "stdout": "TN_108_2_12.repeat2.stdout",
+      "stderr": "TN_108_2_12.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_108_2_12",
+        "ranks": [
+          53,
+          53
+        ],
+        "shapes": [
+          [
+            54,
+            108
+          ],
+          [
+            54,
+            108
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.31582237500697374,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.315505708,
+      "call_wall_seconds": 0.3156358749838546,
+      "call_cpu_seconds": 0.31528100000000003,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_200_10_10",
+      "repetition": 2,
+      "expected_distance": 10,
+      "stdout": "TN_200_10_10.repeat2.stdout",
+      "stderr": "TN_200_10_10.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_200_10_10",
+        "ranks": [
+          94,
+          96
+        ],
+        "shapes": [
+          [
+            96,
+            200
+          ],
+          [
+            96,
+            200
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.05231408297549933,
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "levels": 10,
+      "native_seconds": 0.052109458,
+      "call_wall_seconds": 0.052217042015399784,
+      "call_cpu_seconds": 0.052209000000000005,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "GB_144_12_12",
+      "repetition": 2,
+      "expected_distance": 12,
+      "stdout": "GB_144_12_12.repeat2.stdout",
+      "stderr": "GB_144_12_12.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "GB_144_12_12",
+        "ranks": [
+          66,
+          66
+        ],
+        "shapes": [
+          [
+            66,
+            144
+          ],
+          [
+            66,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.05434783297823742,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.05415825,
+      "call_wall_seconds": 0.054230457986705005,
+      "call_cpu_seconds": 0.054209999999999994,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_544_80_12",
+      "repetition": 2,
+      "expected_distance": 12,
+      "stdout": "LP_544_80_12.repeat2.stdout",
+      "stderr": "LP_544_80_12.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_544_80_12",
+        "ranks": [
+          232,
+          232
+        ],
+        "shapes": [
+          [
+            240,
+            544
+          ],
+          [
+            240,
+            544
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.015893500007223338,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.015490584,
+      "call_wall_seconds": 0.015797583968378603,
+      "call_cpu_seconds": 0.015795000000000003,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_144_2_13",
+      "repetition": 2,
+      "expected_distance": 13,
+      "stdout": "TN_144_2_13.repeat2.stdout",
+      "stderr": "TN_144_2_13.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_144_2_13",
+        "ranks": [
+          71,
+          71
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 2.077402999973856,
+      "distance": 13,
+      "lower_bound": 13,
+      "proven": true,
+      "levels": 13,
+      "native_seconds": 2.077095959,
+      "call_wall_seconds": 2.0772227089619264,
+      "call_cpu_seconds": 2.0756799999999997,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_144_14_14",
+      "repetition": 2,
+      "expected_distance": 14,
+      "stdout": "BB_144_14_14.repeat2.stdout",
+      "stderr": "BB_144_14_14.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_144_14_14",
+        "ranks": [
+          65,
+          65
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.21647762501379475,
+      "distance": 14,
+      "lower_bound": 14,
+      "proven": true,
+      "levels": 14,
+      "native_seconds": 0.216264666,
+      "call_wall_seconds": 0.21634062501834705,
+      "call_cpu_seconds": 0.21608,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_288_12_18",
+      "repetition": 2,
+      "expected_distance": 18,
+      "stdout": "BB_288_12_18.repeat2.stdout",
+      "stderr": "BB_288_12_18.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_288_12_18",
+        "ranks": [
+          138,
+          138
+        ],
+        "shapes": [
+          [
+            144,
+            288
+          ],
+          [
+            144,
+            288
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.05166491697309539,
+      "distance": 18,
+      "lower_bound": 18,
+      "proven": true,
+      "levels": 18,
+      "native_seconds": 0.051455625,
+      "call_wall_seconds": 0.05153795797377825,
+      "call_cpu_seconds": 0.051023,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_250_10_15",
+      "repetition": 2,
+      "expected_distance": 15,
+      "stdout": "TN_250_10_15.repeat2.stdout",
+      "stderr": "TN_250_10_15.repeat2.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_250_10_15",
+        "ranks": [
+          120,
+          120
+        ],
+        "shapes": [
+          [
+            120,
+            250
+          ],
+          [
+            120,
+            250
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 4.113282541045919,
+      "distance": 15,
+      "lower_bound": 15,
+      "proven": true,
+      "levels": 15,
+      "native_seconds": 4.112881541,
+      "call_wall_seconds": 4.113078958005644,
+      "call_cpu_seconds": 4.1027260000000005,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_108_8_10",
+      "repetition": 3,
+      "expected_distance": 10,
+      "stdout": "BB_108_8_10.repeat3.stdout",
+      "stderr": "BB_108_8_10.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_108_8_10",
+        "ranks": [
+          50,
+          50
+        ],
+        "shapes": [
+          [
+            54,
+            108
+          ],
+          [
+            54,
+            108
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.0012169169494882226,
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "levels": 10,
+      "native_seconds": 0.001089041,
+      "call_wall_seconds": 0.001130416989326477,
+      "call_cpu_seconds": 0.0011369999999999991,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_144_12_12",
+      "repetition": 3,
+      "expected_distance": 12,
+      "stdout": "BB_144_12_12.repeat3.stdout",
+      "stderr": "BB_144_12_12.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_144_12_12",
+        "ranks": [
+          66,
+          66
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.0023662919993512332,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.002243084,
+      "call_wall_seconds": 0.002288290997967124,
+      "call_cpu_seconds": 0.0022979999999999945,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_238_44_6",
+      "repetition": 3,
+      "expected_distance": 6,
+      "stdout": "LP_238_44_6.repeat3.stdout",
+      "stderr": "LP_238_44_6.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_238_44_6",
+        "ranks": [
+          97,
+          97
+        ],
+        "shapes": [
+          [
+            105,
+            238
+          ],
+          [
+            105,
+            238
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.0021334170014597476,
+      "distance": 6,
+      "lower_bound": 6,
+      "proven": true,
+      "levels": 6,
+      "native_seconds": 0.001948667,
+      "call_wall_seconds": 0.0020490000024437904,
+      "call_cpu_seconds": 0.0020560000000000023,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_340_56_8",
+      "repetition": 3,
+      "expected_distance": 8,
+      "stdout": "LP_340_56_8.repeat3.stdout",
+      "stderr": "LP_340_56_8.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_340_56_8",
+        "ranks": [
+          142,
+          142
+        ],
+        "shapes": [
+          [
+            150,
+            340
+          ],
+          [
+            150,
+            340
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.004085999971721321,
+      "distance": 8,
+      "lower_bound": 8,
+      "proven": true,
+      "levels": 8,
+      "native_seconds": 0.003889125,
+      "call_wall_seconds": 0.004017499973997474,
+      "call_cpu_seconds": 0.004026000000000002,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_442_68_10",
+      "repetition": 3,
+      "expected_distance": 10,
+      "stdout": "LP_442_68_10.repeat3.stdout",
+      "stderr": "LP_442_68_10.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_442_68_10",
+        "ranks": [
+          187,
+          187
+        ],
+        "shapes": [
+          [
+            195,
+            442
+          ],
+          [
+            195,
+            442
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.00794149999273941,
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "levels": 10,
+      "native_seconds": 0.007672791,
+      "call_wall_seconds": 0.007847500033676624,
+      "call_cpu_seconds": 0.007855000000000001,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_108_2_12",
+      "repetition": 3,
+      "expected_distance": 12,
+      "stdout": "TN_108_2_12.repeat3.stdout",
+      "stderr": "TN_108_2_12.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_108_2_12",
+        "ranks": [
+          53,
+          53
+        ],
+        "shapes": [
+          [
+            54,
+            108
+          ],
+          [
+            54,
+            108
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.3407174170133658,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.340442,
+      "call_wall_seconds": 0.3405507919960655,
+      "call_cpu_seconds": 0.333823,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_200_10_10",
+      "repetition": 3,
+      "expected_distance": 10,
+      "stdout": "TN_200_10_10.repeat3.stdout",
+      "stderr": "TN_200_10_10.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_200_10_10",
+        "ranks": [
+          94,
+          96
+        ],
+        "shapes": [
+          [
+            96,
+            200
+          ],
+          [
+            96,
+            200
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.0544563329895027,
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "levels": 10,
+      "native_seconds": 0.054214416,
+      "call_wall_seconds": 0.05432604200905189,
+      "call_cpu_seconds": 0.054218,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "GB_144_12_12",
+      "repetition": 3,
+      "expected_distance": 12,
+      "stdout": "GB_144_12_12.repeat3.stdout",
+      "stderr": "GB_144_12_12.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "GB_144_12_12",
+        "ranks": [
+          66,
+          66
+        ],
+        "shapes": [
+          [
+            66,
+            144
+          ],
+          [
+            66,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.05781029199715704,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.057625708,
+      "call_wall_seconds": 0.057690708024892956,
+      "call_cpu_seconds": 0.05733899999999999,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "LP_544_80_12",
+      "repetition": 3,
+      "expected_distance": 12,
+      "stdout": "LP_544_80_12.repeat3.stdout",
+      "stderr": "LP_544_80_12.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "LP_544_80_12",
+        "ranks": [
+          232,
+          232
+        ],
+        "shapes": [
+          [
+            240,
+            544
+          ],
+          [
+            240,
+            544
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.017424750025384128,
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "levels": 12,
+      "native_seconds": 0.016894959,
+      "call_wall_seconds": 0.017283166002016515,
+      "call_cpu_seconds": 0.017200999999999994,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_144_2_13",
+      "repetition": 3,
+      "expected_distance": 13,
+      "stdout": "TN_144_2_13.repeat3.stdout",
+      "stderr": "TN_144_2_13.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_144_2_13",
+        "ranks": [
+          71,
+          71
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 2.1337484170217067,
+      "distance": 13,
+      "lower_bound": 13,
+      "proven": true,
+      "levels": 13,
+      "native_seconds": 2.133337792,
+      "call_wall_seconds": 2.133540584007278,
+      "call_cpu_seconds": 2.1228320000000003,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_144_14_14",
+      "repetition": 3,
+      "expected_distance": 14,
+      "stdout": "BB_144_14_14.repeat3.stdout",
+      "stderr": "BB_144_14_14.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_144_14_14",
+        "ranks": [
+          65,
+          65
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.2164881249773316,
+      "distance": 14,
+      "lower_bound": 14,
+      "proven": true,
+      "levels": 14,
+      "native_seconds": 0.216304625,
+      "call_wall_seconds": 0.21637004101648927,
+      "call_cpu_seconds": 0.21620999999999999,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "BB_288_12_18",
+      "repetition": 3,
+      "expected_distance": 18,
+      "stdout": "BB_288_12_18.repeat3.stdout",
+      "stderr": "BB_288_12_18.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "BB_288_12_18",
+        "ranks": [
+          138,
+          138
+        ],
+        "shapes": [
+          [
+            144,
+            288
+          ],
+          [
+            144,
+            288
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 0.04845925001427531,
+      "distance": 18,
+      "lower_bound": 18,
+      "proven": true,
+      "levels": 18,
+      "native_seconds": 0.048246875,
+      "call_wall_seconds": 0.04832704196451232,
+      "call_cpu_seconds": 0.04826899999999999,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    },
+    {
+      "case": "TN_250_10_15",
+      "repetition": 3,
+      "expected_distance": 15,
+      "stdout": "TN_250_10_15.repeat3.stdout",
+      "stderr": "TN_250_10_15.repeat3.stderr",
+      "input": {
+        "ready": true,
+        "case": "TN_250_10_15",
+        "ranks": [
+          120,
+          120
+        ],
+        "shapes": [
+          [
+            120,
+            250
+          ],
+          [
+            120,
+            250
+          ]
+        ],
+        "native_version": "0.1.0"
+      },
+      "observed_wall_seconds": 4.165551458019763,
+      "distance": 15,
+      "lower_bound": 15,
+      "proven": true,
+      "levels": 15,
+      "native_seconds": 4.165226584,
+      "call_wall_seconds": 4.165408582950477,
+      "call_cpu_seconds": 4.148021,
+      "backend": "cc",
+      "status": "completed",
+      "returncode": 0
+    }
+  ],
+  "summary": {
+    "completed": 39,
+    "timeout": 0,
+    "error": 0
+  }
+}

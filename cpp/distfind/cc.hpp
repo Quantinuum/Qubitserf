@@ -2,13 +2,15 @@
 //
 // The minimum-weight logical operator has CONNECTED support on the Tanner graph (any
 // disconnected piece would itself be a lighter logical or stabilizer). So we only grow
-// connected error clusters: from a seed qubit, repeatedly fix the lowest-index unsatisfied
-// check and branch over the qubits in it, until the syndrome closes (codeword) with a
-// non-trivial logical. Weights are tried in increasing order, so the first hit is exact.
+// connected error clusters: from a seed qubit, repeatedly fix an unsatisfied check,
+// with fail-first branching, disjoint-neighborhood bounds, and exact pair completion.
+// Weights are tried in increasing order (skipping proven impossible parity), so the
+// first hit is exact. CSS searches also use stabilizer weight/lexicographic cuts and
+// two-block cyclic root reduction, only after verifying both check spaces' symmetry.
 //
 // Unlike Brouwer-Zimmermann this exploits sparsity, so it certifies LDPC / topological /
 // bivariate-bicycle codes (e.g. the gross code) where BZ's lower bound is too weak. It is
-// inherently a sequential, data-dependent search; we parallelize over independent seeds.
+// inherently a data-dependent search; we parallelize over bounded shallow-prefix jobs.
 #pragma once
 #include "distfind/bz.hpp"   // BZResult, BZOptions
 #include "distfind/gf2.hpp"
@@ -18,6 +20,11 @@ namespace distfind {
 // CSS distance via connected cluster. which = 'Z', 'X', or 'M' (= min). Uses the ORIGINAL
 // sparse Hx/Hz (do not pass a row-reduced version -- sparsity is the whole point).
 BZResult cc_css_distance(const GF2Mat& Hx, const GF2Mat& Hz, char which, const BZOptions& opt);
+
+// Direct <=(lower-1) decision, with no assumed lower-level exclusions.
+// Returns 1 if proved, 0 if a lighter logical exists, -1 if distance is undefined.
+int cc_css_distance_at_least(const GF2Mat& Hx, const GF2Mat& Hz, int lower,
+                             char which, const BZOptions& opt);
 
 // Subsystem (dressed) distance via connected cluster. The stabilizer center Sx/Sz is the
 // sparse parity-check (kept sparse so CC keeps its advantage on topological subsystem

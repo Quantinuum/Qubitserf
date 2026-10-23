@@ -1,0 +1,392 @@
+{
+  "metadata": {
+    "qubitserf_commit": "ab96b9c12513ed58c7d9e817473ccfda1ababedd",
+    "uncommitted_changes": true,
+    "source_state": "pre-existing local CC optimizations before this task",
+    "qdist_sat_commit": "6f110fadfffd6904c950f5da904ddc495176060a",
+    "method": "cc",
+    "which": "M",
+    "backend": "cpu",
+    "threads": 1,
+    "timeout_seconds": 10,
+    "timeout_excludes_input_and_library_loading": true,
+    "library_sha256": "ad2eb3fd0a2cd09533803849498a838e2baabe50f65a50b6bcec12f4041b09da",
+    "platform": "macOS-26.7.1-arm64-arm-64bit",
+    "python": "3.12.13 | packaged by conda-forge | (main, Mar  5 2026, 17:06:14) [Clang 19.1.7 ]",
+    "cpu": "Apple M4",
+    "started_at": "2026-10-21T11:21:14+0100"
+  },
+  "results": [
+    {
+      "case": "BB_108_8_10",
+      "input": {
+        "ready": true,
+        "case": "BB_108_8_10",
+        "ranks": [
+          50,
+          50
+        ],
+        "shapes": [
+          [
+            54,
+            108
+          ],
+          [
+            54,
+            108
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "native_seconds": 0.012383375,
+      "call_wall_seconds": 0.013306125008966774,
+      "call_cpu_seconds": 0.013097000000000011,
+      "backend": "cc"
+    },
+    {
+      "case": "BB_144_12_12",
+      "input": {
+        "ready": true,
+        "case": "BB_144_12_12",
+        "ranks": [
+          66,
+          66
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "native_seconds": 0.017519375,
+      "call_wall_seconds": 0.017747874997439794,
+      "call_cpu_seconds": 0.016972000000000015,
+      "backend": "cc"
+    },
+    {
+      "case": "LP_238_44_6",
+      "input": {
+        "ready": true,
+        "case": "LP_238_44_6",
+        "ranks": [
+          97,
+          97
+        ],
+        "shapes": [
+          [
+            105,
+            238
+          ],
+          [
+            105,
+            238
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 6,
+      "lower_bound": 6,
+      "proven": true,
+      "native_seconds": 0.005662833,
+      "call_wall_seconds": 0.005857583004399203,
+      "call_cpu_seconds": 0.005625999999999992,
+      "backend": "cc"
+    },
+    {
+      "case": "LP_340_56_8",
+      "input": {
+        "ready": true,
+        "case": "LP_340_56_8",
+        "ranks": [
+          142,
+          142
+        ],
+        "shapes": [
+          [
+            150,
+            340
+          ],
+          [
+            150,
+            340
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 8,
+      "lower_bound": 8,
+      "proven": true,
+      "native_seconds": 0.0151635,
+      "call_wall_seconds": 0.015432375003001653,
+      "call_cpu_seconds": 0.014333000000000012,
+      "backend": "cc"
+    },
+    {
+      "case": "LP_442_68_10",
+      "input": {
+        "ready": true,
+        "case": "LP_442_68_10",
+        "ranks": [
+          187,
+          187
+        ],
+        "shapes": [
+          [
+            195,
+            442
+          ],
+          [
+            195,
+            442
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "native_seconds": 0.031812292,
+      "call_wall_seconds": 0.0322114159935154,
+      "call_cpu_seconds": 0.031528,
+      "backend": "cc"
+    },
+    {
+      "case": "TN_108_2_12",
+      "input": {
+        "ready": true,
+        "case": "TN_108_2_12",
+        "ranks": [
+          53,
+          53
+        ],
+        "shapes": [
+          [
+            54,
+            108
+          ],
+          [
+            54,
+            108
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "native_seconds": 1.002091583,
+      "call_wall_seconds": 1.002396208990831,
+      "call_cpu_seconds": 0.9593510000000001,
+      "backend": "cc"
+    },
+    {
+      "case": "TN_200_10_10",
+      "input": {
+        "ready": true,
+        "case": "TN_200_10_10",
+        "ranks": [
+          94,
+          96
+        ],
+        "shapes": [
+          [
+            96,
+            200
+          ],
+          [
+            96,
+            200
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 10,
+      "lower_bound": 10,
+      "proven": true,
+      "native_seconds": 0.112048125,
+      "call_wall_seconds": 0.1122216249932535,
+      "call_cpu_seconds": 0.10971300000000003,
+      "backend": "cc"
+    },
+    {
+      "case": "GB_144_12_12",
+      "input": {
+        "ready": true,
+        "case": "GB_144_12_12",
+        "ranks": [
+          66,
+          66
+        ],
+        "shapes": [
+          [
+            66,
+            144
+          ],
+          [
+            66,
+            144
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "native_seconds": 0.485032958,
+      "call_wall_seconds": 0.4851677499973448,
+      "call_cpu_seconds": 0.457375,
+      "backend": "cc"
+    },
+    {
+      "case": "LP_544_80_12",
+      "input": {
+        "ready": true,
+        "case": "LP_544_80_12",
+        "ranks": [
+          232,
+          232
+        ],
+        "shapes": [
+          [
+            240,
+            544
+          ],
+          [
+            240,
+            544
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 12,
+      "lower_bound": 12,
+      "proven": true,
+      "native_seconds": 0.102922959,
+      "call_wall_seconds": 0.1034300410101423,
+      "call_cpu_seconds": 0.099721,
+      "backend": "cc"
+    },
+    {
+      "case": "TN_144_2_13",
+      "input": {
+        "ready": true,
+        "case": "TN_144_2_13",
+        "ranks": [
+          71,
+          71
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 13,
+      "lower_bound": 13,
+      "proven": true,
+      "native_seconds": 8.5072455,
+      "call_wall_seconds": 8.507399875001283,
+      "call_cpu_seconds": 7.944179999999999,
+      "backend": "cc"
+    },
+    {
+      "case": "BB_144_14_14",
+      "input": {
+        "ready": true,
+        "case": "BB_144_14_14",
+        "ranks": [
+          65,
+          65
+        ],
+        "shapes": [
+          [
+            72,
+            144
+          ],
+          [
+            72,
+            144
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 14,
+      "lower_bound": 14,
+      "proven": true,
+      "native_seconds": 5.312838,
+      "call_wall_seconds": 5.313042084002518,
+      "call_cpu_seconds": 5.092879,
+      "backend": "cc"
+    },
+    {
+      "case": "BB_288_12_18",
+      "input": {
+        "ready": true,
+        "case": "BB_288_12_18",
+        "ranks": [
+          138,
+          138
+        ],
+        "shapes": [
+          [
+            144,
+            288
+          ],
+          [
+            144,
+            288
+          ]
+        ]
+      },
+      "status": "completed",
+      "distance": 18,
+      "lower_bound": 18,
+      "proven": true,
+      "native_seconds": 2.653087375,
+      "call_wall_seconds": 2.653346999999485,
+      "call_cpu_seconds": 2.478732,
+      "backend": "cc"
+    },
+    {
+      "case": "TN_250_10_15",
+      "input": {
+        "ready": true,
+        "case": "TN_250_10_15",
+        "ranks": [
+          120,
+          120
+        ],
+        "shapes": [
+          [
+            120,
+            250
+          ],
+          [
+            120,
+            250
+          ]
+        ]
+      },
+      "status": "timeout",
+      "observed_wall_seconds": 10.00116587500088
+    }
+  ]
+}
